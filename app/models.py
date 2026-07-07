@@ -128,6 +128,20 @@ class StatePrediction(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class Politician(Base):
+    """A political heavyweight associated with a state."""
+
+    __tablename__ = "politicians"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    title: Mapped[str] = mapped_column(String(120), default="")
+    party: Mapped[str] = mapped_column(String(20), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ProblemUnit(Base):
     """A polling unit flagged for strong anomalies in the 2023 election."""
 

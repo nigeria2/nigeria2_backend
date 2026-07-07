@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Analysis, InterestedUser, Party, PartyElection, Prediction, ProblemUnit, StatePrediction, User
+from .models import Analysis, InterestedUser, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction, User
 from .schemas import (
     AnalysisIn,
     GoogleAuthIn,
@@ -31,6 +31,7 @@ from .seed import (
     seed_analyses,
     seed_parties,
     seed_party_elections,
+    seed_politicians,
     seed_predictions,
     seed_problem_units,
     seed_state_predictions,
@@ -79,12 +80,15 @@ async def lifespan(app: FastAPI):
                 sp = seed_state_predictions(db)
                 if sp:
                     print(f"[startup] seeded {sp} state predictions")
+                pol = seed_politicians(db)
+                if pol:
+                    print(f"[startup] seeded {pol} politicians")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.15.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.16.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -286,6 +290,39 @@ def problem_units_meta(db: Session = Depends(get_db)):
     types = [t for (t,) in db.execute(select(ProblemUnit.anomaly_type).distinct().order_by(ProblemUnit.anomaly_type)).all()]
     total = db.scalar(select(func.count()).select_from(ProblemUnit))
     return {"states": states, "anomaly_types": types, "total": total}
+
+
+# --- public per-state detail (predictions board + political heavyweights) ---
+def _public_prediction_dict(p: StatePrediction) -> dict:
+    try:
+        scores = json.loads(p.scores) if p.scores else {}
+    except Exception:
+        scores = {}
+    return {
+        "id": p.id,
+        "state": p.state,
+        "election_type": p.election_type,
+        "source": p.source,
+        "label": p.label,
+        "author_name": p.author_name,
+        "leading_party": p.leading_party,
+        "scores": scores,
+        "notes": p.notes,
+        "year": p.year,
+    }
+
+
+@app.get("/api/states/{state}")
+def state_detail(state: str, db: Session = Depends(get_db)):
+    preds = db.scalars(
+        select(StatePrediction).where(StatePrediction.state == state).order_by(StatePrediction.source, StatePrediction.created_at.desc())
+    ).all()
+    pols = db.scalars(select(Politician).where(Politician.state == state).order_by(Politician.id)).all()
+    return {
+        "state": state,
+        "predictions": [_public_prediction_dict(p) for p in preds],
+        "politicians": [{"name": x.name, "title": x.title, "party": x.party, "note": x.note} for x in pols],
+    }
 
 
 # --- analyses (contributor per-party projections) ---

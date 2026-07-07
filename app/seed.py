@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
-from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit, StatePrediction
+from .models import Analysis, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
 SEED_VERSION = 3
@@ -320,3 +320,21 @@ def seed_state_predictions(db: Session) -> int:
     db.add_all(rows)
     db.commit()
     return len(rows)
+
+
+# --- political heavyweights per state ---
+POLITICIANS = [
+    ("Godswill Akpabio", "Akwa Ibom", "Senate President", "APC"),
+    ("Umo Eno", "Akwa Ibom", "Governor", "PDP"),
+    ("Udom Emmanuel", "Akwa Ibom", "Former Governor", "PDP"),
+]
+
+
+def seed_politicians(db: Session) -> int:
+    """Seed the (small) set of state political heavyweights once."""
+    if db.scalar(select(func.count()).select_from(Politician)):
+        return 0
+    for name, state, title, party in POLITICIANS:
+        db.add(Politician(name=name, state=state, title=title, party=party))
+    db.commit()
+    return len(POLITICIANS)
