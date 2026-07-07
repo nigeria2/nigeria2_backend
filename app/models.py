@@ -103,6 +103,27 @@ class PartyElection(Base):
     election_type: Mapped[str] = mapped_column(String(30), index=True)
 
 
+class ProblemUnit(Base):
+    """A polling unit flagged for strong anomalies in the 2023 election."""
+
+    __tablename__ = "problem_units"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    lga: Mapped[str] = mapped_column(String(120), default="")
+    ward: Mapped[str] = mapped_column(String(120), default="")
+    polling_unit: Mapped[str] = mapped_column(String(200), default="")
+    pu_code: Mapped[str] = mapped_column(String(40), default="")
+    anomaly_type: Mapped[str] = mapped_column(String(80), index=True)
+    severity: Mapped[str] = mapped_column(String(20), default="High")  # High | Medium
+    description: Mapped[str] = mapped_column(Text, default="")
+    registered_voters: Mapped[int] = mapped_column(Integer, default=0)
+    accredited_voters: Mapped[int] = mapped_column(Integer, default=0)
+    votes_cast: Mapped[int] = mapped_column(Integer, default=0)
+    election_year: Mapped[str] = mapped_column(String(10), default="2023")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Analysis(Base):
     """A contributor's per-party projection for a state (feeds the aggregation)."""
 

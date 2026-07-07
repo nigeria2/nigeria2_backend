@@ -9,7 +9,7 @@ import json
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .models import Analysis, Party, PartyElection, Prediction
+from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
 SEED_VERSION = 3
@@ -213,3 +213,77 @@ def seed_party_elections(db: Session) -> int:
             n += 1
     db.commit()
     return n
+
+
+# --- 2023 problem polling units (flagged anomalies) ---
+PU_LGAS = {
+    "Rivers": ["Port Harcourt", "Obio/Akpor", "Emohua", "Ikwerre"],
+    "Lagos": ["Alimosho", "Kosofe", "Ojo", "Amuwo-Odofin"],
+    "Kano": ["Kano Municipal", "Nassarawa", "Ungogo", "Gwale"],
+    "Kaduna": ["Kaduna North", "Zaria", "Chikun", "Igabi"],
+    "Imo": ["Owerri Municipal", "Orlu", "Okigwe", "Mbaitoli"],
+    "Anambra": ["Onitsha North", "Idemili North", "Awka South", "Nnewi North"],
+    "Akwa Ibom": ["Uyo", "Ikot Ekpene", "Eket", "Oron"],
+    "Delta": ["Warri South", "Ughelli North", "Oshimili South", "Sapele"],
+    "Benue": ["Makurdi", "Gboko", "Otukpo", "Katsina-Ala"],
+    "Plateau": ["Jos North", "Jos South", "Barkin Ladi", "Riyom"],
+    "Enugu": ["Enugu North", "Nsukka", "Udi", "Enugu East"],
+    "Bayelsa": ["Yenagoa", "Sagbama", "Nembe", "Brass"],
+    "Ebonyi": ["Abakaliki", "Afikpo North", "Ohaozara", "Izzi"],
+    "Cross River": ["Calabar Municipal", "Ogoja", "Ikom", "Obudu"],
+    "Sokoto": ["Sokoto North", "Wamako", "Bodinga", "Tambuwal"],
+    "Borno": ["Maiduguri", "Jere", "Konduga", "Bama"],
+}
+PU_PLACES = [
+    "Central Primary School", "Town Hall", "Community Secondary School", "Health Centre",
+    "Open Space by Market", "Village Square", "Model Primary School", "District Head's Compound",
+    "Motor Park", "Civic Centre", "Ward Council Office", "St. Mary's School",
+]
+ANOMALY_TYPES = [
+    ("Over-voting", "Total votes cast exceeded the number of accredited voters recorded on the BVAS."),
+    ("Turnout over 100%", "Accredited voters exceeded the registered voters on the roll for this unit."),
+    ("Votes exceed registration", "Total votes surpassed the number of registered voters."),
+    ("Single-party sweep", "One party recorded almost all votes while every other party polled zero."),
+    ("IReV portal mismatch", "The announced result differed materially from the result sheet uploaded to IReV."),
+    ("Turnout spike", "Turnout was far above the ward, LGA and national averages."),
+]
+_HIGH = {"Over-voting", "Turnout over 100%", "Votes exceed registration", "Single-party sweep"}
+
+
+def _pu_rows():
+    idx = 0
+    for si, state in enumerate(PU_LGAS.keys()):
+        lgas = PU_LGAS[state]
+        for k in range(3):  # a few flagged units per state
+            atype, desc = ANOMALY_TYPES[(si + k) % len(ANOMALY_TYPES)]
+            reg = 400 + int(_rand("pureg", state, k) * 800)
+            if atype in ("Turnout over 100%", "Votes exceed registration"):
+                acc = reg + 25 + int(_rand("puacc", state, k) * 220)
+                votes = acc
+            elif atype == "Over-voting":
+                acc = int(reg * (0.5 + _rand("puacc2", state, k) * 0.35))
+                votes = acc + 40 + int(_rand("puov", state, k) * 200)
+            else:
+                acc = int(reg * (0.82 + _rand("puacc3", state, k) * 0.15))
+                votes = acc
+            ward = f"Ward {(k + si) % 12 + 1:02d}"
+            lga = lgas[k % len(lgas)]
+            pu = f"{PU_PLACES[idx % len(PU_PLACES)]}"
+            code = f"{20 + si % 30:02d}/{10 + k:02d}/{5 + k:02d}/{idx * 7 % 30 + 1:03d}"
+            yield ProblemUnit(
+                state=state, lga=lga, ward=ward, polling_unit=pu, pu_code=code,
+                anomaly_type=atype, severity=("High" if atype in _HIGH else "Medium"),
+                description=desc, registered_voters=reg, accredited_voters=acc,
+                votes_cast=votes, election_year="2023",
+            )
+            idx += 1
+
+
+def seed_problem_units(db: Session) -> int:
+    """Seed illustrative flagged polling units once."""
+    if db.scalar(select(func.count()).select_from(ProblemUnit)):
+        return 0
+    rows = list(_pu_rows())
+    db.add_all(rows)
+    db.commit()
+    return len(rows)

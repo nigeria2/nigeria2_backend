@@ -13,9 +13,24 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Analysis, Party, PartyElection, Prediction, Signup, User
-from .schemas import AnalysisIn, GoogleAuthIn, JoinIn, JoinOut, PredictionSetIn, ProfileUpdate
-from .seed import BASE, seed_analyses, seed_parties, seed_party_elections, seed_predictions
+from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit, Signup, User
+from .schemas import (
+    AnalysisIn,
+    GoogleAuthIn,
+    JoinIn,
+    JoinOut,
+    PartyElectionSetIn,
+    PredictionSetIn,
+    ProfileUpdate,
+)
+from .seed import (
+    BASE,
+    seed_analyses,
+    seed_parties,
+    seed_party_elections,
+    seed_predictions,
+    seed_problem_units,
+)
 
 STATE_NAMES = sorted(BASE.keys())
 
@@ -54,12 +69,15 @@ async def lifespan(app: FastAPI):
                 rel = seed_party_elections(db)
                 if rel:
                     print(f"[startup] seeded {rel} party-election links")
+                pu = seed_problem_units(db)
+                if pu:
+                    print(f"[startup] seeded {pu} problem units")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.10.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.11.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -200,6 +218,48 @@ def parties_by_election(db: Session = Depends(get_db)):
     for r in db.scalars(select(PartyElection)).all():
         out.setdefault(r.election_type, []).append(r.party_acronym)
     return out
+
+
+# --- 2023 problem polling units (public) ---
+def problem_unit_to_dict(u: ProblemUnit) -> dict:
+    return {
+        "id": u.id,
+        "state": u.state,
+        "lga": u.lga,
+        "ward": u.ward,
+        "polling_unit": u.polling_unit,
+        "pu_code": u.pu_code,
+        "anomaly_type": u.anomaly_type,
+        "severity": u.severity,
+        "description": u.description,
+        "registered_voters": u.registered_voters,
+        "accredited_voters": u.accredited_voters,
+        "votes_cast": u.votes_cast,
+        "election_year": u.election_year,
+    }
+
+
+@app.get("/api/problem-units")
+def list_problem_units(
+    state: str | None = None,
+    anomaly_type: str | None = None,
+    db: Session = Depends(get_db),
+):
+    stmt = select(ProblemUnit)
+    if state:
+        stmt = stmt.where(ProblemUnit.state == state)
+    if anomaly_type:
+        stmt = stmt.where(ProblemUnit.anomaly_type == anomaly_type)
+    stmt = stmt.order_by(ProblemUnit.state, ProblemUnit.lga)
+    return [problem_unit_to_dict(u) for u in db.scalars(stmt).all()]
+
+
+@app.get("/api/problem-units/meta")
+def problem_units_meta(db: Session = Depends(get_db)):
+    states = [s for (s,) in db.execute(select(ProblemUnit.state).distinct().order_by(ProblemUnit.state)).all()]
+    types = [t for (t,) in db.execute(select(ProblemUnit.anomaly_type).distinct().order_by(ProblemUnit.anomaly_type)).all()]
+    total = db.scalar(select(func.count()).select_from(ProblemUnit))
+    return {"states": states, "anomaly_types": types, "total": total}
 
 
 # --- analyses (contributor per-party projections) ---
@@ -395,6 +455,21 @@ def set_prediction(payload: PredictionSetIn, _: User = Depends(require_admin), d
         )
     db.commit()
     return {"ok": True, "state": payload.state}
+
+
+# --- admin: manage which parties are on the ballot per election type ---
+@app.put("/api/admin/parties/elections")
+def set_party_elections(payload: PartyElectionSetIn, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    db.execute(delete(PartyElection).where(PartyElection.election_type == payload.election_type))
+    seen: set[str] = set()
+    for acr in payload.acronyms:
+        a = str(acr).strip()
+        if not a or a in seen:
+            continue
+        seen.add(a)
+        db.add(PartyElection(party_acronym=a, election_type=payload.election_type))
+    db.commit()
+    return {"ok": True, "election_type": payload.election_type, "acronyms": sorted(seen)}
 
 
 @app.get("/api/admin/users")

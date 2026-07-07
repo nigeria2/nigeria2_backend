@@ -73,3 +73,12 @@ class PredictionSetIn(BaseModel):
     week: str = Field(min_length=1, max_length=10)
     state: str = Field(min_length=1, max_length=50)
     scores: dict[str, float] = Field(default_factory=dict)
+
+
+class PartyElectionSetIn(BaseModel):
+    """Admin: set which party acronyms are relevant for an election type."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    election_type: str = Field(min_length=1, max_length=30)
+    acronyms: list[str] = Field(default_factory=list)
