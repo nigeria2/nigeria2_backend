@@ -82,3 +82,27 @@ class PartyElectionSetIn(BaseModel):
 
     election_type: str = Field(min_length=1, max_length=30)
     acronyms: list[str] = Field(default_factory=list)
+
+
+class StatePredictionIn(BaseModel):
+    """Create a prediction on the shared board."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    state: str = Field(min_length=1, max_length=50)
+    election_type: str = Field(min_length=1, max_length=30)
+    scores: dict[str, float] = Field(default_factory=dict)
+    notes: str | None = None
+    label: str | None = None
+    source: str | None = None  # admins may set 'past_performance'; otherwise 'expert'
+
+
+class StatePredictionUpdate(BaseModel):
+    """Edit an existing board prediction (partial)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    election_type: str | None = None
+    scores: dict[str, float] | None = None
+    notes: str | None = None
+    label: str | None = None

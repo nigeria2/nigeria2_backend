@@ -9,7 +9,7 @@ import json
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit
+from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit, StatePrediction
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
 SEED_VERSION = 3
@@ -284,6 +284,60 @@ def seed_problem_units(db: Session) -> int:
     if db.scalar(select(func.count()).select_from(ProblemUnit)):
         return 0
     rows = list(_pu_rows())
+    db.add_all(rows)
+    db.commit()
+    return len(rows)
+
+
+# --- shared per-state predictions board ---
+def _state_prediction_rows():
+    # Past performance (2023 result) per state, for presidential and governor.
+    for state, (gov, pres) in BASE.items():
+        for etype, (leader, pct) in (("presidential", pres), ("governor", gov)):
+            scores = {p: round(v, 1) for p, v in _base_scores(leader, pct, _pool(etype)).items()}
+            yield StatePrediction(
+                user_id=None,
+                author_name="Past performance",
+                author_email="",
+                state=state,
+                election_type=etype,
+                source="past_performance",
+                label=f"2023 {etype} result",
+                leading_party=leader,
+                scores=json.dumps(scores),
+                notes="Baseline drawn from the 2023 general election outcome.",
+                year="2023",
+            )
+    # A handful of illustrative expert predictions across states.
+    states = list(BASE.keys())
+    for k in range(14):
+        st = states[int(_rand("spstate", k) * len(states))]
+        et = ETYPES[int(_rand("spet", k) * len(ETYPES))]
+        leader, pct = BASE[st][1] if et == "presidential" else BASE[st][0]
+        base = _base_scores(leader, pct, _pool(et))
+        scores = {p: max(1, round(s + (_rand("spsc", st, et, p, k) - 0.5) * 16)) for p, s in base.items()}
+        lead = max(scores, key=lambda p: scores[p])
+        name, email = CONTRIBUTORS[int(_rand("spc", k) * len(CONTRIBUTORS))]
+        yield StatePrediction(
+            user_id=None,
+            author_name=name,
+            author_email=email,
+            state=st,
+            election_type=et,
+            source="expert",
+            label="",
+            leading_party=lead,
+            scores=json.dumps(scores),
+            notes=NOTES[int(_rand("spn", k) * len(NOTES))],
+            year="2027",
+        )
+
+
+def seed_state_predictions(db: Session) -> int:
+    """Seed the shared predictions board once (past performance + a few expert calls)."""
+    if db.scalar(select(func.count()).select_from(StatePrediction)):
+        return 0
+    rows = list(_state_prediction_rows())
     db.add_all(rows)
     db.commit()
     return len(rows)

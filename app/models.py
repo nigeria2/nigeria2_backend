@@ -103,6 +103,29 @@ class PartyElection(Base):
     election_type: Mapped[str] = mapped_column(String(30), index=True)
 
 
+class StatePrediction(Base):
+    """A shared per-state prediction. Added by an expert directly, or seeded as
+    past performance. Visible to all logged-in users; editable by admins (all) or
+    the authoring expert (their own)."""
+
+    __tablename__ = "state_predictions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # owning expert; null for past-performance
+    author_name: Mapped[str] = mapped_column(String(200), default="")
+    author_email: Mapped[str] = mapped_column(String(255), default="")
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    election_type: Mapped[str] = mapped_column(String(30), default="presidential")
+    source: Mapped[str] = mapped_column(String(30), default="expert")  # expert | past_performance
+    label: Mapped[str] = mapped_column(String(120), default="")
+    leading_party: Mapped[str] = mapped_column(String(20), default="")
+    scores: Mapped[str] = mapped_column(Text, default="{}")  # JSON per-party shares
+    notes: Mapped[str] = mapped_column(Text, default="")
+    year: Mapped[str] = mapped_column(String(10), default="2027")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class ProblemUnit(Base):
     """A polling unit flagged for strong anomalies in the 2023 election."""
 

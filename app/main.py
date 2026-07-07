@@ -6,7 +6,7 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, func, select, text
@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit, Signup, User
+from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit, Signup, StatePrediction, User
 from .schemas import (
     AnalysisIn,
     GoogleAuthIn,
@@ -23,6 +23,8 @@ from .schemas import (
     PartyElectionSetIn,
     PredictionSetIn,
     ProfileUpdate,
+    StatePredictionIn,
+    StatePredictionUpdate,
 )
 from .seed import (
     BASE,
@@ -31,6 +33,7 @@ from .seed import (
     seed_party_elections,
     seed_predictions,
     seed_problem_units,
+    seed_state_predictions,
 )
 
 STATE_NAMES = sorted(BASE.keys())
@@ -73,12 +76,15 @@ async def lifespan(app: FastAPI):
                 pu = seed_problem_units(db)
                 if pu:
                     print(f"[startup] seeded {pu} problem units")
+                sp = seed_state_predictions(db)
+                if sp:
+                    print(f"[startup] seeded {sp} state predictions")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.12.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.13.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -333,6 +339,109 @@ def create_analysis(payload: AnalysisIn, user: User = Depends(current_user), db:
 def my_analyses(user: User = Depends(current_user), db: Session = Depends(get_db)):
     rows = db.scalars(select(Analysis).where(Analysis.user_id == user.id).order_by(Analysis.created_at.desc())).all()
     return [analysis_to_dict(a) for a in rows]
+
+
+# --- shared predictions board (logged-in view; owner/admin edit) ---
+def _can_edit_pred(user: User, p: StatePrediction) -> bool:
+    return bool(user.is_admin or (p.user_id is not None and p.user_id == user.id))
+
+
+def state_prediction_to_dict(p: StatePrediction, user: User) -> dict:
+    try:
+        scores = json.loads(p.scores) if p.scores else {}
+    except Exception:
+        scores = {}
+    return {
+        "id": p.id,
+        "state": p.state,
+        "election_type": p.election_type,
+        "source": p.source,
+        "label": p.label,
+        "author_name": p.author_name,
+        "leading_party": p.leading_party,
+        "scores": scores,
+        "notes": p.notes,
+        "year": p.year,
+        "is_mine": bool(p.user_id is not None and p.user_id == user.id),
+        "can_edit": _can_edit_pred(user, p),
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+    }
+
+
+@app.get("/api/board/states")
+def board_states(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    counts = dict(db.execute(select(StatePrediction.state, func.count()).group_by(StatePrediction.state)).all())
+    return [{"state": s, "count": counts.get(s, 0)} for s in STATE_NAMES]
+
+
+@app.get("/api/board/states/{state}")
+def board_state_predictions(state: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    rows = db.scalars(
+        select(StatePrediction).where(StatePrediction.state == state).order_by(StatePrediction.source, StatePrediction.created_at.desc())
+    ).all()
+    return [state_prediction_to_dict(p, user) for p in rows]
+
+
+@app.post("/api/board/predictions", status_code=201)
+def board_add_prediction(payload: StatePredictionIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    scores = {str(k): float(v) for k, v in payload.scores.items() if v is not None}
+    leading = max(scores, key=lambda p: scores[p]) if scores else ""
+    source = payload.source or "expert"
+    if source == "past_performance" and not user.is_admin:
+        source = "expert"  # only admins may post past performance
+    is_pp = source == "past_performance"
+    p = StatePrediction(
+        user_id=None if is_pp else user.id,
+        author_name="Past performance" if is_pp else (user.full_name or user.email),
+        author_email="" if is_pp else user.email,
+        state=payload.state,
+        election_type=payload.election_type,
+        source=source,
+        label=payload.label or "",
+        leading_party=leading,
+        scores=json.dumps(scores),
+        notes=payload.notes or "",
+        year="2023" if is_pp else "2027",
+    )
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return state_prediction_to_dict(p, user)
+
+
+@app.put("/api/board/predictions/{pid}")
+def board_edit_prediction(pid: int, payload: StatePredictionUpdate, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    p = db.get(StatePrediction, pid)
+    if p is None:
+        raise HTTPException(status_code=404, detail="prediction not found")
+    if not _can_edit_pred(user, p):
+        raise HTTPException(status_code=403, detail="not allowed to edit this prediction")
+    data = payload.model_dump(exclude_unset=True)
+    if data.get("scores") is not None:
+        scores = {str(k): float(v) for k, v in data["scores"].items() if v is not None}
+        p.scores = json.dumps(scores)
+        p.leading_party = max(scores, key=lambda q: scores[q]) if scores else ""
+    if data.get("election_type"):
+        p.election_type = data["election_type"]
+    if "notes" in data and data["notes"] is not None:
+        p.notes = data["notes"]
+    if "label" in data and data["label"] is not None:
+        p.label = data["label"]
+    db.commit()
+    db.refresh(p)
+    return state_prediction_to_dict(p, user)
+
+
+@app.delete("/api/board/predictions/{pid}")
+def board_delete_prediction(pid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    p = db.get(StatePrediction, pid)
+    if p is None:
+        raise HTTPException(status_code=404, detail="prediction not found")
+    if not _can_edit_pred(user, p):
+        raise HTTPException(status_code=403, detail="not allowed to delete this prediction")
+    db.delete(p)
+    db.commit()
+    return {"ok": True}
 
 
 # --- auth ---
