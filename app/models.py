@@ -1,7 +1,7 @@
 """SQLAlchemy ORM models."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -57,3 +57,20 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Prediction(Base):
+    """Aggregated per-state projection (already crunched from raw traces).
+
+    One row per (state, election_type, party, measurement_week).
+    """
+
+    __tablename__ = "predictions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True)  # presidential | governor | senate
+    party: Mapped[str] = mapped_column(String(20))
+    score: Mapped[float] = mapped_column(Float)  # projected polling share (0-100)
+    measurement_week: Mapped[str] = mapped_column(String(10), index=True)  # ISO date, e.g. 2026-07-06
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -12,9 +12,10 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
-from .db import engine, get_db
-from .models import Signup, User
+from .db import SessionLocal, engine, get_db
+from .models import Prediction, Signup, User
 from .schemas import GoogleAuthIn, JoinIn, JoinOut, ProfileUpdate
+from .seed import seed_predictions
 
 
 def run_migrations() -> None:
@@ -36,10 +37,18 @@ async def lifespan(app: FastAPI):
         run_migrations()
     except Exception as exc:  # don't prevent boot; surface in logs
         print(f"[startup] migration error: {exc}")
+    try:
+        if SessionLocal is not None:
+            with SessionLocal() as db:
+                added = seed_predictions(db)
+                if added:
+                    print(f"[startup] seeded {added} prediction rows")
+    except Exception as exc:
+        print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.5.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.6.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -127,6 +136,31 @@ def join(payload: JoinIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(rec)
     return JoinOut(id=rec.id)
+
+
+# --- predictions (public; already aggregated from traces) ---
+@app.get("/api/predictions/meta")
+def predictions_meta(db: Session = Depends(get_db)):
+    weeks = [
+        w for (w,) in db.execute(
+            select(Prediction.measurement_week).distinct().order_by(Prediction.measurement_week.desc())
+        ).all()
+    ]
+    types = [t for (t,) in db.execute(select(Prediction.election_type).distinct()).all()]
+    order = {"presidential": 0, "governor": 1, "senate": 2}
+    types.sort(key=lambda t: order.get(t, 9))
+    return {"weeks": weeks, "election_types": types}
+
+
+@app.get("/api/predictions")
+def predictions(election_type: str, week: str, db: Session = Depends(get_db)):
+    rows = db.scalars(
+        select(Prediction).where(
+            Prediction.election_type == election_type,
+            Prediction.measurement_week == week,
+        )
+    ).all()
+    return [{"state": r.state, "party": r.party, "score": r.score} for r in rows]
 
 
 # --- auth ---
