@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.8.1", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.8.2", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -128,6 +128,11 @@ def debug_state(db: Session = Depends(get_db)):
         out["alembic_error"] = str(exc)
     try:
         out["analyses_count"] = db.scalar(select(func.count()).select_from(Analysis))
+        out["analyses_with_user"] = db.scalar(
+            select(func.count()).select_from(Analysis).where(Analysis.user_id.isnot(None))
+        )
+        recent = db.scalars(select(Analysis).order_by(Analysis.id.desc()).limit(3)).all()
+        out["recent"] = [{"id": a.id, "user_id": a.user_id, "state": a.state, "election_type": a.election_type} for a in recent]
     except Exception as exc:
         out["analyses_error"] = str(exc)
     return out
