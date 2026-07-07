@@ -9,6 +9,7 @@ import json
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .data_2023 import PAST_ELECTION_2023
 from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit, StatePrediction
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
@@ -291,50 +292,28 @@ def seed_problem_units(db: Session) -> int:
 
 # --- shared per-state predictions board ---
 def _state_prediction_rows():
-    # Past performance (2023 result) per state, for presidential and governor.
-    for state, (gov, pres) in BASE.items():
-        for etype, (leader, pct) in (("presidential", pres), ("governor", gov)):
-            scores = {p: round(v, 1) for p, v in _base_scores(leader, pct, _pool(etype)).items()}
-            yield StatePrediction(
-                user_id=None,
-                author_name="Past performance",
-                author_email="",
-                state=state,
-                election_type=etype,
-                source="past_performance",
-                label=f"2023 {etype} result",
-                leading_party=leader,
-                scores=json.dumps(scores),
-                notes="Baseline drawn from the 2023 general election outcome.",
-                year="2023",
-            )
-    # A handful of illustrative expert predictions across states.
-    states = list(BASE.keys())
-    for k in range(14):
-        st = states[int(_rand("spstate", k) * len(states))]
-        et = ETYPES[int(_rand("spet", k) * len(ETYPES))]
-        leader, pct = BASE[st][1] if et == "presidential" else BASE[st][0]
-        base = _base_scores(leader, pct, _pool(et))
-        scores = {p: max(1, round(s + (_rand("spsc", st, et, p, k) - 0.5) * 16)) for p, s in base.items()}
-        lead = max(scores, key=lambda p: scores[p])
-        name, email = CONTRIBUTORS[int(_rand("spc", k) * len(CONTRIBUTORS))]
+    # The "Past Election" expert opinion: the verified 2023 presidential result per state.
+    for state, d in PAST_ELECTION_2023.items():
         yield StatePrediction(
             user_id=None,
-            author_name=name,
-            author_email=email,
-            state=st,
-            election_type=et,
-            source="expert",
-            label="",
-            leading_party=lead,
-            scores=json.dumps(scores),
-            notes=NOTES[int(_rand("spn", k) * len(NOTES))],
-            year="2027",
+            author_name="Past Election",
+            author_email="",
+            state=state,
+            election_type="presidential",
+            source="past_performance",
+            label="2023 verified presidential result",
+            leading_party=d["leader"],
+            scores=json.dumps(d["scores"]),
+            notes=(
+                f"Verified 2023 presidential result — {d['total_votes']:,} votes across "
+                f"{d['polling_units']:,} crosschecked polling units."
+            ),
+            year="2023",
         )
 
 
 def seed_state_predictions(db: Session) -> int:
-    """Seed the shared predictions board once (past performance + a few expert calls)."""
+    """Seed the shared predictions board with the verified 2023 'Past Election' opinion."""
     if db.scalar(select(func.count()).select_from(StatePrediction)):
         return 0
     rows = list(_state_prediction_rows())
