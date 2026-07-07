@@ -6,7 +6,7 @@ gives the map something to render across weeks and election types.
 import hashlib
 import json
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .models import Analysis, Prediction
@@ -78,13 +78,10 @@ def _rows():
 
 
 def seed_predictions(db: Session) -> int:
-    """Refresh the illustrative predictions (wipe + reinsert). Returns rows written.
-
-    Predictions are seed-only for now (no real aggregation writer yet), so we
-    regenerate them on each startup to reflect the latest seed logic. Replace
-    this with the real trace-aggregation output when it exists.
-    """
-    db.execute(delete(Prediction))
+    """Seed illustrative predictions once. Preserves admin-tuned values on later
+    startups (admins set the official per-week numbers from the admin panel)."""
+    if db.scalar(select(func.count()).select_from(Prediction)):
+        return 0
     rows = list(_rows())
     db.add_all(rows)
     db.commit()

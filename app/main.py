@@ -8,14 +8,16 @@ from datetime import date, datetime, timedelta, timezone
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import func, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
 from .models import Analysis, Prediction, Signup, User
-from .schemas import AnalysisIn, GoogleAuthIn, JoinIn, JoinOut, ProfileUpdate
-from .seed import seed_analyses, seed_predictions
+from .schemas import AnalysisIn, GoogleAuthIn, JoinIn, JoinOut, PredictionSetIn, ProfileUpdate
+from .seed import BASE, seed_analyses, seed_predictions
+
+STATE_NAMES = sorted(BASE.keys())
 
 
 def run_migrations() -> None:
@@ -51,7 +53,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.8.4", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.9.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -302,6 +304,63 @@ def admin_analyses(_: User = Depends(require_admin), db: Session = Depends(get_d
         select(Analysis).order_by(Analysis.measurement_week.desc(), Analysis.created_at.desc())
     ).all()
     return [analysis_to_dict(a) for a in rows]
+
+
+# --- admin: set the official predictions (with the user-trace aggregate for reference) ---
+@app.get("/api/admin/predictions")
+def admin_predictions(election_type: str, week: str, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    by_state: dict[str, dict[str, float]] = {}
+    for p in db.scalars(
+        select(Prediction).where(Prediction.election_type == election_type, Prediction.measurement_week == week)
+    ).all():
+        by_state.setdefault(p.state, {})[p.party] = p.score
+
+    # aggregate (average) of user analyses for the same election type + week
+    agg_sum: dict[str, dict[str, float]] = {}
+    counts: dict[str, int] = {}
+    for a in db.scalars(
+        select(Analysis).where(Analysis.election_type == election_type, Analysis.measurement_week == week)
+    ).all():
+        try:
+            sc = json.loads(a.scores) if a.scores else {}
+        except Exception:
+            sc = {}
+        counts[a.state] = counts.get(a.state, 0) + 1
+        bucket = agg_sum.setdefault(a.state, {})
+        for party, val in sc.items():
+            bucket[party] = bucket.get(party, 0.0) + float(val)
+
+    out = []
+    for st in STATE_NAMES:
+        cnt = counts.get(st, 0)
+        aggregate = {p: round(v / cnt, 1) for p, v in agg_sum.get(st, {}).items()} if cnt else {}
+        out.append({"state": st, "scores": by_state.get(st, {}), "aggregate": aggregate, "trace_count": cnt})
+    return out
+
+
+@app.put("/api/admin/predictions")
+def set_prediction(payload: PredictionSetIn, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    db.execute(
+        delete(Prediction).where(
+            Prediction.state == payload.state,
+            Prediction.election_type == payload.election_type,
+            Prediction.measurement_week == payload.week,
+        )
+    )
+    for party, score in payload.scores.items():
+        if score is None:
+            continue
+        db.add(
+            Prediction(
+                state=payload.state,
+                election_type=payload.election_type,
+                party=str(party),
+                score=float(score),
+                measurement_week=payload.week,
+            )
+        )
+    db.commit()
+    return {"ok": True, "state": payload.state}
 
 
 @app.get("/api/admin/users")

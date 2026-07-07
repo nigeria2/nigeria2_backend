@@ -62,3 +62,14 @@ class AnalysisIn(BaseModel):
     senatorial_district: str | None = None
     scores: dict[str, float] = Field(default_factory=dict)
     notes: str | None = None
+
+
+class PredictionSetIn(BaseModel):
+    """Admin: set the official per-party prediction for a state/type/week."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    election_type: str = Field(min_length=1, max_length=30)
+    week: str = Field(min_length=1, max_length=10)
+    state: str = Field(min_length=1, max_length=50)
+    scores: dict[str, float] = Field(default_factory=dict)
