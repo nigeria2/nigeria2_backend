@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.8.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.8.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -111,6 +111,26 @@ def health():
 @app.get("/api/ping")
 def ping():
     return {"ping": "pong"}
+
+
+@app.get("/api/debug/state")
+def debug_state(db: Session = Depends(get_db)):
+    from sqlalchemy import inspect
+
+    out: dict = {}
+    try:
+        out["tables"] = sorted(inspect(engine).get_table_names())
+    except Exception as exc:
+        out["tables_error"] = str(exc)
+    try:
+        out["alembic_version"] = db.execute(text("SELECT version_num FROM alembic_version")).scalar()
+    except Exception as exc:
+        out["alembic_error"] = str(exc)
+    try:
+        out["analyses_count"] = db.scalar(select(func.count()).select_from(Analysis))
+    except Exception as exc:
+        out["analyses_error"] = str(exc)
+    return out
 
 
 @app.get("/db/health")
