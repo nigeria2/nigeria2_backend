@@ -3,7 +3,7 @@ import json
 import os
 import pathlib
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Prediction, Signup, User
-from .schemas import GoogleAuthIn, JoinIn, JoinOut, ProfileUpdate
-from .seed import seed_predictions
+from .models import Prediction, Signup, Trace, User
+from .schemas import GoogleAuthIn, JoinIn, JoinOut, ProfileUpdate, TraceIn
+from .seed import seed_predictions, seed_traces
 
 
 def run_migrations() -> None:
@@ -43,12 +43,15 @@ async def lifespan(app: FastAPI):
                 added = seed_predictions(db)
                 if added:
                     print(f"[startup] seeded {added} prediction rows")
+                traces = seed_traces(db)
+                if traces:
+                    print(f"[startup] seeded {traces} trace rows")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.6.1", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.7.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -163,6 +166,54 @@ def predictions(election_type: str, week: str, db: Session = Depends(get_db)):
     return [{"state": r.state, "party": r.party, "score": r.score} for r in rows]
 
 
+# --- traces (raw contributor submissions) ---
+def _current_week() -> str:
+    t = date.today()
+    return (t - timedelta(days=t.weekday())).isoformat()
+
+
+def trace_to_dict(t: Trace) -> dict:
+    return {
+        "id": t.id,
+        "contributor_name": t.contributor_name,
+        "contributor_email": t.contributor_email,
+        "state": t.state,
+        "lga": t.lga,
+        "election_type": t.election_type,
+        "party": t.party,
+        "confidence": t.confidence,
+        "notes": t.notes,
+        "measurement_week": t.measurement_week,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+    }
+
+
+@app.post("/api/traces", status_code=201)
+def create_trace(payload: TraceIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    t = Trace(
+        user_id=user.id,
+        contributor_name=user.full_name,
+        contributor_email=user.email,
+        state=payload.state,
+        lga=payload.lga or "",
+        election_type=payload.election_type,
+        party=payload.party,
+        confidence=payload.confidence,
+        notes=payload.notes or "",
+        measurement_week=_current_week(),
+    )
+    db.add(t)
+    db.commit()
+    db.refresh(t)
+    return trace_to_dict(t)
+
+
+@app.get("/api/traces/mine")
+def my_traces(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    rows = db.scalars(select(Trace).where(Trace.user_id == user.id).order_by(Trace.created_at.desc())).all()
+    return [trace_to_dict(t) for t in rows]
+
+
 # --- auth ---
 @app.post("/auth/google")
 def auth_google(payload: GoogleAuthIn, db: Session = Depends(get_db)):
@@ -233,4 +284,25 @@ def admin_signups(_: User = Depends(require_admin), db: Session = Depends(get_db
 def admin_stats(_: User = Depends(require_admin), db: Session = Depends(get_db)):
     signups = db.scalar(select(func.count()).select_from(Signup))
     users = db.scalar(select(func.count()).select_from(User))
-    return {"signups": signups, "users": users}
+    traces = db.scalar(select(func.count()).select_from(Trace))
+    return {"signups": signups, "users": users, "traces": traces}
+
+
+@app.get("/api/admin/traces")
+def admin_traces(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.scalars(
+        select(Trace).order_by(Trace.measurement_week.desc(), Trace.created_at.desc())
+    ).all()
+    return [trace_to_dict(t) for t in rows]
+
+
+@app.get("/api/admin/users")
+def admin_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.scalars(select(User).order_by(User.created_at.desc())).all()
+    out = []
+    for u in rows:
+        d = user_to_dict(u)
+        d["created_at"] = u.created_at.isoformat() if u.created_at else None
+        d["last_login_at"] = u.last_login_at.isoformat() if u.last_login_at else None
+        out.append(d)
+    return out

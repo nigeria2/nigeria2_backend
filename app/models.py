@@ -74,3 +74,22 @@ class Prediction(Base):
     score: Mapped[float] = mapped_column(Float)  # projected polling share (0-100)
     measurement_week: Mapped[str] = mapped_column(String(10), index=True)  # ISO date, e.g. 2026-07-06
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Trace(Base):
+    """A raw contributor submission ("trace") that feeds the aggregation."""
+
+    __tablename__ = "traces"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    contributor_name: Mapped[str] = mapped_column(String(200), default="")
+    contributor_email: Mapped[str] = mapped_column(String(255), default="")
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    lga: Mapped[str] = mapped_column(String(120), default="")
+    election_type: Mapped[str] = mapped_column(String(30))
+    party: Mapped[str] = mapped_column(String(20))
+    confidence: Mapped[int] = mapped_column(Integer, default=50)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    measurement_week: Mapped[str] = mapped_column(String(10), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

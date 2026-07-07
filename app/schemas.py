@@ -49,3 +49,16 @@ class ProfileUpdate(BaseModel):
     known_states: list[str] | None = None
     bio: str | None = None
     onboarded: bool | None = None
+
+
+class TraceIn(BaseModel):
+    """A raw contributor prediction submission (no turnout)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    state: str = Field(min_length=1, max_length=50)
+    lga: str | None = None
+    election_type: str = Field(min_length=1, max_length=30)
+    party: str = Field(min_length=1, max_length=20)
+    confidence: int = Field(ge=0, le=100, default=50)
+    notes: str | None = None
