@@ -128,6 +128,47 @@ class StatePrediction(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class State(Base):
+    """Canonical state reference with facts and statistics."""
+
+    __tablename__ = "states"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    code: Mapped[str] = mapped_column(String(10), default="")
+    capital: Mapped[str] = mapped_column(String(80), default="")
+    area_sq_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    census_1991: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    census_2006: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    population_projection: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    active_phone_2021: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    active_phone_2020: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    newly_registered_voters_2022: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    voters_presidential_2019: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    buhari_votes_2019: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    atiku_votes_2019: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_votes_2019: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_2023: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nin_total: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nin_male: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nin_female: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class PartyHistory(Base):
+    """A politician's party + result for a given election (party history)."""
+
+    __tablename__ = "party_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    politician_name: Mapped[str] = mapped_column(String(200), index=True)
+    party: Mapped[str] = mapped_column(String(30), default="")
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    year: Mapped[str] = mapped_column(String(10), default="")
+    election_type: Mapped[str] = mapped_column(String(30), default="")
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+    position: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class LgaResult(Base):
     """Verified 2023 presidential result aggregated per LGA."""
 

@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, LgaResult, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction
+from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, Politician, Prediction, ProblemUnit, State, StatePrediction
+from .state_data import STATE_DATA
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
 SEED_VERSION = 3
@@ -339,6 +340,41 @@ def seed_politicians(db: Session) -> int:
         db.add(Politician(name=name, state=state, title=title, party=party))
     db.commit()
     return len(POLITICIANS)
+
+
+_STATE_INT_FIELDS = [
+    "area_sq_km", "census_1991", "census_2006", "population_projection",
+    "active_phone_2021", "active_phone_2020", "newly_registered_voters_2022",
+    "voters_presidential_2019", "buhari_votes_2019", "atiku_votes_2019",
+    "total_votes_2019", "votes_2023", "nin_total", "nin_male", "nin_female",
+]
+
+
+def seed_states(db: Session) -> int:
+    """Seed the canonical states table with facts and statistics."""
+    if db.scalar(select(func.count()).select_from(State)):
+        return 0
+    for name, d in STATE_DATA.items():
+        kwargs = {f: d.get(f) for f in _STATE_INT_FIELDS}
+        db.add(State(name=name, code=d.get("code", ""), capital=d.get("capital", ""), **kwargs))
+    db.commit()
+    return len(STATE_DATA)
+
+
+def seed_party_history(db: Session) -> int:
+    """Seed the 2019 governor races as party-history entries."""
+    if db.scalar(select(func.count()).select_from(PartyHistory)):
+        return 0
+    n = 0
+    for name, d in STATE_DATA.items():
+        for g in d.get("governor_2019", []):
+            db.add(PartyHistory(
+                politician_name=g["name"], party=g["party"], state=name,
+                year="2019", election_type="governor", votes=g["votes"], position=g["position"],
+            ))
+            n += 1
+    db.commit()
+    return n
 
 
 def seed_lga_results(db: Session) -> int:

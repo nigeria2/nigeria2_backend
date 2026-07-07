@@ -20,11 +20,13 @@ from .models import (
     LgaResult,
     Party,
     PartyElection,
+    PartyHistory,
     Politician,
     PoliticianAssessment,
     PoliticianPhoto,
     Prediction,
     ProblemUnit,
+    State,
     StatePrediction,
     User,
 )
@@ -48,10 +50,12 @@ from .seed import (
     seed_lga_results,
     seed_parties,
     seed_party_elections,
+    seed_party_history,
     seed_politicians,
     seed_predictions,
     seed_problem_units,
     seed_state_predictions,
+    seed_states,
 )
 
 STATE_NAMES = sorted(BASE.keys())
@@ -103,12 +107,18 @@ async def lifespan(app: FastAPI):
                 lga = seed_lga_results(db)
                 if lga:
                     print(f"[startup] seeded {lga} LGA results")
+                sts = seed_states(db)
+                if sts:
+                    print(f"[startup] seeded {sts} states")
+                ph = seed_party_history(db)
+                if ph:
+                    print(f"[startup] seeded {ph} party-history rows")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.18.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.19.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -377,11 +387,29 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     if pols:
         for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
             pol_assess[a.politician_id].append(a)
+    st = db.scalar(select(State).where(State.name == state))
+    facts = None
+    if st is not None:
+        facts = {
+            "code": st.code, "capital": st.capital, "area_sq_km": st.area_sq_km,
+            "census_1991": st.census_1991, "census_2006": st.census_2006, "population_projection": st.population_projection,
+            "active_phone_2021": st.active_phone_2021, "active_phone_2020": st.active_phone_2020,
+            "newly_registered_voters_2022": st.newly_registered_voters_2022,
+            "voters_presidential_2019": st.voters_presidential_2019,
+            "buhari_votes_2019": st.buhari_votes_2019, "atiku_votes_2019": st.atiku_votes_2019,
+            "total_votes_2019": st.total_votes_2019, "votes_2023": st.votes_2023,
+            "nin_total": st.nin_total, "nin_male": st.nin_male, "nin_female": st.nin_female,
+        }
+    gov = db.scalars(
+        select(PartyHistory).where(PartyHistory.state == state, PartyHistory.election_type == "governor").order_by(PartyHistory.position)
+    ).all()
     return {
         "state": state,
+        "facts": facts,
         "predictions": [_public_prediction_dict(p) for p in preds],
         "politicians": [politician_to_dict(x, pol_assess.get(x.id, [])) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
+        "governor_2019": [{"name": g.politician_name, "party": g.party, "votes": g.votes, "position": g.position} for g in gov],
     }
 
 
