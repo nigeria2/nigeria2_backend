@@ -2,6 +2,7 @@
 import json
 import os
 import pathlib
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 
@@ -77,7 +78,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.11.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.12.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -190,6 +191,22 @@ def predictions(election_type: str, week: str, db: Session = Depends(get_db)):
         )
     ).all()
     return [{"state": r.state, "party": r.party, "score": r.score} for r in rows]
+
+
+@app.get("/api/predictions/trend")
+def predictions_trend(db: Session = Depends(get_db)):
+    """National party share per measurement week, for each election type."""
+    party_sum: dict[tuple[str, str], dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    state_set: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for p in db.scalars(select(Prediction)).all():
+        party_sum[(p.election_type, p.measurement_week)][p.party] += p.score
+        state_set[(p.election_type, p.measurement_week)].add(p.state)
+    out: dict[str, list[dict]] = defaultdict(list)
+    for et, week in sorted(party_sum.keys()):
+        n = len(state_set[(et, week)]) or 1
+        shares = {party: round(s / n, 1) for party, s in party_sum[(et, week)].items()}
+        out[et].append({"week": week, "shares": shares})
+    return out
 
 
 # --- political parties (public) ---
