@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.2.0")
+app = FastAPI(title="Nigeria 2.0 API", version="0.3.0")
 
 # Allow the frontend (and local dev) to call this API from the browser.
 app.add_middleware(
