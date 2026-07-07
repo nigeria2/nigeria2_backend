@@ -26,3 +26,26 @@ class JoinIn(BaseModel):
 class JoinOut(BaseModel):
     id: int
     message: str = "joined"
+
+
+# --- auth ---
+class GoogleAuthIn(BaseModel):
+    credential: str = Field(min_length=10)
+
+
+class ProfileUpdate(BaseModel):
+    """Partial update of the contributor profile (used by onboarding)."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    full_name: str | None = None
+    phone: str | None = None
+    gender: str | None = None
+    year_of_birth: int | None = None
+    home_state: str | None = None
+    home_lga: str | None = None
+    residence_state: str | None = None
+    voter_status: str | None = None
+    known_states: list[str] | None = None
+    bio: str | None = None
+    onboarded: bool | None = None

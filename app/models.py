@@ -1,7 +1,7 @@
 """SQLAlchemy ORM models."""
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .db import Base
@@ -21,3 +21,39 @@ class Signup(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class User(Base):
+    """A Google-authenticated account, with full contributor profile."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    # --- Google identity ---
+    google_sub: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    full_name: Mapped[str] = mapped_column(String(255), default="")
+    given_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    family_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    picture: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    locale: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # --- contributor profile (collected during onboarding) ---
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    year_of_birth: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    home_state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    home_lga: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    residence_state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    voter_status: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    known_states: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array (text)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    onboarded: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    # --- timestamps ---
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
