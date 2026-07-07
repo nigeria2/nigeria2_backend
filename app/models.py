@@ -128,6 +128,21 @@ class StatePrediction(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
+class LgaResult(Base):
+    """Verified 2023 presidential result aggregated per LGA."""
+
+    __tablename__ = "lga_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    lga: Mapped[str] = mapped_column(String(120))
+    leading_party: Mapped[str] = mapped_column(String(20), default="")
+    scores: Mapped[str] = mapped_column(Text, default="{}")  # JSON per-party shares
+    total_votes: Mapped[int] = mapped_column(Integer, default=0)
+    year: Mapped[str] = mapped_column(String(10), default="2023")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Politician(Base):
     """A political heavyweight associated with a state."""
 

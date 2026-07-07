@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Analysis, InterestedUser, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction, User
+from .models import Analysis, InterestedUser, LgaResult, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction, User
 from .schemas import (
     AnalysisIn,
     GoogleAuthIn,
@@ -29,6 +29,7 @@ from .schemas import (
 from .seed import (
     BASE,
     seed_analyses,
+    seed_lga_results,
     seed_parties,
     seed_party_elections,
     seed_politicians,
@@ -83,12 +84,15 @@ async def lifespan(app: FastAPI):
                 pol = seed_politicians(db)
                 if pol:
                     print(f"[startup] seeded {pol} politicians")
+                lga = seed_lga_results(db)
+                if lga:
+                    print(f"[startup] seeded {lga} LGA results")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.16.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.17.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -312,16 +316,26 @@ def _public_prediction_dict(p: StatePrediction) -> dict:
     }
 
 
+def _lga_result_dict(x: LgaResult) -> dict:
+    try:
+        scores = json.loads(x.scores) if x.scores else {}
+    except Exception:
+        scores = {}
+    return {"lga": x.lga, "leading_party": x.leading_party, "scores": scores, "total_votes": x.total_votes, "year": x.year}
+
+
 @app.get("/api/states/{state}")
 def state_detail(state: str, db: Session = Depends(get_db)):
     preds = db.scalars(
         select(StatePrediction).where(StatePrediction.state == state).order_by(StatePrediction.source, StatePrediction.created_at.desc())
     ).all()
     pols = db.scalars(select(Politician).where(Politician.state == state).order_by(Politician.id)).all()
+    lgas = db.scalars(select(LgaResult).where(LgaResult.state == state).order_by(LgaResult.lga)).all()
     return {
         "state": state,
         "predictions": [_public_prediction_dict(p) for p in preds],
         "politicians": [{"name": x.name, "title": x.title, "party": x.party, "note": x.note} for x in pols],
+        "lgas": [_lga_result_dict(x) for x in lgas],
     }
 
 

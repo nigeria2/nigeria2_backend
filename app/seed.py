@@ -10,7 +10,8 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
-from .models import Analysis, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction
+from .lga_2023 import LGA_RESULTS_2023
+from .models import Analysis, LgaResult, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
 SEED_VERSION = 3
@@ -338,3 +339,19 @@ def seed_politicians(db: Session) -> int:
         db.add(Politician(name=name, state=state, title=title, party=party))
     db.commit()
     return len(POLITICIANS)
+
+
+def seed_lga_results(db: Session) -> int:
+    """Seed the verified 2023 presidential result per LGA once."""
+    if db.scalar(select(func.count()).select_from(LgaResult)):
+        return 0
+    n = 0
+    for state, rows in LGA_RESULTS_2023.items():
+        for r in rows:
+            db.add(LgaResult(
+                state=state, lga=r["lga"], leading_party=r["leader"],
+                scores=json.dumps(r["scores"]), total_votes=r["total_votes"], year="2023",
+            ))
+            n += 1
+    db.commit()
+    return n
