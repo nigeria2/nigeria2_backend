@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Analysis, Party, PartyElection, Prediction, ProblemUnit, Signup, StatePrediction, User
+from .models import Analysis, InterestedUser, Party, PartyElection, Prediction, ProblemUnit, StatePrediction, User
 from .schemas import (
     AnalysisIn,
     GoogleAuthIn,
@@ -84,7 +84,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.13.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.14.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -158,17 +158,20 @@ def db_health():
         return JSONResponse(status_code=503, content={"db": "error", "detail": str(exc)})
 
 
-# --- public: join the movement ---
+# --- public: join the movement (creates an interested user pending Google sign-in) ---
 @app.post("/api/join", response_model=JoinOut, status_code=201)
 def join(payload: JoinIn, db: Session = Depends(get_db)):
-    rec = Signup(
-        full_name=payload.full_name,
-        email=payload.email,
-        location=payload.location,
-        state=payload.state,
-        mobile=payload.mobile,
-    )
-    db.add(rec)
+    # If they already have a full account, don't add a pending record.
+    if db.scalar(select(User).where(func.lower(User.email) == payload.email.lower())):
+        return JoinOut(id=0)
+    existing = db.scalar(select(InterestedUser).where(func.lower(InterestedUser.email) == payload.email.lower()))
+    rec = existing or InterestedUser(email=payload.email)
+    rec.full_name = payload.full_name
+    rec.location = payload.location
+    rec.state = payload.state
+    rec.mobile = payload.mobile
+    if existing is None:
+        db.add(rec)
     db.commit()
     db.refresh(rec)
     return JoinOut(id=rec.id)
@@ -470,6 +473,19 @@ def auth_google(payload: GoogleAuthIn, db: Session = Depends(get_db)):
         user.is_admin = True
     user.last_login_at = datetime.now(timezone.utc)
 
+    # Promote a matching interested user (homepage form) into this account, pre-filling
+    # any details they entered, then remove them from the interested list.
+    if email:
+        interested = db.scalar(select(InterestedUser).where(func.lower(InterestedUser.email) == email.lower()))
+        if interested is not None:
+            if not user.full_name:
+                user.full_name = interested.full_name or ""
+            if not user.phone:
+                user.phone = interested.mobile or None
+            if not user.home_state:
+                user.home_state = interested.state or None
+            db.delete(interested)
+
     db.commit()
     db.refresh(user)
     return {"token": create_token(user), "user": user_to_dict(user)}
@@ -493,9 +509,9 @@ def update_me(payload: ProfileUpdate, user: User = Depends(current_user), db: Se
 
 
 # --- admin (gated) ---
-@app.get("/api/admin/signups")
-def admin_signups(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    rows = db.scalars(select(Signup).order_by(Signup.created_at.desc())).all()
+@app.get("/api/admin/interested-users")
+def admin_interested_users(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.scalars(select(InterestedUser).order_by(InterestedUser.created_at.desc())).all()
     return [
         {
             "id": r.id,
@@ -512,10 +528,10 @@ def admin_signups(_: User = Depends(require_admin), db: Session = Depends(get_db
 
 @app.get("/api/admin/stats")
 def admin_stats(_: User = Depends(require_admin), db: Session = Depends(get_db)):
-    signups = db.scalar(select(func.count()).select_from(Signup))
+    interested = db.scalar(select(func.count()).select_from(InterestedUser))
     users = db.scalar(select(func.count()).select_from(User))
     analyses = db.scalar(select(func.count()).select_from(Analysis))
-    return {"signups": signups, "users": users, "analyses": analyses}
+    return {"interested": interested, "users": users, "analyses": analyses}
 
 
 @app.get("/api/admin/analyses")

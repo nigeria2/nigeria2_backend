@@ -7,10 +7,12 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
 
 
-class Signup(Base):
-    """A person who joined the movement via the homepage form."""
+class InterestedUser(Base):
+    """A person who entered their details in the homepage form but has not yet
+    completed Google sign-in. On completing sign-in they are merged into `users`
+    and removed from here."""
 
-    __tablename__ = "signups"
+    __tablename__ = "interested_users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     full_name: Mapped[str] = mapped_column(String(200))
