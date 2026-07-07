@@ -21,6 +21,7 @@ from .models import (
     Party,
     PartyElection,
     PartyHistory,
+    PollingUnit,
     Politician,
     PoliticianAssessment,
     PoliticianPhoto,
@@ -55,6 +56,7 @@ from .seed import (
     seed_politicians,
     seed_predictions,
     seed_problem_units,
+    seed_polling_units,
     seed_state_predictions,
     seed_states,
     seed_wards,
@@ -118,12 +120,15 @@ async def lifespan(app: FastAPI):
                 wd = seed_wards(db)
                 if wd:
                     print(f"[startup] seeded {wd} wards")
+                pu = seed_polling_units(db)
+                if pu:
+                    print(f"[startup] seeded {pu} polling units")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.21.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.22.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -424,6 +429,46 @@ def state_detail(state: str, db: Session = Depends(get_db)):
 def state_wards(state: str, db: Session = Depends(get_db)):
     rows = db.scalars(select(Ward).where(Ward.state == state).order_by(Ward.lga, Ward.ward)).all()
     return [{"lga": w.lga, "ward": w.ward, "latitude": w.latitude, "longitude": w.longitude} for w in rows]
+
+
+@app.get("/api/states/{state}/pu-wards")
+def state_pu_wards(state: str, db: Session = Depends(get_db)):
+    """Wards (from polling-unit data) with polling-unit counts and registered totals."""
+    rows = db.execute(
+        select(
+            PollingUnit.lga,
+            PollingUnit.ward,
+            PollingUnit.ward_code,
+            func.count().label("pu"),
+            func.sum(PollingUnit.registered_voters).label("reg"),
+        )
+        .where(PollingUnit.state == state)
+        .group_by(PollingUnit.lga, PollingUnit.ward, PollingUnit.ward_code)
+        .order_by(PollingUnit.lga, PollingUnit.ward)
+    ).all()
+    return [
+        {"lga": r.lga, "ward": r.ward, "ward_code": r.ward_code, "pu_count": r.pu, "registered_voters": int(r.reg) if r.reg else None}
+        for r in rows
+    ]
+
+
+@app.get("/api/wards/{ward_code}/polling-units")
+def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
+    code = ward_code.replace("-", "/")
+    rows = db.scalars(select(PollingUnit).where(PollingUnit.ward_code == code).order_by(PollingUnit.pu_code)).all()
+    if not rows:
+        return {"state": "", "lga": "", "ward": "", "ward_code": code, "polling_units": []}
+    first = rows[0]
+    return {
+        "state": first.state,
+        "lga": first.lga,
+        "ward": first.ward,
+        "ward_code": code,
+        "polling_units": [
+            {"pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters, "known_votes": p.known_votes}
+            for p in rows
+        ],
+    }
 
 
 # --- politicians (public list + detail; logged-in submissions) ---

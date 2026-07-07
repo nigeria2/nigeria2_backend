@@ -4,6 +4,7 @@ Real data would be crunched from raw contributor traces upstream; this just
 gives the map something to render across weeks and election types.
 """
 import csv
+import gzip
 import hashlib
 import json
 import pathlib
@@ -14,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, Politician, Prediction, ProblemUnit, State, StatePrediction, Ward
+from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, State, StatePrediction, Ward
 from .state_data import STATE_DATA
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
@@ -433,6 +434,35 @@ def seed_wards(db: Session) -> int:
                 batch = []
         if batch:
             db.add_all(batch)
+    db.commit()
+    return n
+
+
+_PU_CSV = pathlib.Path(__file__).resolve().parent / "data" / "polling_units.csv.gz"
+
+
+def seed_polling_units(db: Session) -> int:
+    """Seed all polling units (with 2023 registered voters + known votes) once."""
+    if db.scalar(select(func.count()).select_from(PollingUnit)):
+        return 0
+    if not _PU_CSV.exists():
+        return 0
+    n = 0
+    batch = []
+    with gzip.open(_PU_CSV, "rt", encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            batch.append({
+                "state": row["state"], "lga": row["lga"], "ward": row["ward"],
+                "ward_code": row["ward_code"], "pu_name": row["pu_name"], "pu_code": row["pu_code"],
+                "registered_voters": int(row["registered_voters"]) if row["registered_voters"] else None,
+                "known_votes": int(row["known_votes"]) if row["known_votes"] else None,
+            })
+            n += 1
+            if len(batch) >= 5000:
+                db.execute(PollingUnit.__table__.insert(), batch)
+                batch = []
+        if batch:
+            db.execute(PollingUnit.__table__.insert(), batch)
     db.commit()
     return n
 

@@ -185,6 +185,22 @@ class LgaResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class PollingUnit(Base):
+    """A polling unit, with 2023 registered voters and known (cast) votes."""
+
+    __tablename__ = "polling_units"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    lga: Mapped[str] = mapped_column(String(120))
+    ward: Mapped[str] = mapped_column(String(160))
+    ward_code: Mapped[str] = mapped_column(String(30), index=True)
+    pu_name: Mapped[str] = mapped_column(String(300), default="")
+    pu_code: Mapped[str] = mapped_column(String(40), default="")
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    known_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class Ward(Base):
     """An electoral ward with its coordinates."""
 
