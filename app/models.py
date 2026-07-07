@@ -76,6 +76,33 @@ class Prediction(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Party(Base):
+    """A registered political party with its national officials."""
+
+    __tablename__ = "parties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    acronym: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    chairman: Mapped[str] = mapped_column(String(200), default="")
+    secretary: Mapped[str] = mapped_column(String(200), default="")
+    treasurer: Mapped[str] = mapped_column(String(200), default="")
+    financial_secretary: Mapped[str] = mapped_column(String(200), default="")
+    legal_adviser: Mapped[str] = mapped_column(String(200), default="")
+    address: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PartyElection(Base):
+    """Which parties are relevant for which election type (presidential/governor/senate)."""
+
+    __tablename__ = "party_elections"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    party_acronym: Mapped[str] = mapped_column(String(20), index=True)
+    election_type: Mapped[str] = mapped_column(String(30), index=True)
+
+
 class Analysis(Base):
     """A contributor's per-party projection for a state (feeds the aggregation)."""
 

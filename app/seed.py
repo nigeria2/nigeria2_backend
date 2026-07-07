@@ -9,12 +9,18 @@ import json
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .models import Analysis, Prediction
+from .models import Analysis, Party, PartyElection, Prediction
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
-SEED_VERSION = 2
+SEED_VERSION = 3
 
-PARTY_ORDER = ["APC", "PDP", "LP", "NNPP", "APGA", "SDP"]
+# Parties in play per election type (order = display order on sliders/maps).
+PARTY_ORDER = ["APC", "PDP", "LP", "NNPP", "APGA", "SDP"]  # governor / senate
+PRES_PARTIES = ["APC", "PDP", "NDC", "NNPP", "ADC", "LP"]  # presidential
+
+
+def _pool(election_type: str) -> list[str]:
+    return PRES_PARTIES if election_type == "presidential" else PARTY_ORDER
 
 WEEKS = ["2026-06-08", "2026-06-15", "2026-06-22", "2026-06-29", "2026-07-06"]
 
@@ -42,8 +48,8 @@ def _rand(*parts) -> float:
     return int(h[:8], 16) / 0xFFFFFFFF
 
 
-def _base_scores(leader: str, pct: int) -> dict[str, float]:
-    others = [p for p in PARTY_ORDER if p != leader][:3]
+def _base_scores(leader: str, pct: int, pool: list[str]) -> dict[str, float]:
+    others = [p for p in pool if p != leader][:3]
     rem = 100 - pct
     scores = {leader: float(pct)}
     for p, frac in zip(others, (0.5, 0.3, 0.2)):
@@ -60,7 +66,7 @@ def _rows():
             "senate": (gov[0], max(36, gov[1] - 2)),  # senate tracks the governorship, slightly softer
         }
         for etype, (leader, pct) in types.items():
-            base = _base_scores(leader, pct)
+            base = _base_scores(leader, pct, _pool(etype))
             for wi, week in enumerate(WEEKS):
                 # latest week == base leanings; earlier weeks drift more, so the
                 # leader flips in genuinely close states as you step back in time.
@@ -119,7 +125,7 @@ def _analysis_rows():
             st = states[int(_rand("astate", wi, k) * len(states))]
             et = ETYPES[int(_rand("aet", wi, k) * len(ETYPES))]
             leader, pct = BASE[st][1] if et == "presidential" else BASE[st][0]
-            base = _base_scores(leader, pct)
+            base = _base_scores(leader, pct, _pool(et))
             scores = {p: max(1, round(s + (_rand("asc", st, et, p, wi, k) - 0.5) * 20)) for p, s in base.items()}
             lead = max(scores, key=lambda p: scores[p])
             name, email = CONTRIBUTORS[int(_rand("ac", wi, k) * len(CONTRIBUTORS))]
@@ -146,3 +152,64 @@ def seed_analyses(db: Session) -> int:
     db.add_all(rows)
     db.commit()
     return len(rows)
+
+
+# --- registered political parties (INEC) and their national officials ---
+# fields: acronym, name, chairman, secretary, treasurer, financial_secretary, legal_adviser, address
+PARTIES_DATA = [
+    ("AA", "Action Alliance", "Hon. Adekunle Rufai Omoaje (by court order)", "Miller C. Orgwu (by court order)", "Sani Darma (by court order)", "", "", ""),
+    ("A", "Accord", "Bar. Maxwell Mgbudem", "Hon. Adebukola Abiola Ajaja", "Salaudeen Abdulazeez Oyeniyi", "Hon (Mrs) Margret Elabo", "", ""),
+    ("NRM", "National Rescue Movement", "Prince (Dr) Chinedu Obi", "Alh. Hassan Aminu Ibrahim", "Shedrach Oka", "Rev. Emmanuel Olorunmagba", "", ""),
+    ("LP", "Labour Party", "", "", "", "", "", ""),
+    ("BP", "Boot Party", "Adenuga Sunday", "Egwuatu Maryann C.", "", "Evelyn Oshevire", "", "House 11 Road C1 F.H.A"),
+    ("APP", "Action Peoples Party", "Uchenna Nnadi", "Abu Ibrahim Sossan", "Chioma Okoli", "Clement Christian", "Peter Abang", ""),
+    ("APM", "Allied Peoples Movement", "Yusuf Mamman Dantalle", "Oyadeyi Ayodele Adebayo", "Zavvalo Badon", "Labarin Yunusa", "", ""),
+    ("APGA", "All Progressives Grand Alliance", "Barrister Sylvester Ezeokenwa", "Ibrahim Mani", "Engr. Uche Onyemere", "Alhaji Habibu Aliyu", "", ""),
+    ("APC", "All Progressives Congress", "Prof. Nentawe Yilwatda Goshwe", "Sen. Surajudeen Ajibola Basiru PhD, BL", "Mr. Uguru Mathew Ofoke", "Alh. Bashir", "", ""),
+    ("ADP", "Action Democratic Party", "Engr. Yabagi Yusuf Sani", "Victor Fingesi", "Pst. Okey Udoh", "Mustapha Muhammad Gado", "", ""),
+    ("ADC", "African Democratic Congress", "Sen. David Mark", "Ogbeni Rauf Aregbesola", "Dr. Mani Ibrahim Ahmad", "Akibu Dalhatu", "", ""),
+    ("AAC", "African Action Congress", "Omoyele Sowore", "Oshiokhue Philip Ikpeminoghena", "Erupre Gift Precious", "Faith Enattah Orinya", "Inibehe Effiong", ""),
+    ("NDP", "National Democratic Party", "Hon. Ada Elizabeth Fredrick Okwori (by court order)", "Mr. Silva", "", "", "", ""),
+    ("NDC", "Nigeria Democratic Congress", "Sen. Cleopas Moses Zuwoghe (by court order)", "Barr. Ikenna", "", "", "", ""),
+    ("DLA", "Democratic Leadership Alliance", "Barr. Samuel M. Memeh (Ag.)", "Grace E. Obekpa", "Anene N. Mirian", "Umar Shehu Aliyu", "", ""),
+    ("ZLP", "Zenith Labour Party", "Chief Dan Nwanyanwu", "Yahaya Makama", "Hassana El Abdullahi", "Hon. Mrs Francisca Effiom", "", ""),
+    ("YP", "Youth Party", "Dr. Umar Muhammed (Ag.)", "Mrs Helen Adoh (Ag.)", "Mr. Ifeanyi Nwoye", "Mr. Abiodun (Ag.)", "", ""),
+    ("YPP", "Young Progressive Party", "Comrade Bishop Amakiri", "Barr. Vidiyeno Bamaiyi", "Usman Haruna", "Azeez Adewale Ahmed", "Tanze", ""),
+    ("SDP", "Social Democratic Party", "Prof. Sadiq Umar Abubakar Gombe", "Dr. Olu Agunloye", "Hajia Maggie Mariam", "Mr. Bello Ado Huseni", "", ""),
+    ("PRP", "Peoples Redemption Party", "Dr. Hakeem Baba-Ahmed", "Mr. Kanu Sunday Uchenna", "Dr. Bayawo Yunusa Abdullahi", "Mr. Chuka Patrick", "", ""),
+    ("PDP", "Peoples Democratic Party", "Hon. Abdulrahman Mohammed", "Senator Samuel Anyanwu", "Odeyemei Mackson Oladiran", "Eyim Donatus Henry", "", ""),
+    ("NNPP", "New Nigeria Peoples Party", "Dr. Agbo Gilbert Major", "Com. Olaposi Sunday Oginni", "Prince Adetoyese Omokanye", "Mr. Anthony Kelechi", "", ""),
+]
+
+# Which parties are considered relevant for each election type.
+PARTY_ELECTIONS = {
+    "presidential": PRES_PARTIES,
+    "governor": PARTY_ORDER,
+    "senate": PARTY_ORDER,
+}
+
+
+def seed_parties(db: Session) -> int:
+    """Seed the registered parties once."""
+    if db.scalar(select(func.count()).select_from(Party)):
+        return 0
+    for acr, name, chair, sec, treas, fin, legal, addr in PARTIES_DATA:
+        db.add(Party(
+            acronym=acr, name=name, chairman=chair, secretary=sec,
+            treasurer=treas, financial_secretary=fin, legal_adviser=legal, address=addr,
+        ))
+    db.commit()
+    return len(PARTIES_DATA)
+
+
+def seed_party_elections(db: Session) -> int:
+    """Seed the party-to-election-type relevance mapping once."""
+    if db.scalar(select(func.count()).select_from(PartyElection)):
+        return 0
+    n = 0
+    for etype, acronyms in PARTY_ELECTIONS.items():
+        for acr in acronyms:
+            db.add(PartyElection(party_acronym=acr, election_type=etype))
+            n += 1
+    db.commit()
+    return n

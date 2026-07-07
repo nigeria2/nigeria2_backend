@@ -13,9 +13,9 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Analysis, Prediction, Signup, User
+from .models import Analysis, Party, PartyElection, Prediction, Signup, User
 from .schemas import AnalysisIn, GoogleAuthIn, JoinIn, JoinOut, PredictionSetIn, ProfileUpdate
-from .seed import BASE, seed_analyses, seed_predictions
+from .seed import BASE, seed_analyses, seed_parties, seed_party_elections, seed_predictions
 
 STATE_NAMES = sorted(BASE.keys())
 
@@ -48,12 +48,18 @@ async def lifespan(app: FastAPI):
                 analyses = seed_analyses(db)
                 if analyses:
                     print(f"[startup] seeded {analyses} analysis rows")
+                parties = seed_parties(db)
+                if parties:
+                    print(f"[startup] seeded {parties} parties")
+                rel = seed_party_elections(db)
+                if rel:
+                    print(f"[startup] seeded {rel} party-election links")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.9.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.10.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -166,6 +172,34 @@ def predictions(election_type: str, week: str, db: Session = Depends(get_db)):
         )
     ).all()
     return [{"state": r.state, "party": r.party, "score": r.score} for r in rows]
+
+
+# --- political parties (public) ---
+@app.get("/api/parties")
+def list_parties(db: Session = Depends(get_db)):
+    rows = db.scalars(select(Party).order_by(Party.name)).all()
+    return [
+        {
+            "acronym": p.acronym,
+            "name": p.name,
+            "chairman": p.chairman,
+            "secretary": p.secretary,
+            "treasurer": p.treasurer,
+            "financial_secretary": p.financial_secretary,
+            "legal_adviser": p.legal_adviser,
+            "address": p.address,
+        }
+        for p in rows
+    ]
+
+
+@app.get("/api/parties/elections")
+def parties_by_election(db: Session = Depends(get_db)):
+    """Which party acronyms are relevant for each election type."""
+    out: dict[str, list[str]] = {}
+    for r in db.scalars(select(PartyElection)).all():
+        out.setdefault(r.election_type, []).append(r.party_acronym)
+    return out
 
 
 # --- analyses (contributor per-party projections) ---
