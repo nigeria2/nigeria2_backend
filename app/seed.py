@@ -361,15 +361,30 @@ def seed_states(db: Session) -> int:
     return len(STATE_DATA)
 
 
+_GOV_TITLE = {1: "Won 2019 governorship", 2: "2019 governorship runner-up", 3: "2019 governorship candidate"}
+
+
 def seed_party_history(db: Session) -> int:
-    """Seed the 2019 governor races as party-history entries."""
+    """Seed the 2019 governor races as party-history entries, creating/linking a
+    politician for each candidate (find-or-create by name + state)."""
     if db.scalar(select(func.count()).select_from(PartyHistory)):
         return 0
+    existing: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        existing[(p.name.strip().lower(), p.state)] = p
     n = 0
     for name, d in STATE_DATA.items():
         for g in d.get("governor_2019", []):
+            cname = g["name"].strip()
+            key = (cname.lower(), name)
+            pol = existing.get(key)
+            if pol is None:
+                pol = Politician(name=cname, state=name, party=g["party"], title=_GOV_TITLE.get(g["position"], ""))
+                db.add(pol)
+                db.flush()
+                existing[key] = pol
             db.add(PartyHistory(
-                politician_name=g["name"], party=g["party"], state=name,
+                politician_id=pol.id, politician_name=cname, party=g["party"], state=name,
                 year="2019", election_type="governor", votes=g["votes"], position=g["position"],
             ))
             n += 1

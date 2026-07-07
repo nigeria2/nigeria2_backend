@@ -118,7 +118,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.19.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.20.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -409,7 +409,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "predictions": [_public_prediction_dict(p) for p in preds],
         "politicians": [politician_to_dict(x, pol_assess.get(x.id, [])) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
-        "governor_2019": [{"name": g.politician_name, "party": g.party, "votes": g.votes, "position": g.position} for g in gov],
+        "governor_2019": [{"name": g.politician_name, "party": g.party, "votes": g.votes, "position": g.position, "politician_id": g.politician_id} for g in gov],
     }
 
 

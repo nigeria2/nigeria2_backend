@@ -160,6 +160,7 @@ class PartyHistory(Base):
     __tablename__ = "party_history"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     politician_name: Mapped[str] = mapped_column(String(200), index=True)
     party: Mapped[str] = mapped_column(String(30), default="")
     state: Mapped[str] = mapped_column(String(50), index=True)
