@@ -5,10 +5,13 @@ gives the map something to render across weeks and election types.
 """
 import hashlib
 
-from sqlalchemy import func, select
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from .models import Prediction
+
+# Bump when the seed logic changes so deployments refresh the illustrative data.
+SEED_VERSION = 2
 
 PARTY_ORDER = ["APC", "PDP", "LP", "NNPP", "APGA", "SDP"]
 
@@ -61,7 +64,7 @@ def _rows():
                 # latest week == base leanings; earlier weeks drift more, so the
                 # leader flips in genuinely close states as you step back in time.
                 factor = (n - 1 - wi) / (n - 1)
-                raw = {p: max(1.0, s + (_rand(state, etype, p, wi) - 0.5) * 16 * factor) for p, s in base.items()}
+                raw = {p: max(1.0, s + (_rand(state, etype, p, wi) - 0.5) * 30 * factor) for p, s in base.items()}
                 total = sum(raw.values())
                 for party, v in raw.items():
                     yield Prediction(
@@ -74,10 +77,13 @@ def _rows():
 
 
 def seed_predictions(db: Session) -> int:
-    """Insert seed rows if the predictions table is empty. Returns rows added."""
-    existing = db.scalar(select(func.count()).select_from(Prediction))
-    if existing:
-        return 0
+    """Refresh the illustrative predictions (wipe + reinsert). Returns rows written.
+
+    Predictions are seed-only for now (no real aggregation writer yet), so we
+    regenerate them on each startup to reflect the latest seed logic. Replace
+    this with the real trace-aggregation output when it exists.
+    """
+    db.execute(delete(Prediction))
     rows = list(_rows())
     db.add_all(rows)
     db.commit()

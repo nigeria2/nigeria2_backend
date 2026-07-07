@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.6.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.6.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
