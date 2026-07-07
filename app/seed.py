@@ -4,11 +4,12 @@ Real data would be crunched from raw contributor traces upstream; this just
 gives the map something to render across weeks and election types.
 """
 import hashlib
+import json
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from .models import Prediction, Trace
+from .models import Analysis, Prediction
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
 SEED_VERSION = 2
@@ -111,39 +112,40 @@ NOTES = [
 ]
 
 ETYPES = ["governor", "presidential", "senate"]
+DISTRICTS = ["Central", "North", "South", "East", "West"]
 
 
-def _trace_rows():
+def _analysis_rows():
     states = list(BASE.keys())
     for wi, week in enumerate(WEEKS):
         for k in range(7):
-            st = states[int(_rand("tstate", wi, k) * len(states))]
-            et = ETYPES[int(_rand("tet", wi, k) * len(ETYPES))]
-            leader = BASE[st][1][0] if et == "presidential" else BASE[st][0][0]
-            if _rand("tdis", wi, k) > 0.7:
-                alt = [p for p in PARTY_ORDER if p != leader]
-                party = alt[int(_rand("talt", wi, k) * len(alt))]
-            else:
-                party = leader
-            name, email = CONTRIBUTORS[int(_rand("tc", wi, k) * len(CONTRIBUTORS))]
-            yield Trace(
+            st = states[int(_rand("astate", wi, k) * len(states))]
+            et = ETYPES[int(_rand("aet", wi, k) * len(ETYPES))]
+            leader, pct = BASE[st][1] if et == "presidential" else BASE[st][0]
+            base = _base_scores(leader, pct)
+            scores = {p: max(1, round(s + (_rand("asc", st, et, p, wi, k) - 0.5) * 20)) for p, s in base.items()}
+            lead = max(scores, key=lambda p: scores[p])
+            name, email = CONTRIBUTORS[int(_rand("ac", wi, k) * len(CONTRIBUTORS))]
+            district = f"{st} {DISTRICTS[int(_rand('asd', wi, k) * len(DISTRICTS))]}" if et == "senate" else ""
+            yield Analysis(
                 contributor_name=name,
                 contributor_email=email,
+                election_type=et,
                 state=st,
                 lga="",
-                election_type=et,
-                party=party,
-                confidence=50 + int(_rand("tcf", wi, k) * 45),
-                notes=NOTES[int(_rand("tn", wi, k) * len(NOTES))],
+                senatorial_district=district,
+                leading_party=lead,
+                scores=json.dumps(scores),
+                notes=NOTES[int(_rand("an", wi, k) * len(NOTES))],
                 measurement_week=week,
             )
 
 
-def seed_traces(db: Session) -> int:
-    """Seed sample traces once; preserves any real user-submitted traces."""
-    if db.scalar(select(func.count()).select_from(Trace)):
+def seed_analyses(db: Session) -> int:
+    """Seed sample analyses once; preserves any real user submissions."""
+    if db.scalar(select(func.count()).select_from(Analysis)):
         return 0
-    rows = list(_trace_rows())
+    rows = list(_analysis_rows())
     db.add_all(rows)
     db.commit()
     return len(rows)

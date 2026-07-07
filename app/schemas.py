@@ -51,14 +51,14 @@ class ProfileUpdate(BaseModel):
     onboarded: bool | None = None
 
 
-class TraceIn(BaseModel):
-    """A raw contributor prediction submission (no turnout)."""
+class AnalysisIn(BaseModel):
+    """A contributor's per-party projection for a state."""
 
     model_config = ConfigDict(str_strip_whitespace=True)
 
+    election_type: str = Field(min_length=1, max_length=30)
     state: str = Field(min_length=1, max_length=50)
     lga: str | None = None
-    election_type: str = Field(min_length=1, max_length=30)
-    party: str = Field(min_length=1, max_length=20)
-    confidence: int = Field(ge=0, le=100, default=50)
+    senatorial_district: str | None = None
+    scores: dict[str, float] = Field(default_factory=dict)
     notes: str | None = None
