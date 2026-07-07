@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.1.0")
+app = FastAPI(title="Nigeria 2.0 API", version="0.2.0")
 
 # Allow the frontend (and local dev) to call this API from the browser.
 app.add_middleware(
@@ -32,3 +32,8 @@ def health():
 @app.get("/api/hello")
 def hello(name: str = "Nigeria"):
     return {"message": f"Hello, {name}!"}
+
+
+@app.get("/api/ping")
+def ping():
+    return {"ping": "pong"}
