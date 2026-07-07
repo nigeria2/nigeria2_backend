@@ -103,6 +103,23 @@ def match_lga(geo_lga: str, csv_lookup: dict):
 
 
 # ---- Douglas-Peucker simplification (lon/lat) ----
+def centroid(points):
+    """Area-weighted centroid of a projected ring (fallback to vertex mean)."""
+    n = len(points)
+    a = cx = cy = 0.0
+    for i in range(n):
+        x0, y0 = points[i]
+        x1, y1 = points[(i + 1) % n]
+        cross = x0 * y1 - x1 * y0
+        a += cross
+        cx += (x0 + x1) * cross
+        cy += (y0 + y1) * cross
+    if abs(a) < 1e-9:
+        return sum(p[0] for p in points) / n, sum(p[1] for p in points) / n
+    a *= 0.5
+    return cx / (6 * a), cy / (6 * a)
+
+
 def dp(pts, eps):
     if len(pts) < 3:
         return pts
@@ -153,15 +170,19 @@ def main():
         state_results = []
         for lga_name, rings in lgas_geo:
             parts = []
+            proj_rings = []
             for ring in rings:
                 # Drop the closing duplicate vertex so simplification has a real baseline ("Z" recloses).
                 r = ring[:-1] if len(ring) > 1 and ring[0] == ring[-1] else ring
                 simp = dp(r, eps) if len(r) > 6 else r
                 if len(simp) < 3:
                     continue
-                parts.append("M" + " ".join(f"{px(x)},{py(y)}" for x, y in simp) + "Z")
+                pr = [(px(x), py(y)) for x, y in simp]
+                proj_rings.append(pr)
+                parts.append("M" + " ".join(f"{x},{y}" for x, y in pr) + "Z")
             if not parts:
                 continue
+            cx, cy = centroid(max(proj_rings, key=len))
             # attach result
             csv_name = match_lga(lga_name, csv_lookup)
             leader = ""
@@ -180,7 +201,7 @@ def main():
                     unmatched += 1
             else:
                 unmatched += 1
-            geo_lgas.append({"lga": lga_name, "leader": leader, "pct": pct, "d": "".join(parts)})
+            geo_lgas.append({"lga": lga_name, "leader": leader, "pct": pct, "cx": round(cx, 1), "cy": round(cy, 1), "d": "".join(parts)})
 
         results_py[state] = state_results
         OUT_DIR.mkdir(parents=True, exist_ok=True)

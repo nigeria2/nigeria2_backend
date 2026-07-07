@@ -154,6 +154,36 @@ class Politician(Base):
     title: Mapped[str] = mapped_column(String(120), default="")
     party: Mapped[str] = mapped_column(String(20), default="")
     note: Mapped[str] = mapped_column(Text, default="")
+    photo: Mapped[str] = mapped_column(Text, default="")  # approved official photo (data URL)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PoliticianPhoto(Base):
+    """A user-submitted photo for a politician, pending admin approval."""
+
+    __tablename__ = "politician_photos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    politician_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    author_name: Mapped[str] = mapped_column(String(200), default="")
+    image: Mapped[str] = mapped_column(Text, default="")  # data URL
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)  # pending|approved|rejected
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PoliticianAssessment(Base):
+    """A contributor's estimate of a politician's electoral value & LGA influence."""
+
+    __tablename__ = "politician_assessments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    politician_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    author_name: Mapped[str] = mapped_column(String(200), default="")
+    electoral_value: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    influential_lgas: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of LGA names
+    reason: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

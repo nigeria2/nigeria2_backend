@@ -2,7 +2,7 @@
 import json
 import os
 import pathlib
-from collections import defaultdict
+from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 
@@ -14,13 +14,29 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .models import Analysis, InterestedUser, LgaResult, Party, PartyElection, Politician, Prediction, ProblemUnit, StatePrediction, User
+from .models import (
+    Analysis,
+    InterestedUser,
+    LgaResult,
+    Party,
+    PartyElection,
+    Politician,
+    PoliticianAssessment,
+    PoliticianPhoto,
+    Prediction,
+    ProblemUnit,
+    StatePrediction,
+    User,
+)
 from .schemas import (
     AnalysisIn,
+    AssessmentIn,
     GoogleAuthIn,
     JoinIn,
     JoinOut,
     PartyElectionSetIn,
+    PhotoSubmitIn,
+    PoliticianIn,
     PredictionSetIn,
     ProfileUpdate,
     StatePredictionIn,
@@ -92,7 +108,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.17.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.18.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -324,6 +340,32 @@ def _lga_result_dict(x: LgaResult) -> dict:
     return {"lga": x.lga, "leading_party": x.leading_party, "scores": scores, "total_votes": x.total_votes, "year": x.year}
 
 
+def _load_list(s: str) -> list:
+    try:
+        return json.loads(s) if s else []
+    except Exception:
+        return []
+
+
+def _assess_agg(assessments: list) -> dict:
+    vals = [a.electoral_value for a in assessments]
+    counter: Counter = Counter()
+    for a in assessments:
+        for lg in _load_list(a.influential_lgas):
+            counter[lg] += 1
+    return {
+        "avg_electoral_value": round(sum(vals) / len(vals)) if vals else None,
+        "assessments": len(vals),
+        "top_lgas": [{"lga": k, "count": v} for k, v in counter.most_common(6)],
+    }
+
+
+def politician_to_dict(p: Politician, assessments: list) -> dict:
+    d = {"id": p.id, "name": p.name, "state": p.state, "title": p.title, "party": p.party, "note": p.note, "photo": p.photo or ""}
+    d.update(_assess_agg(assessments))
+    return d
+
+
 @app.get("/api/states/{state}")
 def state_detail(state: str, db: Session = Depends(get_db)):
     preds = db.scalars(
@@ -331,12 +373,73 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     ).all()
     pols = db.scalars(select(Politician).where(Politician.state == state).order_by(Politician.id)).all()
     lgas = db.scalars(select(LgaResult).where(LgaResult.state == state).order_by(LgaResult.lga)).all()
+    pol_assess: dict[int, list] = defaultdict(list)
+    if pols:
+        for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
+            pol_assess[a.politician_id].append(a)
     return {
         "state": state,
         "predictions": [_public_prediction_dict(p) for p in preds],
-        "politicians": [{"name": x.name, "title": x.title, "party": x.party, "note": x.note} for x in pols],
+        "politicians": [politician_to_dict(x, pol_assess.get(x.id, [])) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
     }
+
+
+# --- politicians (public list + detail; logged-in submissions) ---
+@app.get("/api/politicians")
+def list_politicians(db: Session = Depends(get_db)):
+    pols = db.scalars(select(Politician).order_by(Politician.state, Politician.name)).all()
+    by_pol: dict[int, list] = defaultdict(list)
+    for a in db.scalars(select(PoliticianAssessment)).all():
+        by_pol[a.politician_id].append(a)
+    return [politician_to_dict(p, by_pol.get(p.id, [])) for p in pols]
+
+
+@app.get("/api/politicians/{pid}")
+def politician_detail(pid: int, db: Session = Depends(get_db)):
+    p = db.get(Politician, pid)
+    if p is None:
+        raise HTTPException(status_code=404, detail="politician not found")
+    assessments = db.scalars(
+        select(PoliticianAssessment).where(PoliticianAssessment.politician_id == pid).order_by(PoliticianAssessment.created_at.desc())
+    ).all()
+    d = politician_to_dict(p, assessments)
+    d["assessment_list"] = [
+        {
+            "author_name": a.author_name,
+            "electoral_value": a.electoral_value,
+            "influential_lgas": _load_list(a.influential_lgas),
+            "reason": a.reason,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+        }
+        for a in assessments
+    ]
+    return d
+
+
+@app.post("/api/politicians/{pid}/photo", status_code=201)
+def submit_politician_photo(pid: int, payload: PhotoSubmitIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if db.get(Politician, pid) is None:
+        raise HTTPException(status_code=404, detail="politician not found")
+    img = payload.image.strip()
+    if not img.startswith("data:image/"):
+        raise HTTPException(status_code=422, detail="expected an image data URL")
+    db.add(PoliticianPhoto(politician_id=pid, user_id=user.id, author_name=user.full_name or user.email, image=img, status="pending"))
+    db.commit()
+    return {"ok": True, "status": "pending"}
+
+
+@app.post("/api/politicians/{pid}/assessment", status_code=201)
+def submit_politician_assessment(pid: int, payload: AssessmentIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if db.get(Politician, pid) is None:
+        raise HTTPException(status_code=404, detail="politician not found")
+    lgas = [str(x).strip() for x in payload.influential_lgas if str(x).strip()][:20]
+    db.add(PoliticianAssessment(
+        politician_id=pid, user_id=user.id, author_name=user.full_name or user.email,
+        electoral_value=int(payload.electoral_value), influential_lgas=json.dumps(lgas), reason=payload.reason or "",
+    ))
+    db.commit()
+    return {"ok": True}
 
 
 # --- analyses (contributor per-party projections) ---
@@ -648,6 +751,57 @@ def set_prediction(payload: PredictionSetIn, _: User = Depends(require_admin), d
         )
     db.commit()
     return {"ok": True, "state": payload.state}
+
+
+# --- admin: politicians (add + approve submitted photos) ---
+@app.post("/api/admin/politicians", status_code=201)
+def admin_add_politician(payload: PoliticianIn, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    p = Politician(name=payload.name, state=payload.state, title=payload.title or "", party=payload.party or "", note=payload.note or "")
+    db.add(p)
+    db.commit()
+    db.refresh(p)
+    return {"id": p.id, "name": p.name, "state": p.state}
+
+
+@app.get("/api/admin/politician-photos")
+def admin_pending_photos(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.scalars(select(PoliticianPhoto).where(PoliticianPhoto.status == "pending").order_by(PoliticianPhoto.created_at.desc())).all()
+    pols = {p.id: p for p in db.scalars(select(Politician)).all()}
+    return [
+        {
+            "id": r.id,
+            "politician_id": r.politician_id,
+            "politician_name": pols[r.politician_id].name if r.politician_id in pols else "?",
+            "state": pols[r.politician_id].state if r.politician_id in pols else "",
+            "author_name": r.author_name,
+            "image": r.image,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/admin/politician-photos/{sid}/approve")
+def admin_approve_photo(sid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    sub = db.get(PoliticianPhoto, sid)
+    if sub is None:
+        raise HTTPException(status_code=404, detail="submission not found")
+    pol = db.get(Politician, sub.politician_id)
+    if pol is not None:
+        pol.photo = sub.image
+    sub.status = "approved"
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/admin/politician-photos/{sid}/reject")
+def admin_reject_photo(sid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    sub = db.get(PoliticianPhoto, sid)
+    if sub is None:
+        raise HTTPException(status_code=404, detail="submission not found")
+    sub.status = "rejected"
+    db.commit()
+    return {"ok": True}
 
 
 # --- admin: manage which parties are on the ballot per election type ---

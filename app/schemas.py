@@ -106,3 +106,31 @@ class StatePredictionUpdate(BaseModel):
     scores: dict[str, float] | None = None
     notes: str | None = None
     label: str | None = None
+
+
+class PoliticianIn(BaseModel):
+    """Admin: add a politician."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=200)
+    state: str = Field(min_length=1, max_length=50)
+    title: str | None = None
+    party: str | None = None
+    note: str | None = None
+
+
+class PhotoSubmitIn(BaseModel):
+    """Submit a photo (small data URL) for a politician."""
+
+    image: str = Field(min_length=20, max_length=800_000)
+
+
+class AssessmentIn(BaseModel):
+    """Estimate a politician's electoral value and LGA influence."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    electoral_value: int = Field(ge=0, le=100)
+    influential_lgas: list[str] = Field(default_factory=list)
+    reason: str | None = None
