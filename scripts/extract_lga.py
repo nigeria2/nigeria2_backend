@@ -39,6 +39,15 @@ APP_STATES = [
     "Yobe", "Zamfara",
 ]
 CSV_STATE = {s.upper(): s for s in APP_STATES}
+WARDS_CSV = ROOT / "data" / "Nigeria_Wards_Lat-Long1.csv"
+
+_STATE_BY_NORM = {re.sub(r"[^a-z]", "", s.lower()): s for s in APP_STATES}
+_STATE_BY_NORM["federalcapitalterritory"] = "FCT"
+_STATE_BY_NORM["nassarawa"] = "Nasarawa"
+
+
+def canon_state(s: str) -> str | None:
+    return _STATE_BY_NORM.get(re.sub(r"[^a-z]", "", (s or "").lower()))
 
 
 def norm(s: str) -> str:
@@ -73,6 +82,51 @@ def load_csv_results():
                 for p in PARTIES:
                     res[state][lga][p] += _int(row.get(p, 0))
     return res
+
+
+# ---- wards CSV: full LGA names + wards with coordinates ----
+def load_wards():
+    """Return (lga_lookup, wards) per state.
+    lga_lookup[state] = {norm(full_lga): full_lga}   (for correcting truncated names)
+    wards[state] = [(ward, full_lga, lat, lng)]
+    """
+    lga_lookup = defaultdict(dict)
+    wards = defaultdict(list)
+    if not WARDS_CSV.exists():
+        print("  ! wards CSV not found, skipping ward data")
+        return lga_lookup, wards
+    for row in csv.DictReader(open(WARDS_CSV, encoding="utf-8-sig")):
+        state = canon_state(row.get("State", ""))
+        if state is None:
+            continue
+        lga = (row.get("LGA") or "").strip()
+        ward = (row.get("Ward") or "").strip()
+        try:
+            lat = float(row["Latitude"])
+            lng = float(row["Longitude"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if lga:
+            lga_lookup[state][norm(lga)] = lga
+        if ward:
+            wards[state].append((ward, lga, lat, lng))
+    return lga_lookup, wards
+
+
+def correct_lga(geo_name: str, lookup: dict) -> str:
+    """Map a (possibly truncated) geojson LGA name to its full name from the wards CSV."""
+    if not lookup:
+        return geo_name
+    n = norm(geo_name)
+    if n in lookup:
+        return lookup[n]
+    pref = [v for k, v in lookup.items() if k.startswith(n) and len(n) >= 3]
+    if len(pref) == 1:
+        return pref[0]
+    close = difflib.get_close_matches(n, list(lookup.keys()), n=1, cutoff=0.82)
+    if close:
+        return lookup[close[0]]
+    return geo_name
 
 
 # ---- geojson: rings per (state, LGA) ----
@@ -141,6 +195,8 @@ def dp(pts, eps):
 def main():
     csv_res = load_csv_results()
     geo = load_geojson()
+    ward_lookup, ward_pts_by_state = load_wards()
+    total_wards = 0
 
     results_py = {}
     matched = unmatched = 0
@@ -148,6 +204,7 @@ def main():
     for state in APP_STATES:
         lgas_geo = geo.get(state, [])
         csv_lookup = {norm(k): k for k in csv_res.get(state, {})}
+        name_lookup = ward_lookup.get(state, {})
         used_csv = set()
 
         # project bounds for this state
@@ -183,6 +240,7 @@ def main():
             if not parts:
                 continue
             cx, cy = centroid(max(proj_rings, key=len))
+            disp = correct_lga(lga_name, name_lookup)
             # attach result
             csv_name = match_lga(lga_name, csv_lookup)
             leader = ""
@@ -195,18 +253,26 @@ def main():
                     scores = {p: round(votes[p] / total * 100, 1) for p in PARTIES}
                     leader = max(PARTIES, key=lambda p: votes[p])
                     pct = round(scores[leader])
-                    state_results.append({"lga": lga_name, "leader": leader, "scores": scores, "total_votes": total})
+                    state_results.append({"lga": disp, "leader": leader, "scores": scores, "total_votes": total})
                     matched += 1
                 else:
                     unmatched += 1
             else:
                 unmatched += 1
-            geo_lgas.append({"lga": lga_name, "leader": leader, "pct": pct, "cx": round(cx, 1), "cy": round(cy, 1), "d": "".join(parts)})
+            geo_lgas.append({"lga": disp, "leader": leader, "pct": pct, "cx": round(cx, 1), "cy": round(cy, 1), "d": "".join(parts)})
+
+        # project wards (lat/lng) into the same SVG space
+        ward_points = []
+        for (ward, wlga, lat, lng) in ward_pts_by_state.get(state, []):
+            x, y = px(lng), py(lat)
+            if -30 <= x <= W + 30 and -30 <= y <= H + 30:
+                ward_points.append({"n": ward, "l": wlga, "x": x, "y": y})
+        total_wards += len(ward_points)
 
         results_py[state] = state_results
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         (OUT_DIR / f"{slug(state)}.json").write_text(
-            json.dumps({"viewBox": f"0 0 1000 {round(H)}", "lgas": geo_lgas}, separators=(",", ":")),
+            json.dumps({"viewBox": f"0 0 1000 {round(H)}", "lgas": geo_lgas, "wards": ward_points}, separators=(",", ":")),
             encoding="utf-8",
         )
 

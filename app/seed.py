@@ -3,15 +3,18 @@
 Real data would be crunched from raw contributor traces upstream; this just
 gives the map something to render across weeks and election types.
 """
+import csv
 import hashlib
 import json
+import pathlib
+import re
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, Politician, Prediction, ProblemUnit, State, StatePrediction
+from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, Politician, Prediction, ProblemUnit, State, StatePrediction, Ward
 from .state_data import STATE_DATA
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
@@ -388,6 +391,48 @@ def seed_party_history(db: Session) -> int:
                 year="2019", election_type="governor", votes=g["votes"], position=g["position"],
             ))
             n += 1
+    db.commit()
+    return n
+
+
+_WARDS_CSV = pathlib.Path(__file__).resolve().parent / "data" / "wards.csv"
+_STATE_ALIAS = {"federal capital territory": "FCT", "nassarawa": "Nasarawa"}
+
+
+def _canon_state(s: str) -> str:
+    s = (s or "").strip()
+    return _STATE_ALIAS.get(s.lower(), s)
+
+
+def seed_wards(db: Session) -> int:
+    """Seed all electoral wards (name + coordinates) from the bundled CSV, once."""
+    if db.scalar(select(func.count()).select_from(Ward)):
+        return 0
+    if not _WARDS_CSV.exists():
+        return 0
+    n = 0
+    with open(_WARDS_CSV, encoding="utf-8-sig", newline="") as fh:
+        batch = []
+        for row in csv.DictReader(fh):
+            ward = (row.get("Ward") or "").strip()
+            if not ward:
+                continue
+            try:
+                lat = float(row["Latitude"])
+                lng = float(row["Longitude"])
+            except (TypeError, ValueError, KeyError):
+                continue
+            batch.append(Ward(
+                state=_canon_state(row.get("State", "")), lga=(row.get("LGA") or "").strip(),
+                ward=ward, latitude=lat, longitude=lng,
+            ))
+            n += 1
+            if len(batch) >= 1000:
+                db.add_all(batch)
+                db.flush()
+                batch = []
+        if batch:
+            db.add_all(batch)
     db.commit()
     return n
 

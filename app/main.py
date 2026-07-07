@@ -29,6 +29,7 @@ from .models import (
     State,
     StatePrediction,
     User,
+    Ward,
 )
 from .schemas import (
     AnalysisIn,
@@ -56,6 +57,7 @@ from .seed import (
     seed_problem_units,
     seed_state_predictions,
     seed_states,
+    seed_wards,
 )
 
 STATE_NAMES = sorted(BASE.keys())
@@ -113,12 +115,15 @@ async def lifespan(app: FastAPI):
                 ph = seed_party_history(db)
                 if ph:
                     print(f"[startup] seeded {ph} party-history rows")
+                wd = seed_wards(db)
+                if wd:
+                    print(f"[startup] seeded {wd} wards")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.20.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.21.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -403,14 +408,22 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     gov = db.scalars(
         select(PartyHistory).where(PartyHistory.state == state, PartyHistory.election_type == "governor").order_by(PartyHistory.position)
     ).all()
+    ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
     return {
         "state": state,
         "facts": facts,
+        "ward_count": ward_count,
         "predictions": [_public_prediction_dict(p) for p in preds],
         "politicians": [politician_to_dict(x, pol_assess.get(x.id, [])) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
         "governor_2019": [{"name": g.politician_name, "party": g.party, "votes": g.votes, "position": g.position, "politician_id": g.politician_id} for g in gov],
     }
+
+
+@app.get("/api/states/{state}/wards")
+def state_wards(state: str, db: Session = Depends(get_db)):
+    rows = db.scalars(select(Ward).where(Ward.state == state).order_by(Ward.lga, Ward.ward)).all()
+    return [{"lga": w.lga, "ward": w.ward, "latitude": w.latitude, "longitude": w.longitude} for w in rows]
 
 
 # --- politicians (public list + detail; logged-in submissions) ---

@@ -185,6 +185,19 @@ class LgaResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class Ward(Base):
+    """An electoral ward with its coordinates."""
+
+    __tablename__ = "wards"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    lga: Mapped[str] = mapped_column(String(120), index=True)
+    ward: Mapped[str] = mapped_column(String(160))
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+
+
 class Politician(Base):
     """A political heavyweight associated with a state."""
 
