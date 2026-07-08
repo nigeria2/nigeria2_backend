@@ -289,6 +289,17 @@ class Ward(Base):
     longitude: Mapped[float] = mapped_column(Float)
 
 
+class Lga(Base):
+    """Canonical Local Government Area. Other records reference LGAs by this id so a
+    rename here propagates everywhere (names are never stored on referencing rows)."""
+
+    __tablename__ = "lga"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+
+
 class Politician(Base):
     """A political heavyweight associated with a state."""
 
@@ -301,6 +312,7 @@ class Politician(Base):
     party: Mapped[str] = mapped_column(String(20), default="")
     note: Mapped[str] = mapped_column(Text, default="")
     photo: Mapped[str] = mapped_column(Text, default="")  # approved official photo (data URL)
+    aka: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of alternative names
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -328,7 +340,7 @@ class PoliticianAssessment(Base):
     user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     author_name: Mapped[str] = mapped_column(String(200), default="")
     electoral_value: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
-    influential_lgas: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of LGA names
+    influential_lgas: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of LGA ids (see Lga)
     reason: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

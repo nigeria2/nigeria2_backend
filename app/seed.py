@@ -6,16 +6,18 @@ gives the map something to render across weeks and election types.
 import csv
 import gzip
 import hashlib
+import itertools
 import json
 import pathlib
 import re
+from collections import defaultdict
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, Governor, GovernorHistory, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
+from .models import Analysis, Governor, GovernorHistory, Lga, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -649,3 +651,150 @@ def seed_lga_results(db: Session) -> int:
             n += 1
     db.commit()
     return n
+
+
+# --- canonical LGAs + reference-by-id integrity -----------------------------
+
+def seed_lgas(db: Session) -> int:
+    """Seed the canonical LGA table from the verified 2023 LGA results (the source
+    the assessment picker and state pages use). Other rows reference LGAs by id."""
+    if db.scalar(select(func.count()).select_from(Lga)):
+        return 0
+    seen: set[tuple[str, str]] = set()
+    n = 0
+    for state, lga in db.execute(select(LgaResult.state, LgaResult.lga).distinct()).all():
+        if not state or not lga:
+            continue
+        state, lga = state.strip(), lga.strip()
+        key = (state.lower(), lga.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        db.add(Lga(state=state, name=lga))
+        n += 1
+    db.commit()
+    return n
+
+
+def _lga_norm(s: str) -> str:
+    return "".join(c for c in str(s).lower() if c.isalnum())
+
+
+def migrate_assessment_lgas(db: Session) -> int:
+    """Convert any assessment influential_lgas still stored as name strings into
+    canonical LGA ids (matched within the politician's state, tolerating the old
+    truncated forms via prefix match). Idempotent: id-arrays are left untouched."""
+    rows = db.scalars(select(PoliticianAssessment)).all()
+    if not rows:
+        return 0
+    by_state: dict[str, list[Lga]] = defaultdict(list)
+    for l in db.scalars(select(Lga)).all():
+        by_state[l.state].append(l)
+    pol_state = {p.id: p.state for p in db.scalars(select(Politician)).all()}
+    changed = 0
+    for a in rows:
+        try:
+            vals = json.loads(a.influential_lgas or "[]")
+        except Exception:
+            vals = []
+        if not vals or all(isinstance(v, int) for v in vals):
+            continue
+        cand = by_state.get(pol_state.get(a.politician_id, ""), [])
+        ids: list[int] = []
+        for v in vals:
+            if isinstance(v, int):
+                ids.append(v)
+                continue
+            nv = _lga_norm(v)
+            if not nv:
+                continue
+            for l in cand:
+                nl = _lga_norm(l.name)
+                if nv == nl or (len(nv) >= 4 and (nl.startswith(nv) or nv.startswith(nl))):
+                    ids.append(l.id)
+                    break
+        a.influential_lgas = json.dumps(ids)
+        changed += 1
+    db.commit()
+    return changed
+
+
+# --- politician de-duplication (unify name variants; keep "also known as") ---
+
+# Same person, spelling variants not caught by the token-subset rule below.
+_ALIAS_GROUPS: list[tuple[str, list[str]]] = [
+    ("Gombe", ["MOHAMMED INUWA YAHAYA", "Muhammad Inuwa Yahaya", "Muhammadu Inuwa Yahaya"]),
+    ("Katsina", ["Dikko Umar Radda", "Dikko Umaru Radda"]),
+]
+
+_FK_MODELS = (PartyHistory, Senator, Governor, GovernorHistory, PoliticianAssessment, PoliticianPhoto)
+
+
+def _pol_tokens(name: str) -> frozenset:
+    clean = "".join(c.lower() if c.isalnum() or c == " " else " " for c in name)
+    return frozenset(w for w in clean.split() if len(w) > 1)
+
+
+def dedupe_politicians(db: Session) -> int:
+    """Merge politician records that are the same person under different name
+    spellings/orders into one canonical record, repointing every reference by id
+    and recording the other spellings as `aka`. Idempotent."""
+    pols = db.scalars(select(Politician)).all()
+    parent = {p.id: p.id for p in pols}
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    by_state: dict[str, list[Politician]] = defaultdict(list)
+    for p in pols:
+        by_state[p.state].append(p)
+    # token-subset within a state -> same person (reordered / fuller name)
+    for group in by_state.values():
+        for a, b in itertools.combinations(group, 2):
+            ta, tb = _pol_tokens(a.name), _pol_tokens(b.name)
+            if len(ta & tb) >= 2 and (ta <= tb or tb <= ta):
+                union(a.id, b.id)
+    # curated alias groups
+    idx = {(p.state, p.name.strip().lower()): p for p in pols}
+    for st, names in _ALIAS_GROUPS:
+        ids = [idx[(st, n.strip().lower())].id for n in names if (st, n.strip().lower()) in idx]
+        for other in ids[1:]:
+            union(ids[0], other)
+
+    groups: dict[int, list[Politician]] = defaultdict(list)
+    for p in pols:
+        groups[find(p.id)].append(p)
+
+    current_ids: set[int] = set()
+    for M in (Senator, Governor):
+        for pid in db.scalars(select(M.politician_id)).all():
+            if pid:
+                current_ids.add(pid)
+
+    def refcount(pid: int) -> int:
+        return sum(db.scalar(select(func.count()).select_from(M).where(M.politician_id == pid)) or 0 for M in _FK_MODELS)
+
+    merged = 0
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        keep = max(members, key=lambda p: (p.id in current_ids, p.name != p.name.upper(), refcount(p.id), -p.id))
+        aka = sorted({m.name for m in members if m.name != keep.name})
+        keep.aka = json.dumps(aka, ensure_ascii=False)
+        for o in members:
+            if o.id == keep.id:
+                continue
+            for M in _FK_MODELS:
+                db.execute(update(M).where(M.politician_id == o.id).values(politician_id=keep.id))
+            db.delete(o)
+            merged += 1
+    db.commit()
+    return merged

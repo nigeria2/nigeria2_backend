@@ -19,6 +19,7 @@ from .models import (
     Governor,
     GovernorHistory,
     InterestedUser,
+    Lga,
     LgaResult,
     Party,
     PartyElection,
@@ -52,11 +53,14 @@ from .schemas import (
 )
 from .seed import (
     BASE,
+    dedupe_politicians,
+    migrate_assessment_lgas,
     seed_analyses,
     seed_governor_2023_results,
     seed_governors_current,
     seed_governors_history,
     seed_lga_results,
+    seed_lgas,
     seed_parties,
     seed_party_elections,
     seed_party_history,
@@ -120,6 +124,9 @@ async def lifespan(app: FastAPI):
                 lga = seed_lga_results(db)
                 if lga:
                     print(f"[startup] seeded {lga} LGA results")
+                lgc = seed_lgas(db)
+                if lgc:
+                    print(f"[startup] seeded {lgc} canonical LGAs")
                 sts = seed_states(db)
                 if sts:
                     print(f"[startup] seeded {sts} states")
@@ -138,6 +145,12 @@ async def lifespan(app: FastAPI):
                 gh = seed_governors_history(db)
                 if gh:
                     print(f"[startup] seeded {gh} governor-history rows")
+                dd = dedupe_politicians(db)
+                if dd:
+                    print(f"[startup] merged {dd} duplicate politician records")
+                ma = migrate_assessment_lgas(db)
+                if ma:
+                    print(f"[startup] migrated {ma} assessments to LGA ids")
                 wd = seed_wards(db)
                 if wd:
                     print(f"[startup] seeded {wd} wards")
@@ -152,7 +165,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.28.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.29.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -391,12 +404,36 @@ def _load_list(s: str) -> list:
         return []
 
 
-def _assess_agg(assessments: list) -> dict:
+def _lga_norm(s) -> str:
+    return "".join(c for c in str(s).lower() if c.isalnum())
+
+
+_LGA_NAME_CACHE: dict[int, str] | None = None
+
+
+def _lga_names(db: Session) -> dict[int, str]:
+    """id -> current canonical LGA name (cached; refreshed on process restart)."""
+    global _LGA_NAME_CACHE
+    if _LGA_NAME_CACHE is None:
+        _LGA_NAME_CACHE = {l.id: l.name for l in db.scalars(select(Lga)).all()}
+    return _LGA_NAME_CACHE
+
+
+def _lga_label(v, names: dict[int, str] | None) -> str | None:
+    """Resolve a stored LGA reference (id) to its current name."""
+    if isinstance(v, int):
+        return (names or {}).get(v)
+    return str(v) or None  # legacy fallback (should not occur after migration)
+
+
+def _assess_agg(assessments: list, lga_names: dict[int, str] | None = None) -> dict:
     vals = [a.electoral_value for a in assessments]
     counter: Counter = Counter()
     for a in assessments:
-        for lg in _load_list(a.influential_lgas):
-            counter[lg] += 1
+        for ref in _load_list(a.influential_lgas):
+            name = _lga_label(ref, lga_names)
+            if name:
+                counter[name] += 1
     return {
         "avg_electoral_value": round(sum(vals) / len(vals)) if vals else None,
         "assessments": len(vals),
@@ -404,9 +441,10 @@ def _assess_agg(assessments: list) -> dict:
     }
 
 
-def politician_to_dict(p: Politician, assessments: list, runs: list | None = None) -> dict:
-    d = {"id": p.id, "name": p.name, "state": p.state, "title": p.title, "party": p.party, "note": p.note, "photo": p.photo or ""}
-    d.update(_assess_agg(assessments))
+def politician_to_dict(p: Politician, assessments: list, runs: list | None = None, lga_names: dict[int, str] | None = None) -> dict:
+    d = {"id": p.id, "name": p.name, "state": p.state, "title": p.title, "party": p.party, "note": p.note, "photo": p.photo or "",
+         "aka": _load_list(p.aka)}
+    d.update(_assess_agg(assessments, lga_names))
     runs = runs or []
     voted = [r for r in runs if r.votes]
     best = max(voted, key=lambda r: r.votes) if voted else None
@@ -443,6 +481,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
             pol_assess[a.politician_id].append(a)
     pol_runs = _runs_map(db, [p.id for p in pols])
+    lga_names = _lga_names(db)
     st = db.scalar(select(State).where(State.name == state))
     facts = None
     if st is not None:
@@ -473,7 +512,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "facts": facts,
         "ward_count": ward_count,
         "predictions": [_public_prediction_dict(p) for p in preds],
-        "politicians": [politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, [])) for x in pols],
+        "politicians": [politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, []), lga_names) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
@@ -591,7 +630,8 @@ def list_politicians(db: Session = Depends(get_db)):
     for a in db.scalars(select(PoliticianAssessment)).all():
         by_pol[a.politician_id].append(a)
     runs = _runs_map(db, [p.id for p in pols])
-    return [politician_to_dict(p, by_pol.get(p.id, []), runs.get(p.id, [])) for p in pols]
+    lga_names = _lga_names(db)
+    return [politician_to_dict(p, by_pol.get(p.id, []), runs.get(p.id, []), lga_names) for p in pols]
 
 
 @app.get("/api/politicians/{pid}")
@@ -605,12 +645,13 @@ def politician_detail(pid: int, db: Session = Depends(get_db)):
     ph = db.scalars(
         select(PartyHistory).where(PartyHistory.politician_id == pid).order_by(PartyHistory.year.desc(), PartyHistory.position)
     ).all()
-    d = politician_to_dict(p, assessments, ph)
+    lga_names = _lga_names(db)
+    d = politician_to_dict(p, assessments, ph, lga_names)
     d["assessment_list"] = [
         {
             "author_name": a.author_name,
             "electoral_value": a.electoral_value,
-            "influential_lgas": _load_list(a.influential_lgas),
+            "influential_lgas": [n for n in (_lga_label(v, lga_names) for v in _load_list(a.influential_lgas)) if n],
             "reason": a.reason,
             "created_at": a.created_at.isoformat() if a.created_at else None,
         }
@@ -636,14 +677,41 @@ def submit_politician_photo(pid: int, payload: PhotoSubmitIn, user: User = Depen
     return {"ok": True, "status": "pending"}
 
 
+def _resolve_lga_ids(db: Session, state: str, values: list) -> list[int]:
+    """Map submitted LGA names (or ids) to canonical LGA ids within a state, so we
+    never store a name — a later rename of the LGA propagates automatically."""
+    rows = db.scalars(select(Lga).where(Lga.state == state)).all()
+    by_norm = {_lga_norm(l.name): l.id for l in rows}
+    ids: list[int] = []
+    for v in values:
+        if isinstance(v, int) or (isinstance(v, str) and v.isdigit()):
+            vid = int(v)
+            if any(l.id == vid for l in rows):
+                ids.append(vid)
+            continue
+        nv = _lga_norm(str(v))
+        if not nv:
+            continue
+        mid = by_norm.get(nv)
+        if mid is None:  # tolerate partial / prefix entries
+            for norm, lid in by_norm.items():
+                if len(nv) >= 4 and (norm.startswith(nv) or nv.startswith(norm)):
+                    mid = lid
+                    break
+        if mid is not None and mid not in ids:
+            ids.append(mid)
+    return ids[:20]
+
+
 @app.post("/api/politicians/{pid}/assessment", status_code=201)
 def submit_politician_assessment(pid: int, payload: AssessmentIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    if db.get(Politician, pid) is None:
+    pol = db.get(Politician, pid)
+    if pol is None:
         raise HTTPException(status_code=404, detail="politician not found")
-    lgas = [str(x).strip() for x in payload.influential_lgas if str(x).strip()][:20]
+    lga_ids = _resolve_lga_ids(db, pol.state, list(payload.influential_lgas))
     db.add(PoliticianAssessment(
         politician_id=pid, user_id=user.id, author_name=user.full_name or user.email,
-        electoral_value=int(payload.electoral_value), influential_lgas=json.dumps(lgas), reason=payload.reason or "",
+        electoral_value=int(payload.electoral_value), influential_lgas=json.dumps(lga_ids), reason=payload.reason or "",
     ))
     db.commit()
     return {"ok": True}
