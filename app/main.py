@@ -133,7 +133,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.23.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.24.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -525,6 +525,13 @@ def politician_detail(pid: int, db: Session = Depends(get_db)):
             "created_at": a.created_at.isoformat() if a.created_at else None,
         }
         for a in assessments
+    ]
+    ph = db.scalars(
+        select(PartyHistory).where(PartyHistory.politician_id == pid).order_by(PartyHistory.year.desc(), PartyHistory.position)
+    ).all()
+    d["party_history"] = [
+        {"party": h.party, "state": h.state, "year": h.year, "election_type": h.election_type, "votes": h.votes, "position": h.position}
+        for h in ph
     ]
     return d
 
