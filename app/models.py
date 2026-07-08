@@ -187,6 +187,22 @@ class Governor(Base):
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class GovernorHistory(Base):
+    """A past or present governor of a state (2007 onward)."""
+
+    __tablename__ = "governor_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    party: Mapped[str] = mapped_column(String(30), default="")
+    term_start: Mapped[str] = mapped_column(String(10), default="")
+    term_end: Mapped[str] = mapped_column(String(10), default="")
+    acting: Mapped[bool] = mapped_column(Boolean, default=False)
+    seq: Mapped[int] = mapped_column(Integer, default=0)  # chronological order within state
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class LgaResult(Base):
     """Verified 2023 presidential result aggregated per LGA."""
 

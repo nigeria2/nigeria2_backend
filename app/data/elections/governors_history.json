@@ -1,0 +1,1307 @@
+[
+  {
+    "state": "Abia",
+    "governors": [
+      {
+        "name": "Theodore Orji",
+        "party": "PPA",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Okezie Ikpeazu",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Alex Otti",
+        "party": "LP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Adamawa",
+    "governors": [
+      {
+        "name": "Murtala Nyako",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2014",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Ahmadu Umaru Fintiri",
+        "party": "",
+        "term_start": "2014",
+        "term_end": "2014",
+        "acting": true,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Bala James Ngilari",
+        "party": "PDP",
+        "term_start": "2014",
+        "term_end": "2015",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Bindo Jibrilla",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2019",
+        "acting": false,
+        "order": 4,
+        "incumbent": false
+      },
+      {
+        "name": "Ahmadu Umaru Fintiri",
+        "party": "PDP",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 5,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Akwa Ibom",
+    "governors": [
+      {
+        "name": "Godswill Akpabio",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Udom Gabriel Emmanuel",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Umo Eno",
+        "party": "PDP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Anambra",
+    "governors": [
+      {
+        "name": "Peter Obi",
+        "party": "APGA",
+        "term_start": "2006",
+        "term_end": "2014",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Willie Obiano",
+        "party": "APGA",
+        "term_start": "2014",
+        "term_end": "2022",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Charles Soludo",
+        "party": "APGA",
+        "term_start": "2022",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Bauchi",
+    "governors": [
+      {
+        "name": "Isa Yuguda",
+        "party": "ANPP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Mohammed Abdullahi Abubakar",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Bala Mohammed",
+        "party": "PDP",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Bayelsa",
+    "governors": [
+      {
+        "name": "Timipre Sylva",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2012",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Nestor Binabo",
+        "party": "",
+        "term_start": "2012",
+        "term_end": "2012",
+        "acting": true,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Henry Seriake Dickson",
+        "party": "PDP",
+        "term_start": "2012",
+        "term_end": "2020",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Douye Diri",
+        "party": "PDP",
+        "term_start": "2020",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Benue",
+    "governors": [
+      {
+        "name": "Gabriel Suswam",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Samuel Ortom",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Hyacinth Alia",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Borno",
+    "governors": [
+      {
+        "name": "Ali Modu Sheriff",
+        "party": "ANPP",
+        "term_start": "2003",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Kashim Shettima",
+        "party": "APC",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Babagana Umara Zulum",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Cross River",
+    "governors": [
+      {
+        "name": "Liyel Imoke",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Benedict Ayade",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Bassey Otu",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Delta",
+    "governors": [
+      {
+        "name": "Emmanuel Uduaghan",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Ifeanyi Okowa",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Sheriff Oborevwori",
+        "party": "PDP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Ebonyi",
+    "governors": [
+      {
+        "name": "Martin Elechi",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "David Nweze Umahi",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Francis Nwifuru",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Edo",
+    "governors": [
+      {
+        "name": "Oserheimen Osunbor",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2008",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Adams Oshiomhole",
+        "party": "ACN",
+        "term_start": "2008",
+        "term_end": "2016",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Godwin Obaseki",
+        "party": "APC",
+        "term_start": "2016",
+        "term_end": "2024",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Monday Okpebholo",
+        "party": "APC",
+        "term_start": "2024",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Ekiti",
+    "governors": [
+      {
+        "name": "Olusegun Oni",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2010",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Kayode Fayemi",
+        "party": "ACN",
+        "term_start": "2010",
+        "term_end": "2014",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Ayodele Fayose",
+        "party": "PDP",
+        "term_start": "2014",
+        "term_end": "2018",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Kayode Fayemi",
+        "party": "APC",
+        "term_start": "2018",
+        "term_end": "2022",
+        "acting": false,
+        "order": 4,
+        "incumbent": false
+      },
+      {
+        "name": "Biodun Oyebanji",
+        "party": "APC",
+        "term_start": "2022",
+        "term_end": "present",
+        "acting": false,
+        "order": 5,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Enugu",
+    "governors": [
+      {
+        "name": "Sullivan Chime",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Ifeanyi Ugwuanyi",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Peter Mbah",
+        "party": "PDP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Gombe",
+    "governors": [
+      {
+        "name": "Mohammed Danjuma Goje",
+        "party": "PDP",
+        "term_start": "2003",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Ibrahim Hassan Dankwambo",
+        "party": "PDP",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Muhammadu Inuwa Yahaya",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Imo",
+    "governors": [
+      {
+        "name": "Ikedi Ohakim",
+        "party": "PPA",
+        "term_start": "2007",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Rochas Okorocha",
+        "party": "APGA",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Emeka Ihedioha",
+        "party": "PDP",
+        "term_start": "2019",
+        "term_end": "2020",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Hope Uzodinma",
+        "party": "APC",
+        "term_start": "2020",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Jigawa",
+    "governors": [
+      {
+        "name": "Sule Lamido",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Badaru Abubakar",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Umar Namadi",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Kaduna",
+    "governors": [
+      {
+        "name": "Mohammed Namadi Sambo",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2010",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Patrick Ibrahim Yakowa",
+        "party": "PDP",
+        "term_start": "2010",
+        "term_end": "2012",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Mukhtar Ramalan Yero",
+        "party": "PDP",
+        "term_start": "2012",
+        "term_end": "2015",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Nasir Ahmad El-Rufai",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 4,
+        "incumbent": false
+      },
+      {
+        "name": "Uba Sani",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 5,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Kano",
+    "governors": [
+      {
+        "name": "Ibrahim Shekarau",
+        "party": "ANPP",
+        "term_start": "2003",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Rabiu Musa Kwankwaso",
+        "party": "PDP",
+        "term_start": "2011",
+        "term_end": "2015",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Abdullahi Umar Ganduje",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Abba Kabir Yusuf",
+        "party": "NNPP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Katsina",
+    "governors": [
+      {
+        "name": "Ibrahim Shema",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Aminu Bello Masari",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Dikko Umaru Radda",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Kebbi",
+    "governors": [
+      {
+        "name": "Usman Saidu Nasamu Dakingari",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Abubakar Atiku Bagudu",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Nasir Idris",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Kogi",
+    "governors": [
+      {
+        "name": "Ibrahim Idris",
+        "party": "PDP",
+        "term_start": "2003",
+        "term_end": "2012",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Idris Wada",
+        "party": "PDP",
+        "term_start": "2012",
+        "term_end": "2016",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Yahaya Bello",
+        "party": "APC",
+        "term_start": "2016",
+        "term_end": "2024",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Ahmed Usman Ododo",
+        "party": "APC",
+        "term_start": "2024",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Kwara",
+    "governors": [
+      {
+        "name": "Bukola Saraki",
+        "party": "PDP",
+        "term_start": "2003",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Abdulfatah Ahmed",
+        "party": "PDP",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "AbdulRahman AbdulRazaq",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Lagos",
+    "governors": [
+      {
+        "name": "Babatunde Fashola",
+        "party": "ACN",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Akinwunmi Ambode",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Babajide Sanwo-Olu",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Nasarawa",
+    "governors": [
+      {
+        "name": "Aliyu Akwe Doma",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Umaru Tanko Al-Makura",
+        "party": "CPC",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Abdullahi Sule",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Niger",
+    "governors": [
+      {
+        "name": "Mu'azu Babangida Aliyu",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Abubakar Sani Bello",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Mohammed Umar Bago",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Ogun",
+    "governors": [
+      {
+        "name": "Gbenga Daniel",
+        "party": "PDP",
+        "term_start": "2003",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Ibikunle Amosun",
+        "party": "ACN",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Dapo Abiodun",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Ondo",
+    "governors": [
+      {
+        "name": "Olusegun Agagu",
+        "party": "PDP",
+        "term_start": "2003",
+        "term_end": "2009",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Olusegun Mimiko",
+        "party": "LP",
+        "term_start": "2009",
+        "term_end": "2017",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Rotimi Akeredolu",
+        "party": "APC",
+        "term_start": "2017",
+        "term_end": "2023",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Lucky Aiyedatiwa",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Osun",
+    "governors": [
+      {
+        "name": "Olagunsoye Oyinlola",
+        "party": "PDP",
+        "term_start": "2003",
+        "term_end": "2010",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Rauf Aregbesola",
+        "party": "ACN",
+        "term_start": "2010",
+        "term_end": "2018",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Gboyega Oyetola",
+        "party": "APC",
+        "term_start": "2018",
+        "term_end": "2022",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Ademola Adeleke",
+        "party": "PDP",
+        "term_start": "2022",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Oyo",
+    "governors": [
+      {
+        "name": "Christopher Alao-Akala",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Abiola Ajimobi",
+        "party": "ACN",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Seyi Makinde",
+        "party": "PDP",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Plateau",
+    "governors": [
+      {
+        "name": "Jonah David Jang",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Simon Bako Lalong",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Caleb Mutfwang",
+        "party": "PDP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Rivers",
+    "governors": [
+      {
+        "name": "Celestine Omehia",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2007",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Rotimi Amaechi",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Nyesom Wike",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Siminalayi Fubara",
+        "party": "PDP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Sokoto",
+    "governors": [
+      {
+        "name": "Aliyu Magatakarda Wamakko",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Aminu Waziri Tambuwal",
+        "party": "APC",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Ahmad Aliyu",
+        "party": "APC",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Taraba",
+    "governors": [
+      {
+        "name": "Danbaba Suntai",
+        "party": "PDP",
+        "term_start": "2007",
+        "term_end": "2015",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Garba Umar",
+        "party": "",
+        "term_start": "2012",
+        "term_end": "2014",
+        "acting": true,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Sani Danladi",
+        "party": "",
+        "term_start": "2014",
+        "term_end": "2015",
+        "acting": true,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Darius Ishaku",
+        "party": "PDP",
+        "term_start": "2015",
+        "term_end": "2023",
+        "acting": false,
+        "order": 4,
+        "incumbent": false
+      },
+      {
+        "name": "Agbu Kefas",
+        "party": "PDP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 5,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Yobe",
+    "governors": [
+      {
+        "name": "Mamman Bello Ali",
+        "party": "ANPP",
+        "term_start": "2007",
+        "term_end": "2009",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Ibrahim Gaidam",
+        "party": "APC",
+        "term_start": "2009",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Mai Mala Buni",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "present",
+        "acting": false,
+        "order": 3,
+        "incumbent": true
+      }
+    ]
+  },
+  {
+    "state": "Zamfara",
+    "governors": [
+      {
+        "name": "Mahmud Aliyu Shinkafi",
+        "party": "ANPP",
+        "term_start": "2007",
+        "term_end": "2011",
+        "acting": false,
+        "order": 1,
+        "incumbent": false
+      },
+      {
+        "name": "Abdulaziz Abubakar Yari",
+        "party": "ANPP",
+        "term_start": "2011",
+        "term_end": "2019",
+        "acting": false,
+        "order": 2,
+        "incumbent": false
+      },
+      {
+        "name": "Bello Matawalle",
+        "party": "APC",
+        "term_start": "2019",
+        "term_end": "2023",
+        "acting": false,
+        "order": 3,
+        "incumbent": false
+      },
+      {
+        "name": "Dauda Lawal",
+        "party": "PDP",
+        "term_start": "2023",
+        "term_end": "present",
+        "acting": false,
+        "order": 4,
+        "incumbent": true
+      }
+    ]
+  }
+]

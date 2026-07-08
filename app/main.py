@@ -17,6 +17,7 @@ from .db import SessionLocal, engine, get_db
 from .models import (
     Analysis,
     Governor,
+    GovernorHistory,
     InterestedUser,
     LgaResult,
     Party,
@@ -54,6 +55,7 @@ from .seed import (
     seed_analyses,
     seed_governor_2023_results,
     seed_governors_current,
+    seed_governors_history,
     seed_lga_results,
     seed_parties,
     seed_party_elections,
@@ -133,6 +135,9 @@ async def lifespan(app: FastAPI):
                 gov = seed_governors_current(db)
                 if gov:
                     print(f"[startup] seeded {gov} current governors")
+                gh = seed_governors_history(db)
+                if gh:
+                    print(f"[startup] seeded {gh} governor-history rows")
                 wd = seed_wards(db)
                 if wd:
                     print(f"[startup] seeded {wd} wards")
@@ -147,7 +152,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.26.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.27.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -440,6 +445,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
     senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
+    gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
     return {
         "state": state,
         "facts": facts,
@@ -451,6 +457,11 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
         "senators": [_senator_dict(s) for s in senators],
         "governor": _governor_dict(incumbent) if incumbent else None,
+        "governor_history": [
+            {"name": g.name, "party": g.party, "term_start": g.term_start or None, "term_end": g.term_end or None,
+             "acting": g.acting, "incumbent": g.term_end == "present", "politician_id": g.politician_id}
+            for g in gov_hist
+        ],
     }
 
 

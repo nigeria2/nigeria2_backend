@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, Governor, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
+from .models import Analysis, Governor, GovernorHistory, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -443,6 +443,38 @@ def seed_governor_2023_results(db: Session) -> int:
                 politician_id=pol.id, politician_name=c["name"].strip(), party=c.get("party", ""), state=state,
                 year="2023", election_type="governor", votes=c["votes"], position=c["position"],
                 percent=c.get("percent"), running_mate=c.get("running_mate") or "",
+            ))
+            n += 1
+    db.commit()
+    return n
+
+
+def seed_governors_history(db: Session) -> int:
+    """Seed the per-state governor timeline (2007 onward). Substantive (non-acting)
+    governors are also find-or-created as politicians so past governors become
+    clickable profiles with their vote history."""
+    path = _ELECTIONS_DIR / "governors_history.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(GovernorHistory)):
+        return 0
+    cache: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        cache[(p.name.strip().lower(), p.state)] = p
+    n = 0
+    for entry in json.loads(path.read_text(encoding="utf-8")):
+        state = entry["state"]
+        for g in entry.get("governors", []):
+            pol_id = None
+            if not g.get("acting"):
+                span = f"{g.get('term_start', '')}–{g.get('term_end', '')}".replace("–present", "–present")
+                title = f"Governor of {state} State ({span})"
+                pol = _find_or_create_politician(db, cache, g["name"], state, g.get("party", ""), title)
+                pol_id = pol.id
+            db.add(GovernorHistory(
+                state=state, name=g["name"].strip(), party=g.get("party", ""),
+                term_start=str(g.get("term_start", "")), term_end=str(g.get("term_end", "")),
+                acting=bool(g.get("acting")), seq=g.get("order", 0), politician_id=pol_id,
             ))
             n += 1
     db.commit()
