@@ -852,6 +852,18 @@ def migrate_assessment_lgas(db: Session) -> int:
 _ALIAS_GROUPS: list[tuple[str, list[str]]] = [
     ("Gombe", ["MOHAMMED INUWA YAHAYA", "Muhammad Inuwa Yahaya", "Muhammadu Inuwa Yahaya"]),
     ("Katsina", ["Dikko Umar Radda", "Dikko Umaru Radda"]),
+    # verified same-person spelling / nickname variants (hyphens, all-caps, short forms)
+    ("Lagos", ["Babajide Sanwo-Olu", "BABAJIDE OLUSOLA SANWOLU"]),
+    ("Oyo", ["OLUSEYI MAKINDE", "Seyi Makinde"]),
+    ("Ogun", ["ADEDAPO ABIODUN", "Dapo Abiodun"]),
+    ("Ekiti", ["Abiodun Oyebanji", "Biodun Oyebanji"]),
+    ("Ondo", ["Olajide Ipinsagba", "Jide Ipinsagba"]),
+    ("Rivers", ["Allwell Onyeso", "Allwell Onyesoh"]),
+    ("Bauchi", ["Samaila Dahuwa Kaila", "Sama'ila Dahuwa Kaila"]),
+    ("Abia", ["Austin Akobundu", "Augustine Akobundu"]),
+    ("Cross River", ["Ben Ayade", "Benedict Ayade"]),
+    ("Yobe", ["Ahmed Lawan", "Ahmad Lawan"]),
+    ("Jigawa", ["Ahmed Abdulhamid Mallam Madori", "Ahmad Abdulhamid Malam Madori"]),
 ]
 
 _FK_MODELS = (PartyHistory, Senator, Governor, GovernorHistory, PoliticianAssessment, PoliticianPhoto)
