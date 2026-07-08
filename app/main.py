@@ -61,6 +61,7 @@ from .seed import (
     seed_governors_history,
     seed_lga_results,
     seed_lgas,
+    refresh_lga_names,
     seed_parties,
     seed_party_elections,
     seed_party_history,
@@ -127,6 +128,9 @@ async def lifespan(app: FastAPI):
                 lgc = seed_lgas(db)
                 if lgc:
                     print(f"[startup] seeded {lgc} canonical LGAs")
+                lgr = refresh_lga_names(db)
+                if lgr:
+                    print(f"[startup] corrected {lgr} stale LGA names")
                 sts = seed_states(db)
                 if sts:
                     print(f"[startup] seeded {sts} states")
@@ -165,7 +169,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.29.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.29.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

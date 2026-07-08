@@ -655,25 +655,59 @@ def seed_lga_results(db: Session) -> int:
 
 # --- canonical LGAs + reference-by-id integrity -----------------------------
 
+def _canonical_lgas() -> dict[str, list[str]]:
+    """Authoritative LGA names per state, straight from the code constant (kept
+    current) rather than the DB (which may hold names seeded before a correction)."""
+    out: dict[str, list[str]] = {}
+    for state, rows in LGA_RESULTS_2023.items():
+        names, seen = [], set()
+        for r in rows:
+            nm = (r.get("lga") or "").strip()
+            k = nm.lower()
+            if nm and k not in seen:
+                seen.add(k)
+                names.append(nm)
+        out[state] = names
+    return out
+
+
 def seed_lgas(db: Session) -> int:
-    """Seed the canonical LGA table from the verified 2023 LGA results (the source
-    the assessment picker and state pages use). Other rows reference LGAs by id."""
+    """Seed the canonical LGA table from the code constant. Other rows reference
+    LGAs by id, so this is the single source of truth for LGA names."""
     if db.scalar(select(func.count()).select_from(Lga)):
         return 0
-    seen: set[tuple[str, str]] = set()
     n = 0
-    for state, lga in db.execute(select(LgaResult.state, LgaResult.lga).distinct()).all():
-        if not state or not lga:
-            continue
-        state, lga = state.strip(), lga.strip()
-        key = (state.lower(), lga.lower())
-        if key in seen:
-            continue
-        seen.add(key)
-        db.add(Lga(state=state, name=lga))
-        n += 1
+    for state, names in _canonical_lgas().items():
+        for nm in names:
+            db.add(Lga(state=state, name=nm))
+            n += 1
     db.commit()
     return n
+
+
+def refresh_lga_names(db: Session) -> int:
+    """Correct any canonical LGA rows whose name is stale/truncated relative to the
+    code constant, in place (ids stay stable so references keep resolving). Matches
+    a stored name to the constant by exact or prefix-normalised form."""
+    canon = _canonical_lgas()
+    updated = 0
+    for l in db.scalars(select(Lga)).all():
+        names = canon.get(l.state, [])
+        nl = _lga_norm(l.name)
+        best = None
+        for cn in names:
+            ncn = _lga_norm(cn)
+            if ncn == nl:
+                best = cn
+                break
+            if len(nl) >= 4 and (ncn.startswith(nl) or nl.startswith(ncn)):
+                best = cn
+        if best and best != l.name:
+            l.name = best
+            updated += 1
+    if updated:
+        db.commit()
+    return updated
 
 
 def _lga_norm(s: str) -> str:
