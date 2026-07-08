@@ -170,6 +170,7 @@ class PartyHistory(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
     percent: Mapped[float | None] = mapped_column(Float, nullable=True)
     running_mate: Mapped[str] = mapped_column(String(200), default="")
+    constituency: Mapped[str] = mapped_column(String(80), default="")  # e.g. senate district
 
 
 class Governor(Base):

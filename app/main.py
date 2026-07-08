@@ -59,6 +59,7 @@ from .seed import (
     seed_governor_2023_results,
     seed_governors_current,
     seed_governors_history,
+    seed_senate_2023,
     seed_lga_results,
     seed_lgas,
     refresh_lga_names,
@@ -143,6 +144,9 @@ async def lifespan(app: FastAPI):
                 g23 = seed_governor_2023_results(db)
                 if g23:
                     print(f"[startup] seeded {g23} 2023 governor candidate results")
+                s23 = seed_senate_2023(db)
+                if s23:
+                    print(f"[startup] seeded {s23} 2023 senate candidate results")
                 gov = seed_governors_current(db)
                 if gov:
                     print(f"[startup] seeded {gov} current governors")
@@ -169,7 +173,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.29.1", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.30.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -663,7 +667,8 @@ def politician_detail(pid: int, db: Session = Depends(get_db)):
     ]
     d["party_history"] = [
         {"party": h.party, "state": h.state, "year": h.year, "election_type": h.election_type,
-         "votes": h.votes, "percent": h.percent, "position": h.position, "running_mate": h.running_mate or None}
+         "votes": h.votes, "percent": h.percent, "position": h.position, "running_mate": h.running_mate or None,
+         "constituency": h.constituency or None}
         for h in ph
     ]
     return d

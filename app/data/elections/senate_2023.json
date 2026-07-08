@@ -1,0 +1,2789 @@
+[
+  {
+    "office": "Senate",
+    "state": "Abia",
+    "year": 2023,
+    "district": "Abia Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Abia_State",
+    "candidates": [
+      {
+        "name": "Samuel Onuigbo",
+        "party": "APC",
+        "votes": 7997,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Chuku Wachuku",
+        "party": "YPP",
+        "votes": 7395,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Ahamdi Emmanuel Nweke",
+        "party": "APGA",
+        "votes": 4637,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "John Godson",
+        "party": "ADC",
+        "votes": 1980,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Patrick Nwosu",
+        "party": "SDP",
+        "votes": 1030,
+        "position": 5,
+        "won": false
+      },
+      {
+        "name": "Darlington Nwokocha",
+        "party": "LP",
+        "votes": null,
+        "position": 6,
+        "won": false
+      },
+      {
+        "name": "Augustine Akobundu",
+        "party": "PDP",
+        "votes": null,
+        "position": 7,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Abia",
+    "year": 2023,
+    "district": "Abia North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Abia_State",
+    "candidates": [
+      {
+        "name": "Orji Uzor Kalu",
+        "party": "APC",
+        "votes": 30805,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Nnamdi Iro Oji",
+        "party": "LP",
+        "votes": 27540,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Mao Ohuabunwa",
+        "party": "PDP",
+        "votes": 15175,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Carol Dike-Okorafor",
+        "party": "APGA",
+        "votes": null,
+        "position": 4,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Abia",
+    "year": 2023,
+    "district": "Abia South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Abia_State",
+    "candidates": [
+      {
+        "name": "Enyinnaya Abaribe",
+        "party": "APGA",
+        "votes": 49693,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Chinedu Onyeizu",
+        "party": "LP",
+        "votes": 43903,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Okezie Ikpeazu",
+        "party": "PDP",
+        "votes": 28422,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Blessing Nwagba",
+        "party": "APC",
+        "votes": null,
+        "position": 4,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Adamawa",
+    "year": 2023,
+    "district": "Adamawa Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Adamawa_State",
+    "candidates": [
+      {
+        "name": "Abdul-Aziz Nyako",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Aminu Iya Abbas",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Ahmadu Hamman",
+        "party": "NNPP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Adamawa",
+    "year": 2023,
+    "district": "Adamawa North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Adamawa_State",
+    "candidates": [
+      {
+        "name": "Ishaku Elisha Abbo",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Amos Yohanna",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Abdullahi Dauda Belel",
+        "party": "NNPP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Adamawa",
+    "year": 2023,
+    "district": "Adamawa South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Adamawa_State",
+    "candidates": [
+      {
+        "name": "Binos Dauda Yaroe",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Adamu Ismaila Numan",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Akwa Ibom",
+    "year": 2023,
+    "district": "Akwa Ibom North-East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Akwa_Ibom_State",
+    "candidates": [
+      {
+        "name": "Aniekan Bassey",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Emaeyak Ukpong",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Akwa Ibom",
+    "year": 2023,
+    "district": "Akwa Ibom North-West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Akwa_Ibom_State",
+    "candidates": [
+      {
+        "name": "Godswill Akpabio",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Emmanuel Enoidem",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Akwa Ibom",
+    "year": 2023,
+    "district": "Akwa Ibom South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Akwa_Ibom_State",
+    "candidates": [
+      {
+        "name": "Ekong Sampson",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Martins Udo-Inyang",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Anambra",
+    "year": 2023,
+    "district": "Anambra Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Anambra_State",
+    "candidates": [
+      {
+        "name": "Victor Umeh",
+        "party": "LP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Uche Ekwunife",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Dozie Nwankwo",
+        "party": "APGA",
+        "votes": null,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Kodilichukwu Okelekwe",
+        "party": "APC",
+        "votes": null,
+        "position": 4,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Anambra",
+    "year": 2023,
+    "district": "Anambra North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Anambra_State",
+    "candidates": [
+      {
+        "name": "Tony Nwoye",
+        "party": "LP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Stella Oduah",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Ebelechukwu Obiano",
+        "party": "APGA",
+        "votes": null,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Ifeyinwa Anazonwu",
+        "party": "APC",
+        "votes": null,
+        "position": 4,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Anambra",
+    "year": 2023,
+    "district": "Anambra South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Anambra_State",
+    "candidates": [
+      {
+        "name": "Ifeanyi Ubah",
+        "party": "YPP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Chris Uba",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Chris Emeka Azubogu",
+        "party": "APGA",
+        "votes": null,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Chukwuma Michael Umeoji",
+        "party": "APC",
+        "votes": null,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Obinna Uzoh",
+        "party": "LP",
+        "votes": null,
+        "position": 5,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Bauchi",
+    "year": 2023,
+    "district": "Bauchi Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Bauchi_State",
+    "candidates": [
+      {
+        "name": "Abdul Ningi",
+        "party": "PDP",
+        "votes": 104878,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Uba Ahmed Nana",
+        "party": "APC",
+        "votes": 84621,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Isah Hamma Misau",
+        "party": "NNPP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Bauchi",
+    "year": 2023,
+    "district": "Bauchi North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Bauchi_State",
+    "candidates": [
+      {
+        "name": "Sama'ila Dahuwa Kaila",
+        "party": "PDP",
+        "votes": 102043,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Siraj Ibrahim Tanko Muhammad",
+        "party": "APC",
+        "votes": 100246,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Ghazali Mohammed Mijinyawa",
+        "party": "NNPP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Bauchi",
+    "year": 2023,
+    "district": "Bauchi South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Bauchi_State",
+    "candidates": [
+      {
+        "name": "Shehu Buba Umar",
+        "party": "APC",
+        "votes": 175505,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Dahiru Garba",
+        "party": "PDP",
+        "votes": 165727,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Lawal Yahaya Gumau",
+        "party": "NNPP",
+        "votes": 53739,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Sani Ahmad",
+        "party": "LP",
+        "votes": 7130,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Muhammed Chindo",
+        "party": "APGA",
+        "votes": 1075,
+        "position": 5,
+        "won": false
+      },
+      {
+        "name": "Yahaya Idris",
+        "party": "ADP",
+        "votes": 1059,
+        "position": 6,
+        "won": false
+      },
+      {
+        "name": "Naziru Dahiru Usman",
+        "party": "ADC",
+        "votes": 1020,
+        "position": 7,
+        "won": false
+      },
+      {
+        "name": "Idris Hassan",
+        "party": "APP",
+        "votes": 951,
+        "position": 8,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Bayelsa",
+    "year": 2023,
+    "district": "Bayelsa Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Bayelsa_State",
+    "candidates": [
+      {
+        "name": "Konbowei Benson",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Timipa Tiwei Orunimighe",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Bayelsa",
+    "year": 2023,
+    "district": "Bayelsa East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Bayelsa_State",
+    "candidates": [
+      {
+        "name": "Benson Sunday Agadaga",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Biobarakuma Degi",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Bayelsa",
+    "year": 2023,
+    "district": "Bayelsa West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Bayelsa_State",
+    "candidates": [
+      {
+        "name": "Henry Seriake Dickson",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Wilson Ayakpo Dauyegha",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Benue",
+    "year": 2023,
+    "district": "Benue North-East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Benue_State",
+    "candidates": [
+      {
+        "name": "Emmanuel Udende",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Gabriel Suswam",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Torngee Malu",
+        "party": "LP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Benue",
+    "year": 2023,
+    "district": "Benue North-West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Benue_State",
+    "candidates": [
+      {
+        "name": "Titus Zam",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Samuel Ortom",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Mark Gbillah",
+        "party": "LP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Benue",
+    "year": 2023,
+    "district": "Benue South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Benue_State",
+    "candidates": [
+      {
+        "name": "Patrick Abba Moro",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Daniel Onjeh",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Joseph Ojobo",
+        "party": "LP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Borno",
+    "year": 2023,
+    "district": "Borno Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Borno_State",
+    "candidates": [
+      {
+        "name": "Kaka Shehu Lawan",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Mohammed Umara Kumalia",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Borno",
+    "year": 2023,
+    "district": "Borno North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Borno_State",
+    "candidates": [
+      {
+        "name": "Mohammed Tahir Monguno",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Isa Lawan",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Borno",
+    "year": 2023,
+    "district": "Borno South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Borno_State",
+    "candidates": [
+      {
+        "name": "Mohammed Ali Ndume",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Kudla Milinda Satumari",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Cross River",
+    "year": 2023,
+    "district": "Cross River Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Cross_River_State",
+    "candidates": [
+      {
+        "name": "Eteng Jonah Williams",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bassey Ewa",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Cross River",
+    "year": 2023,
+    "district": "Cross River North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Cross_River_State",
+    "candidates": [
+      {
+        "name": "Agom Jarigbe",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Benedict Ayade",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Cross River",
+    "year": 2023,
+    "district": "Cross River South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Cross_River_State",
+    "candidates": [
+      {
+        "name": "Asuquo Ekpenyong",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ekpo Okon",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Delta",
+    "year": 2023,
+    "district": "Delta Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Delta_State",
+    "candidates": [
+      {
+        "name": "Ede Dafinone",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ighoyota Amori",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Delta",
+    "year": 2023,
+    "district": "Delta North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Delta_State",
+    "candidates": [
+      {
+        "name": "Ned Nwoko",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Peter Nwaoboshi",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Delta",
+    "year": 2023,
+    "district": "Delta South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Delta_State",
+    "candidates": [
+      {
+        "name": "Joel-Onowakpo Thomas",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Michael Diden",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ebonyi",
+    "year": 2023,
+    "district": "Ebonyi Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ebonyi_State",
+    "candidates": [
+      {
+        "name": "Kenneth Eze",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Laz Ogbe",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ebonyi",
+    "year": 2023,
+    "district": "Ebonyi North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ebonyi_State",
+    "candidates": [
+      {
+        "name": "Onyekachi Nwebonyi",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Sam Egwu",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ebonyi",
+    "year": 2023,
+    "district": "Ebonyi South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ebonyi_State",
+    "candidates": [
+      {
+        "name": "David Umahi",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Michael Ama Nnachi",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Linus Abaa Okorie",
+        "party": "LP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Edo",
+    "year": 2023,
+    "district": "Edo Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Edo_State",
+    "candidates": [
+      {
+        "name": "Monday Okpebholo",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Clifford Ordia",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Edo",
+    "year": 2023,
+    "district": "Edo North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Edo_State",
+    "candidates": [
+      {
+        "name": "Adams Oshiomhole",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Francis Alimikhena",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Edo",
+    "year": 2023,
+    "district": "Edo South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Edo_State",
+    "candidates": [
+      {
+        "name": "Neda Imasuen",
+        "party": "LP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Valentine Asuen",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Matthew Iduoriyekemwen",
+        "party": "PDP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ekiti",
+    "year": 2023,
+    "district": "Ekiti Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ekiti_State",
+    "candidates": [
+      {
+        "name": "Michael Opeyemi Bamidele",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Lateef Ajijola",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ekiti",
+    "year": 2023,
+    "district": "Ekiti North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ekiti_State",
+    "candidates": [
+      {
+        "name": "Cyril Fasuyi",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Funso Ayeni",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ekiti",
+    "year": 2023,
+    "district": "Ekiti South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ekiti_State",
+    "candidates": [
+      {
+        "name": "Raphael Adeyemi Adaramodu",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abiodun Olujimi",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Enugu",
+    "year": 2023,
+    "district": "Enugu East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Enugu_State",
+    "candidates": [
+      {
+        "name": "Chimaroke Nnamani",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Kelvin Chukwu",
+        "party": "LP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Adaku Ogbu-Aguocha",
+        "party": "APC",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Enugu",
+    "year": 2023,
+    "district": "Enugu North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Enugu_State",
+    "candidates": [
+      {
+        "name": "Okechukwu Ezea",
+        "party": "LP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ifeanyi Ugwuanyi",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Enugu",
+    "year": 2023,
+    "district": "Enugu West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Enugu_State",
+    "candidates": [
+      {
+        "name": "Osita Ngwu",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Nicholas Chika Ezeh",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "FCT",
+    "year": 2023,
+    "district": "FCT",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_election_in_the_Federal_Capital_Territory",
+    "candidates": [
+      {
+        "name": "Ireti Kingibe",
+        "party": "LP",
+        "votes": 202175,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Philips Tanimu Aduda",
+        "party": "PDP",
+        "votes": 100544,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Angulu Zakari",
+        "party": "APC",
+        "votes": 78905,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Gombe",
+    "year": 2023,
+    "district": "Gombe Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Gombe_State",
+    "candidates": [
+      {
+        "name": "Mohammed Danjuma Goje",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abubakar Aliyu",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Gombe",
+    "year": 2023,
+    "district": "Gombe North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Gombe_State",
+    "candidates": [
+      {
+        "name": "Ibrahim Hassan Dankwambo",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Sa'idu Ahmed Alkali",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Gombe",
+    "year": 2023,
+    "district": "Gombe South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Gombe_State",
+    "candidates": [
+      {
+        "name": "Anthony Siyako Yaro",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Joshua M. Lidani",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Imo",
+    "year": 2023,
+    "district": "Imo East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Imo_State",
+    "candidates": [
+      {
+        "name": "Ezenwa Francis Onyewuchi",
+        "party": "LP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Alex Mbata",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Uche Onyeagucha",
+        "party": "PDP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Imo",
+    "year": 2023,
+    "district": "Imo North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Imo_State",
+    "candidates": [
+      {
+        "name": "Patrick Ndubueze",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Emmanuel Okewulonu",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Ifeanyi Ararume Jr.",
+        "party": "LP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Imo",
+    "year": 2023,
+    "district": "Imo West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Imo_State",
+    "candidates": [
+      {
+        "name": "Osita Izunaso",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Charles Ugochukwu Ahize",
+        "party": "LP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Jigawa",
+    "year": 2023,
+    "district": "Jigawa North-East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Jigawa_State",
+    "candidates": [
+      {
+        "name": "Ahmad Abdulhamid Malam Madori",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Nuruddeen Muhammad",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Jigawa",
+    "year": 2023,
+    "district": "Jigawa North-West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Jigawa_State",
+    "candidates": [
+      {
+        "name": "Babangida Hussaini",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ibrahim Saminu Turaki",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Jigawa",
+    "year": 2023,
+    "district": "Jigawa South-West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Jigawa_State",
+    "candidates": [
+      {
+        "name": "Mustapha Sule Lamido",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Mohammed Sabo Nakudu",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kaduna",
+    "year": 2023,
+    "district": "Kaduna Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kaduna_State",
+    "candidates": [
+      {
+        "name": "Lawal Adamu Usman",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Muhammad Sani Abdullahi",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kaduna",
+    "year": 2023,
+    "district": "Kaduna North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kaduna_State",
+    "candidates": [
+      {
+        "name": "Suleiman Abdu Kwari",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Khalid Mustapha",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kaduna",
+    "year": 2023,
+    "district": "Kaduna South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kaduna_State",
+    "candidates": [
+      {
+        "name": "Sunday Marshall Katung",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bulus Audu",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Michael Ayuba",
+        "party": "LP",
+        "votes": null,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kano",
+    "year": 2023,
+    "district": "Kano Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kano_State",
+    "candidates": [
+      {
+        "name": "Rufai Sani Hanga",
+        "party": "NNPP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abdulkarim Abdulsalam Zaura",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kano",
+    "year": 2023,
+    "district": "Kano North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kano_State",
+    "candidates": [
+      {
+        "name": "Barau Jibrin",
+        "party": "APC",
+        "votes": 234652,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abdullahi Baffa Bichi",
+        "party": "NNPP",
+        "votes": 177014,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Saidu Ahmad Gwadabe",
+        "party": "PDP",
+        "votes": 12751,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Shehu Mustapha",
+        "party": "LP",
+        "votes": 1258,
+        "position": 4,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kano",
+    "year": 2023,
+    "district": "Kano South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kano_State",
+    "candidates": [
+      {
+        "name": "Kabiru Ibrahim Gaya",
+        "party": "APC",
+        "votes": 192518,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Kawu Sumaila",
+        "party": "NNPP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Katsina",
+    "year": 2023,
+    "district": "Katsina Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Katsina_State",
+    "candidates": [
+      {
+        "name": "Abdulaziz Musa Yar'Adua",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Sirajo Aminu Makera",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Katsina",
+    "year": 2023,
+    "district": "Katsina North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Katsina_State",
+    "candidates": [
+      {
+        "name": "Nasiru Sani Zangon Daura",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ahmad Babba Kaita",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Katsina",
+    "year": 2023,
+    "district": "Katsina South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Katsina_State",
+    "candidates": [
+      {
+        "name": "Muntari Mohammed Dandutse",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Shehu Garba Matazu",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kebbi",
+    "year": 2023,
+    "district": "Kebbi Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kebbi_State",
+    "candidates": [
+      {
+        "name": "Adamu Aliero",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abubakar Atiku Bagudu",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kebbi",
+    "year": 2023,
+    "district": "Kebbi North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kebbi_State",
+    "candidates": [
+      {
+        "name": "Yahaya Abdullahi",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Hussaini Suleiman Kangiwa",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kebbi",
+    "year": 2023,
+    "district": "Kebbi South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kebbi_State",
+    "candidates": [
+      {
+        "name": "Garba Musa Maidoki",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bala Ibn Na'Allah",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kogi",
+    "year": 2023,
+    "district": "Kogi Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kogi_State",
+    "candidates": [
+      {
+        "name": "Natasha Akpoti-Uduaghan",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abubakar Sadiku Ohere",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kogi",
+    "year": 2023,
+    "district": "Kogi East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kogi_State",
+    "candidates": [
+      {
+        "name": "Jibrin Isah",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Victor Alewo Adoji",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kogi",
+    "year": 2023,
+    "district": "Kogi West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kogi_State",
+    "candidates": [
+      {
+        "name": "Sunday Karimi",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Tajudeen Yusuf",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kwara",
+    "year": 2023,
+    "district": "Kwara Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kwara_State",
+    "candidates": [
+      {
+        "name": "Saliu Mustapha",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bolaji Abdullahi",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kwara",
+    "year": 2023,
+    "district": "Kwara North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kwara_State",
+    "candidates": [
+      {
+        "name": "Sadiq Suleiman Umar",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Isa Adamu Bawa",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Kwara",
+    "year": 2023,
+    "district": "Kwara South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Kwara_State",
+    "candidates": [
+      {
+        "name": "Lola Ashiru",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Rafiu Adebayo Ibrahim",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Lagos",
+    "year": 2023,
+    "district": "Lagos Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Lagos_State",
+    "candidates": [
+      {
+        "name": "Wasiu Eshinlokun-Sanni",
+        "party": "APC",
+        "votes": 131828,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Wale Gomez",
+        "party": "PDP",
+        "votes": 69320,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Oladeji Blessing Tunde",
+        "party": "YPP",
+        "votes": 14941,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Lagos",
+    "year": 2023,
+    "district": "Lagos East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Lagos_State",
+    "candidates": [
+      {
+        "name": "Tokunbo Abiru",
+        "party": "APC",
+        "votes": 178646,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Nicholas Akobada",
+        "party": "PDP",
+        "votes": 80249,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Lagos",
+    "year": 2023,
+    "district": "Lagos West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Lagos_State",
+    "candidates": [
+      {
+        "name": "Oluranti Adebule",
+        "party": "APC",
+        "votes": 361296,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Segun Adewale",
+        "party": "PDP",
+        "votes": 248653,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Nasarawa",
+    "year": 2023,
+    "district": "Nasarawa North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Nasarawa_State",
+    "candidates": [
+      {
+        "name": "Godiya Akwashiki",
+        "party": "SDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Danladi Halilu Envulu'Anza",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Nasarawa",
+    "year": 2023,
+    "district": "Nasarawa South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Nasarawa_State",
+    "candidates": [
+      {
+        "name": "Mohammed Ogoshi Onawo",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Umaru Tanko Al-Makura",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Nasarawa",
+    "year": 2023,
+    "district": "Nasarawa West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Nasarawa_State",
+    "candidates": [
+      {
+        "name": "Ahmed Aliyu Wadada",
+        "party": "SDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Umar Galadima",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Niger",
+    "year": 2023,
+    "district": "Niger East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Niger_State",
+    "candidates": [
+      {
+        "name": "Mohammed Sani Musa",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ibrahim Isiyaku",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Niger",
+    "year": 2023,
+    "district": "Niger North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Niger_State",
+    "candidates": [
+      {
+        "name": "Abubakar Sani Bello",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abdullahi Shehu Mohammed",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Niger",
+    "year": 2023,
+    "district": "Niger South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Niger_State",
+    "candidates": [
+      {
+        "name": "Peter Ndalikali Jiya",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Muhammad Bima Enagi",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ogun",
+    "year": 2023,
+    "district": "Ogun Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ogun_State",
+    "candidates": [
+      {
+        "name": "Shuaibu Isa Lau",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "David Olumide Aderinokun",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ogun",
+    "year": 2023,
+    "district": "Ogun East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ogun_State",
+    "candidates": [
+      {
+        "name": "Gbenga Daniel",
+        "party": "APC",
+        "votes": 115147,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Dapo Oladapo Salako",
+        "party": "PDP",
+        "votes": 58708,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ogun",
+    "year": 2023,
+    "district": "Ogun West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ogun_State",
+    "candidates": [
+      {
+        "name": "Solomon Olamilekan Adeola",
+        "party": "APC",
+        "votes": 112887,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ganiyu Adeleke Dada",
+        "party": "PDP",
+        "votes": 60189,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ondo",
+    "year": 2023,
+    "district": "Ondo Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ondo_State",
+    "candidates": [
+      {
+        "name": "Adeniyi Adegbonmire",
+        "party": "APC",
+        "votes": 103871,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ifedayo Adedipe",
+        "party": "PDP",
+        "votes": 74702,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ondo",
+    "year": 2023,
+    "district": "Ondo North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ondo_State",
+    "candidates": [
+      {
+        "name": "Jide Ipinsagba",
+        "party": "APC",
+        "votes": 115933,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Adetokunbo Modupe",
+        "party": "PDP",
+        "votes": 48842,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Ondo",
+    "year": 2023,
+    "district": "Ondo South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Ondo_State",
+    "candidates": [
+      {
+        "name": "Jimoh Ibrahim",
+        "party": "APC",
+        "votes": 110665,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Agboola Ajayi",
+        "party": "PDP",
+        "votes": 65784,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Osun",
+    "year": 2023,
+    "district": "Osun Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Osun_State",
+    "candidates": [
+      {
+        "name": "Olubiyi Fadeyi",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ajibola Basiru",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Osun",
+    "year": 2023,
+    "district": "Osun East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Osun_State",
+    "candidates": [
+      {
+        "name": "Francis Adenigba Fadahunsi",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ajibola Famurewa",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Osun",
+    "year": 2023,
+    "district": "Osun West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Osun_State",
+    "candidates": [
+      {
+        "name": "Lere Oyewumi",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Raheem Amidu Tadese",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Oyo",
+    "year": 2023,
+    "district": "Oyo Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Oyo_State",
+    "candidates": [
+      {
+        "name": "Yunus Akintunde",
+        "party": "APC",
+        "votes": 108776,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bisi Ilaka",
+        "party": "PDP",
+        "votes": 101213,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Faozey Nurudeen",
+        "party": "Accord",
+        "votes": 41743,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Oyo",
+    "year": 2023,
+    "district": "Oyo North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Oyo_State",
+    "candidates": [
+      {
+        "name": "Abdulfatai Buhari",
+        "party": "APC",
+        "votes": 90078,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Akinwale Akinwole",
+        "party": "PDP",
+        "votes": 77034,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Oyo",
+    "year": 2023,
+    "district": "Oyo South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Oyo_State",
+    "candidates": [
+      {
+        "name": "Sharafadeen Alli",
+        "party": "APC",
+        "votes": 111513,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Joseph Olasunkanmi Tegbe",
+        "party": "PDP",
+        "votes": 92481,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Plateau",
+    "year": 2023,
+    "district": "Plateau Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Plateau_State",
+    "candidates": [
+      {
+        "name": "Diket Plang",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "G. Y. Gotom",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Plateau",
+    "year": 2023,
+    "district": "Plateau North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Plateau_State",
+    "candidates": [
+      {
+        "name": "Simon Mwadkwon",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Chris Giwa",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Plateau",
+    "year": 2023,
+    "district": "Plateau South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Plateau_State",
+    "candidates": [
+      {
+        "name": "Napoleon Bali",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Simon Lalong",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Rivers",
+    "year": 2023,
+    "district": "Rivers East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Rivers_State",
+    "candidates": [
+      {
+        "name": "Allwell Onyesoh",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bisi Nwankwo",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Rivers",
+    "year": 2023,
+    "district": "Rivers South-East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Rivers_State",
+    "candidates": [
+      {
+        "name": "Barry Mpigi",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Oji N. Ngofa",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Rivers",
+    "year": 2023,
+    "district": "Rivers West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Rivers_State",
+    "candidates": [
+      {
+        "name": "Ipalibo Banigo",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Asita O. Asita",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Sokoto",
+    "year": 2023,
+    "district": "Sokoto East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Sokoto_State",
+    "candidates": [
+      {
+        "name": "Ibrahim Gobir",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Shu'aibu Gwanda Gobir",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Sokoto",
+    "year": 2023,
+    "district": "Sokoto North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Sokoto_State",
+    "candidates": [
+      {
+        "name": "Aliyu Magatakarda Wamakko",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Manir Dan Iya",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Sokoto",
+    "year": 2023,
+    "district": "Sokoto South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Sokoto_State",
+    "candidates": [
+      {
+        "name": "Aminu Waziri Tambuwal",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ibrahim Abdullahi Danbaba",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Taraba",
+    "year": 2023,
+    "district": "Taraba Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Taraba_State",
+    "candidates": [
+      {
+        "name": "Haruna Manu",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bashir Marafa",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Taraba",
+    "year": 2023,
+    "district": "Taraba North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Taraba_State",
+    "candidates": [
+      {
+        "name": "Shuaibu Isa Lau",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Abubakar Danladi Sani",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Taraba",
+    "year": 2023,
+    "district": "Taraba South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Taraba_State",
+    "candidates": [
+      {
+        "name": "David Jimkuta",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Darius Dickson Ishaku",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Yobe",
+    "year": 2023,
+    "district": "Yobe East",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Yobe_State",
+    "candidates": [
+      {
+        "name": "Ibrahim Gaidam",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Aji Kolomi",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Yobe",
+    "year": 2023,
+    "district": "Yobe North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Yobe_State",
+    "candidates": [
+      {
+        "name": "Ahmad Lawan",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ilu Bello",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Yobe",
+    "year": 2023,
+    "district": "Yobe South",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Yobe_State",
+    "candidates": [
+      {
+        "name": "Ibrahim Mohammed Bomai",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Halilu Abubakar Mazagane",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Zamfara",
+    "year": 2023,
+    "district": "Zamfara Central",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Zamfara_State",
+    "candidates": [
+      {
+        "name": "Ikra Aliyu Bilbis",
+        "party": "PDP",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Kabir Garba Marafa",
+        "party": "APC",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Zamfara",
+    "year": 2023,
+    "district": "Zamfara North",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Zamfara_State",
+    "candidates": [
+      {
+        "name": "Sahabi Yau",
+        "party": "APC",
+        "votes": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bala Mande",
+        "party": "PDP",
+        "votes": null,
+        "position": 2,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Senate",
+    "state": "Zamfara",
+    "year": 2023,
+    "district": "Zamfara West",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_Senate_elections_in_Zamfara_State",
+    "candidates": [
+      {
+        "name": "Abdulaziz Abubakar Yari",
+        "party": "APC",
+        "votes": 147346,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Muhammed Bello Sarkin-Fagon",
+        "party": "PDP",
+        "votes": 5583,
+        "position": 2,
+        "won": false
+      }
+    ]
+  }
+]

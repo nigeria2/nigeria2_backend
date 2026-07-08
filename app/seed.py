@@ -483,6 +483,37 @@ def seed_governors_history(db: Session) -> int:
     return n
 
 
+def seed_senate_2023(db: Session) -> int:
+    """Load the mined 2023 Senate results: one party-history row per candidate
+    (winners AND losers), find-or-creating a politician for each. Where Wikipedia
+    lists vote tallies they are stored; where not, the run is recorded with 0 votes
+    (so it shows the contest without inflating vote-pull)."""
+    path = _ELECTIONS_DIR / "senate_2023.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(PartyHistory).where(PartyHistory.year == "2023", PartyHistory.election_type == "senate")):
+        return 0
+    cache: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        cache[(p.name.strip().lower(), p.state)] = p
+    n = 0
+    for elec in json.loads(path.read_text(encoding="utf-8")):
+        state = elec["state"]
+        district = elec.get("district", "")
+        for c in elec.get("candidates", []):
+            won = c.get("position") == 1
+            title = f"Senator-elect, {district}" if won else f"2023 Senate candidate, {district}"
+            pol = _find_or_create_politician(db, cache, c["name"], state, c.get("party", ""), title)
+            db.add(PartyHistory(
+                politician_id=pol.id, politician_name=c["name"].strip(), party=c.get("party", ""), state=state,
+                year="2023", election_type="senate", votes=c.get("votes") or 0, position=c.get("position") or 0,
+                percent=c.get("percent"), constituency=district,
+            ))
+            n += 1
+    db.commit()
+    return n
+
+
 def seed_governors_current(db: Session) -> int:
     """Seed current (incumbent) governors + link/create a politician for each."""
     path = _ELECTIONS_DIR / "governors_current.json"
