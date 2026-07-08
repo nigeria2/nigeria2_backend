@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, State, StatePrediction, Ward, WardResult
+from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
+from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
@@ -392,6 +393,36 @@ def seed_party_history(db: Session) -> int:
                 year="2019", election_type="governor", votes=g["votes"], position=g["position"],
             ))
             n += 1
+    db.commit()
+    return n
+
+
+def seed_senators(db: Session) -> int:
+    """Seed the 10th National Assembly senators (2023-2027). Each senator is also
+    surfaced as a politician (find-or-create by name + state) so they appear on
+    state pages and the politicians board."""
+    if db.scalar(select(func.count()).select_from(Senator)):
+        return 0
+    existing: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        existing[(p.name.strip().lower(), p.state)] = p
+    n = 0
+    for s in SENATORS:
+        name = s["name"].strip()
+        key = (name.lower(), s["state"])
+        pol = existing.get(key)
+        if pol is None:
+            title = s.get("leadership") or f"Senator, {s['state']} {s['district']}"
+            pol = Politician(name=name, state=s["state"], party=s.get("party", ""), title=title)
+            db.add(pol)
+            db.flush()
+            existing[key] = pol
+        db.add(Senator(
+            name=name, state=s["state"], district=s["district"], party=s.get("party", ""),
+            gender=s.get("gender") or "", age=s.get("age"), terms=s.get("terms"),
+            leadership=s.get("leadership") or "", politician_id=pol.id,
+        ))
+        n += 1
     db.commit()
     return n
 

@@ -226,6 +226,23 @@ class WardResult(Base):
     runner_up: Mapped[str] = mapped_column(String(20), default="")
 
 
+class Senator(Base):
+    """A member of the Senate (10th National Assembly, 2023-2027)."""
+
+    __tablename__ = "senators"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    district: Mapped[str] = mapped_column(String(60))  # senatorial district (e.g. "Central")
+    party: Mapped[str] = mapped_column(String(20), default="")
+    gender: Mapped[str] = mapped_column(String(12), default="")
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    terms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    leadership: Mapped[str] = mapped_column(String(60), default="")  # e.g. "Senate President"
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class Ward(Base):
     """An electoral ward with its coordinates."""
 

@@ -27,6 +27,7 @@ from .models import (
     PoliticianPhoto,
     Prediction,
     ProblemUnit,
+    Senator,
     State,
     StatePrediction,
     User,
@@ -58,6 +59,7 @@ from .seed import (
     seed_predictions,
     seed_problem_units,
     seed_polling_units,
+    seed_senators,
     seed_state_predictions,
     seed_states,
     seed_ward_results,
@@ -119,6 +121,9 @@ async def lifespan(app: FastAPI):
                 ph = seed_party_history(db)
                 if ph:
                     print(f"[startup] seeded {ph} party-history rows")
+                sen = seed_senators(db)
+                if sen:
+                    print(f"[startup] seeded {sen} senators")
                 wd = seed_wards(db)
                 if wd:
                     print(f"[startup] seeded {wd} wards")
@@ -133,7 +138,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.24.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.25.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -419,6 +424,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         select(PartyHistory).where(PartyHistory.state == state, PartyHistory.election_type == "governor").order_by(PartyHistory.position)
     ).all()
     ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
+    senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
     return {
         "state": state,
         "facts": facts,
@@ -427,7 +433,22 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "politicians": [politician_to_dict(x, pol_assess.get(x.id, [])) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
         "governor_2019": [{"name": g.politician_name, "party": g.party, "votes": g.votes, "position": g.position, "politician_id": g.politician_id} for g in gov],
+        "senators": [_senator_dict(s) for s in senators],
     }
+
+
+def _senator_dict(s: Senator) -> dict:
+    return {
+        "id": s.id, "name": s.name, "state": s.state, "district": s.district, "party": s.party,
+        "gender": s.gender or None, "age": s.age, "terms": s.terms,
+        "leadership": s.leadership or None, "politician_id": s.politician_id,
+    }
+
+
+@app.get("/api/senators")
+def list_senators(db: Session = Depends(get_db)):
+    rows = db.scalars(select(Senator).order_by(Senator.state, Senator.district)).all()
+    return [_senator_dict(s) for s in rows]
 
 
 @app.get("/api/states/{state}/wards")
