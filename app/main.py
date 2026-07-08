@@ -152,7 +152,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.27.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.28.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -404,10 +404,31 @@ def _assess_agg(assessments: list) -> dict:
     }
 
 
-def politician_to_dict(p: Politician, assessments: list) -> dict:
+def politician_to_dict(p: Politician, assessments: list, runs: list | None = None) -> dict:
     d = {"id": p.id, "name": p.name, "state": p.state, "title": p.title, "party": p.party, "note": p.note, "photo": p.photo or ""}
     d.update(_assess_agg(assessments))
+    runs = runs or []
+    voted = [r for r in runs if r.votes]
+    best = max(voted, key=lambda r: r.votes) if voted else None
+    d["max_votes"] = best.votes if best else None
+    d["best_run"] = (
+        {"year": best.year, "election_type": best.election_type, "votes": best.votes, "percent": best.percent, "party": best.party}
+        if best else None
+    )
+    d["runs_count"] = len(voted)
     return d
+
+
+def _runs_map(db: Session, pol_ids: list[int]) -> dict[int, list]:
+    """Map politician_id -> their PartyHistory rows (election runs), oldest first."""
+    out: dict[int, list] = defaultdict(list)
+    if not pol_ids:
+        return out
+    for h in db.scalars(
+        select(PartyHistory).where(PartyHistory.politician_id.in_(pol_ids)).order_by(PartyHistory.year)
+    ).all():
+        out[h.politician_id].append(h)
+    return out
 
 
 @app.get("/api/states/{state}")
@@ -421,6 +442,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     if pols:
         for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
             pol_assess[a.politician_id].append(a)
+    pol_runs = _runs_map(db, [p.id for p in pols])
     st = db.scalar(select(State).where(State.name == state))
     facts = None
     if st is not None:
@@ -451,7 +473,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "facts": facts,
         "ward_count": ward_count,
         "predictions": [_public_prediction_dict(p) for p in preds],
-        "politicians": [politician_to_dict(x, pol_assess.get(x.id, [])) for x in pols],
+        "politicians": [politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, [])) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
@@ -568,7 +590,8 @@ def list_politicians(db: Session = Depends(get_db)):
     by_pol: dict[int, list] = defaultdict(list)
     for a in db.scalars(select(PoliticianAssessment)).all():
         by_pol[a.politician_id].append(a)
-    return [politician_to_dict(p, by_pol.get(p.id, [])) for p in pols]
+    runs = _runs_map(db, [p.id for p in pols])
+    return [politician_to_dict(p, by_pol.get(p.id, []), runs.get(p.id, [])) for p in pols]
 
 
 @app.get("/api/politicians/{pid}")
@@ -579,7 +602,10 @@ def politician_detail(pid: int, db: Session = Depends(get_db)):
     assessments = db.scalars(
         select(PoliticianAssessment).where(PoliticianAssessment.politician_id == pid).order_by(PoliticianAssessment.created_at.desc())
     ).all()
-    d = politician_to_dict(p, assessments)
+    ph = db.scalars(
+        select(PartyHistory).where(PartyHistory.politician_id == pid).order_by(PartyHistory.year.desc(), PartyHistory.position)
+    ).all()
+    d = politician_to_dict(p, assessments, ph)
     d["assessment_list"] = [
         {
             "author_name": a.author_name,
@@ -590,11 +616,9 @@ def politician_detail(pid: int, db: Session = Depends(get_db)):
         }
         for a in assessments
     ]
-    ph = db.scalars(
-        select(PartyHistory).where(PartyHistory.politician_id == pid).order_by(PartyHistory.year.desc(), PartyHistory.position)
-    ).all()
     d["party_history"] = [
-        {"party": h.party, "state": h.state, "year": h.year, "election_type": h.election_type, "votes": h.votes, "position": h.position}
+        {"party": h.party, "state": h.state, "year": h.year, "election_type": h.election_type,
+         "votes": h.votes, "percent": h.percent, "position": h.position, "running_mate": h.running_mate or None}
         for h in ph
     ]
     return d
