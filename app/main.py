@@ -61,6 +61,7 @@ from .seed import (
     seed_governors_current,
     seed_governors_history,
     seed_house_members,
+    seed_presidential_2023,
     seed_senate_2023,
     seed_lga_results,
     seed_lgas,
@@ -149,6 +150,9 @@ async def lifespan(app: FastAPI):
                 s23 = seed_senate_2023(db)
                 if s23:
                     print(f"[startup] seeded {s23} 2023 senate candidate results")
+                p23 = seed_presidential_2023(db)
+                if p23:
+                    print(f"[startup] seeded {p23} 2023 presidential candidates")
                 gov = seed_governors_current(db)
                 if gov:
                     print(f"[startup] seeded {gov} current governors")
@@ -178,7 +182,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.31.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.32.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

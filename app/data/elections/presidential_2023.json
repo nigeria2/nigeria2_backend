@@ -1,0 +1,18 @@
+{
+  "election": {
+    "office": "President",
+    "year": 2023,
+    "date": "2023-02-25",
+    "registered_voters": 93469008,
+    "total_valid_votes": 24377466,
+    "winner_party": "APC",
+    "source": "https://en.wikipedia.org/wiki/2023_Nigerian_presidential_election",
+    "_note": "Top-4 candidates only; Wikipedia's full candidate table and by-state breakdown are beyond the fetch tool's page limit."
+  },
+  "candidates": [
+    { "name": "Bola Tinubu", "party": "APC", "home_state": "Lagos", "running_mate": "Kashim Shettima", "running_mate_state": "Borno", "votes": 8794726, "percent": 36.61, "position": 1, "won": true },
+    { "name": "Atiku Abubakar", "party": "PDP", "home_state": "Adamawa", "running_mate": "Ifeanyi Okowa", "running_mate_state": "Delta", "votes": 6984520, "percent": 29.07, "position": 2, "won": false },
+    { "name": "Peter Obi", "party": "LP", "home_state": "Anambra", "running_mate": "Yusuf Datti Baba-Ahmed", "running_mate_state": "Kaduna", "votes": 6101533, "percent": 25.40, "position": 3, "won": false },
+    { "name": "Rabiu Kwankwaso", "party": "NNPP", "home_state": "Kano", "running_mate": "Isaac Idahosa", "running_mate_state": "Edo", "votes": 1496687, "percent": 6.40, "position": 4, "won": false }
+  ]
+}

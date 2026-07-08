@@ -483,6 +483,40 @@ def seed_governors_history(db: Session) -> int:
     return n
 
 
+def seed_presidential_2023(db: Session) -> int:
+    """Seed the 2023 presidential result as national politician runs. Each of the
+    four candidates is find-or-created (so Obi/Kwankwaso attach to their existing
+    governor profiles) and gets a presidential PartyHistory row with their national
+    vote total. Running mates are recorded as politicians too (significant national
+    figures)."""
+    path = _ELECTIONS_DIR / "presidential_2023.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(PartyHistory).where(PartyHistory.year == "2023", PartyHistory.election_type == "presidential")):
+        return 0
+    cache: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        cache[(p.name.strip().lower(), p.state)] = p
+    data = json.loads(path.read_text(encoding="utf-8"))
+    n = 0
+    for c in data.get("candidates", []):
+        state = c["home_state"]
+        title = "Won 2023 presidential election" if c.get("won") else f"2023 Presidential candidate ({c['party']})"
+        pol = _find_or_create_politician(db, cache, c["name"], state, c.get("party", ""), title)
+        db.add(PartyHistory(
+            politician_id=pol.id, politician_name=c["name"].strip(), party=c.get("party", ""), state=state,
+            year="2023", election_type="presidential", votes=c.get("votes") or 0, position=c.get("position") or 0,
+            percent=c.get("percent"), running_mate=c.get("running_mate") or "", constituency="Nigeria (national)",
+        ))
+        n += 1
+        # running mate as a politician too (no separate vote run — shared ticket)
+        rm, rm_state = c.get("running_mate"), c.get("running_mate_state")
+        if rm and rm_state:
+            _find_or_create_politician(db, cache, rm, rm_state, c.get("party", ""), f"2023 Vice-Presidential candidate ({c['party']})")
+    db.commit()
+    return n
+
+
 def seed_house_members(db: Session) -> int:
     """Seed the (partial) 2023-2027 House of Representatives roster. Each member is
     linked to an existing politician when their name already appears (by name or aka,
