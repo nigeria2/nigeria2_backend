@@ -168,6 +168,23 @@ class PartyHistory(Base):
     election_type: Mapped[str] = mapped_column(String(30), default="")
     votes: Mapped[int] = mapped_column(Integer, default=0)
     position: Mapped[int] = mapped_column(Integer, default=0)
+    percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    running_mate: Mapped[str] = mapped_column(String(200), default="")
+
+
+class Governor(Base):
+    """Current (incumbent) state governor."""
+
+    __tablename__ = "governors"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    name: Mapped[str] = mapped_column(String(200))
+    party: Mapped[str] = mapped_column(String(30), default="")
+    party_elected: Mapped[str] = mapped_column(String(30), default="")  # if defected since
+    term_start: Mapped[str] = mapped_column(String(10), default="")
+    term_end: Mapped[str] = mapped_column(String(10), default="")
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class LgaResult(Base):

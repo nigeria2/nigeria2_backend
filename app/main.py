@@ -16,6 +16,7 @@ from .auth import create_token, current_user, require_admin, verify_google_crede
 from .db import SessionLocal, engine, get_db
 from .models import (
     Analysis,
+    Governor,
     InterestedUser,
     LgaResult,
     Party,
@@ -51,6 +52,8 @@ from .schemas import (
 from .seed import (
     BASE,
     seed_analyses,
+    seed_governor_2023_results,
+    seed_governors_current,
     seed_lga_results,
     seed_parties,
     seed_party_elections,
@@ -124,6 +127,12 @@ async def lifespan(app: FastAPI):
                 sen = seed_senators(db)
                 if sen:
                     print(f"[startup] seeded {sen} senators")
+                g23 = seed_governor_2023_results(db)
+                if g23:
+                    print(f"[startup] seeded {g23} 2023 governor candidate results")
+                gov = seed_governors_current(db)
+                if gov:
+                    print(f"[startup] seeded {gov} current governors")
                 wd = seed_wards(db)
                 if wd:
                     print(f"[startup] seeded {wd} wards")
@@ -138,7 +147,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.25.1", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.26.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -423,8 +432,14 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     gov = db.scalars(
         select(PartyHistory).where(PartyHistory.state == state, PartyHistory.election_type == "governor").order_by(PartyHistory.position)
     ).all()
+
+    def _gov_row(g: PartyHistory) -> dict:
+        return {"name": g.politician_name, "party": g.party, "votes": g.votes, "percent": g.percent,
+                "position": g.position, "running_mate": g.running_mate or None, "politician_id": g.politician_id}
+
     ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
     senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
+    incumbent = db.scalar(select(Governor).where(Governor.state == state))
     return {
         "state": state,
         "facts": facts,
@@ -432,8 +447,19 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "predictions": [_public_prediction_dict(p) for p in preds],
         "politicians": [politician_to_dict(x, pol_assess.get(x.id, [])) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
-        "governor_2019": [{"name": g.politician_name, "party": g.party, "votes": g.votes, "position": g.position, "politician_id": g.politician_id} for g in gov],
+        "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
+        "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
         "senators": [_senator_dict(s) for s in senators],
+        "governor": _governor_dict(incumbent) if incumbent else None,
+    }
+
+
+def _governor_dict(g: Governor) -> dict:
+    return {
+        "name": g.name, "state": g.state, "party": g.party,
+        "party_elected": g.party_elected or None,
+        "term_start": g.term_start or None, "term_end": g.term_end or None,
+        "politician_id": g.politician_id,
     }
 
 
@@ -449,6 +475,12 @@ def _senator_dict(s: Senator) -> dict:
 def list_senators(db: Session = Depends(get_db)):
     rows = db.scalars(select(Senator).order_by(Senator.state, Senator.district)).all()
     return [_senator_dict(s) for s in rows]
+
+
+@app.get("/api/governors")
+def list_governors(db: Session = Depends(get_db)):
+    rows = db.scalars(select(Governor).order_by(Governor.state)).all()
+    return [_governor_dict(g) for g in rows]
 
 
 @app.get("/api/states/{state}/wards")

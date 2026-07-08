@@ -1,0 +1,1277 @@
+[
+  {
+    "office": "Governor",
+    "state": "Abia",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2120808,
+    "accredited_voters": null,
+    "total_votes": 358541,
+    "source": "https://en.wikipedia.org/wiki/2023_Abia_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Alex Otti",
+        "party": "LP",
+        "running_mate": "Ikechukwu Emetu",
+        "votes": 175467,
+        "percent": 48.94,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Okey Ahiwe",
+        "party": "PDP",
+        "running_mate": "Jasper Uche",
+        "votes": 88529,
+        "percent": 24.69,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Enyinnaya Nwafor",
+        "party": "YPP",
+        "running_mate": "Chima Anyaso",
+        "votes": 28972,
+        "percent": 8.08,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Ikechi Emenike",
+        "party": "APC",
+        "running_mate": "Gloria Akara",
+        "votes": 24091,
+        "percent": 6.72,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Gregory Ibe",
+        "party": "APGA",
+        "running_mate": "Obinna Ichita",
+        "votes": 18119,
+        "percent": 5.05,
+        "position": 5,
+        "won": false
+      },
+      {
+        "name": "Mascot Kalu",
+        "party": "APP",
+        "running_mate": "Osondu Christopher Akoma",
+        "votes": 11728,
+        "percent": 3.3,
+        "position": 6,
+        "won": false
+      },
+      {
+        "name": "Sunday Onuoha",
+        "party": "ADC",
+        "running_mate": "Glory Ngozi Nwasinmuo",
+        "votes": 2529,
+        "percent": 0.7,
+        "position": 7,
+        "won": false
+      },
+      {
+        "name": "Ukpai Iro Ukpai",
+        "party": "NNPP",
+        "running_mate": "Josiah Tony Chiedozie",
+        "votes": 2068,
+        "percent": 0.57,
+        "position": 8,
+        "won": false
+      },
+      {
+        "name": "Emeka Michael Nwankpa",
+        "party": "A",
+        "running_mate": "Okpere Udo",
+        "votes": 1528,
+        "percent": 0.41,
+        "position": 9,
+        "won": false
+      },
+      {
+        "name": "Lucky Achinihu Ekeji",
+        "party": "BP",
+        "running_mate": "Goodness Ekenma Azuonye",
+        "votes": 1141,
+        "percent": 0.31,
+        "position": 10,
+        "won": false
+      },
+      {
+        "name": "Prince Chibunna Onukwu",
+        "party": "ZLP",
+        "running_mate": "Amobi Eugene Nwosu",
+        "votes": 1011,
+        "percent": 0.28,
+        "position": 11,
+        "won": false
+      },
+      {
+        "name": "Gladys Ikonnaya Ngozika Johnson-Ogbuneke",
+        "party": "SDP",
+        "running_mate": "Damian Ifeanyichukwu Dicson",
+        "votes": 773,
+        "percent": 0.21,
+        "position": 12,
+        "won": false
+      },
+      {
+        "name": "Chibuike Jonas",
+        "party": "ADP",
+        "running_mate": "Ifeoma Stella Okoya-Thomas",
+        "votes": 601,
+        "percent": 0.16,
+        "position": 13,
+        "won": false
+      },
+      {
+        "name": "Anyim Uguru Chikezie",
+        "party": "APM",
+        "running_mate": "Oliver Chinnendu Sunday",
+        "votes": 572,
+        "percent": 0.15,
+        "position": 14,
+        "won": false
+      },
+      {
+        "name": "Wilson Kalu Akuma",
+        "party": "AA",
+        "running_mate": "Gilead Nwanganga",
+        "votes": 474,
+        "percent": 0.13,
+        "position": 15,
+        "won": false
+      },
+      {
+        "name": "Ijeoma Kalu",
+        "party": "NRM",
+        "running_mate": "Nnamdi Chika Ireaja Eze",
+        "votes": 472,
+        "percent": 0.13,
+        "position": 16,
+        "won": false
+      },
+      {
+        "name": "Bond Ohuche",
+        "party": "AAC",
+        "running_mate": "Princewill Chidiebere Ekeke",
+        "votes": 298,
+        "percent": 0.08,
+        "position": 17,
+        "won": false
+      },
+      {
+        "name": "Nnenna Ngwa'Mma Lancaster-Okoro",
+        "party": "PRP",
+        "running_mate": "Martin Chibuike Nwakanma",
+        "votes": 168,
+        "percent": 0.04,
+        "position": 18,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Governor",
+    "state": "Adamawa",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2196566,
+    "accredited_voters": 876387,
+    "total_votes": 853819,
+    "source": "https://en.wikipedia.org/wiki/2023_Adamawa_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Ahmadu Umaru Fintiri",
+        "party": "PDP",
+        "running_mate": "Kaletapwa Farauta",
+        "votes": 430861,
+        "percent": 50.46,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Aishatu Dahiru Ahmed",
+        "party": "APC",
+        "running_mate": "Titsi Ganama",
+        "votes": 398788,
+        "percent": 46.71,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Akwa Ibom",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2357418,
+    "accredited_voters": null,
+    "total_votes": 644212,
+    "source": "https://en.wikipedia.org/wiki/2023_Akwa_Ibom_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Umo Eno",
+        "party": "PDP",
+        "running_mate": "Akon Eyakenyi",
+        "votes": 354348,
+        "percent": 55.02,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bassey Albert Akpan",
+        "party": "YPP",
+        "running_mate": "Asuquo Amba",
+        "votes": 136262,
+        "percent": 21.16,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Akanimo Udofia",
+        "party": "APC",
+        "running_mate": "Victor Antai",
+        "votes": 129602,
+        "percent": 20.12,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Bauchi",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2749268,
+    "accredited_voters": 1058381,
+    "total_votes": 1034379,
+    "source": "https://en.wikipedia.org/wiki/2023_Bauchi_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Bala Mohammed",
+        "party": "PDP",
+        "running_mate": "Muhammad Auwal Jatau",
+        "votes": 525280,
+        "percent": 50.78,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Sadique Abubakar",
+        "party": "APC",
+        "running_mate": "Shehu Aliyu Musa",
+        "votes": 432272,
+        "percent": 41.79,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Halliru Dauda Jika",
+        "party": "NNPP",
+        "running_mate": "Dahuwa Mohammed Gadauji",
+        "votes": 60496,
+        "percent": 5.85,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Other candidates",
+        "party": "Others",
+        "running_mate": null,
+        "votes": 16331,
+        "percent": 1.58,
+        "position": 4,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Governor",
+    "state": "Benue",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2777727,
+    "accredited_voters": null,
+    "total_votes": 756903,
+    "source": "https://en.wikipedia.org/wiki/2023_Benue_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Hyacinth Alia",
+        "party": "APC",
+        "running_mate": "Samuel Ode",
+        "votes": 473933,
+        "percent": 62.61,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Titus Uba",
+        "party": "PDP",
+        "running_mate": "John Ngbede",
+        "votes": 223913,
+        "percent": 29.58,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Herman Hembe",
+        "party": "LP",
+        "running_mate": "Christopher Onyiloyi Idu",
+        "votes": 41881,
+        "percent": 5.53,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Bem Reuben Angwe",
+        "party": "NNPP",
+        "running_mate": "Comfort Ogbaji",
+        "votes": null,
+        "percent": null,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Joseph Waya",
+        "party": "APGA",
+        "running_mate": "Uhwana Isaac Ode",
+        "votes": null,
+        "percent": null,
+        "position": 5,
+        "won": false
+      },
+      {
+        "name": "Terhemen Tilley-Gyado",
+        "party": "ADC",
+        "running_mate": "Sunday Okoh",
+        "votes": null,
+        "percent": null,
+        "position": 6,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Borno",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2513281,
+    "accredited_voters": null,
+    "total_votes": 634690,
+    "source": "https://en.wikipedia.org/wiki/2023_Borno_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Babagana Umara Zulum",
+        "party": "APC",
+        "running_mate": "Umar Usman Kadafur",
+        "votes": 545543,
+        "percent": 86.1,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Mohammed Ali Jajari",
+        "party": "PDP",
+        "running_mate": "Saleh Ahmed Kida",
+        "votes": 82147,
+        "percent": 12.96,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Cross River",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 1766466,
+    "accredited_voters": null,
+    "total_votes": 451933,
+    "source": "https://en.wikipedia.org/wiki/2023_Cross_River_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Bassey Otu",
+        "party": "APC",
+        "running_mate": "Peter Odey",
+        "votes": 258619,
+        "percent": 57.23,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Sandy Ojang Onor",
+        "party": "PDP",
+        "running_mate": "Emana Ambrose-Amawhe",
+        "votes": 179636,
+        "percent": 39.75,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Delta",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 3221697,
+    "accredited_voters": null,
+    "total_votes": 671737,
+    "source": "https://en.wikipedia.org/wiki/2023_Delta_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Sheriff Oborevwori",
+        "party": "PDP",
+        "running_mate": "Monday John Onyeme",
+        "votes": 360234,
+        "percent": 53.63,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ovie Omo-Agege",
+        "party": "APC",
+        "running_mate": "Friday Osanebi",
+        "votes": 240229,
+        "percent": 35.76,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Kennedy Kawhariebie Pela",
+        "party": "LP",
+        "running_mate": "Julie Nwabogo Efemena Umukoro",
+        "votes": 48027,
+        "percent": 7.15,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Great Ogboru",
+        "party": "APGA",
+        "running_mate": "Chinedu Sydney Allanah",
+        "votes": null,
+        "percent": null,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Kenneth Gbagi",
+        "party": "SDP",
+        "running_mate": "Ishoma Rosemary Oshilim",
+        "votes": null,
+        "percent": null,
+        "position": 5,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Ebonyi",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 1597646,
+    "accredited_voters": null,
+    "total_votes": 343512,
+    "source": "https://en.wikipedia.org/wiki/2023_Ebonyi_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Francis Nwifuru",
+        "party": "APC",
+        "running_mate": "Patricia Obila",
+        "votes": 199131,
+        "percent": 58.13,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ifeanyi Odii",
+        "party": "PDP",
+        "running_mate": "Paulinus Igwe Nwagu",
+        "votes": 80191,
+        "percent": 23.41,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Bernard Odoh",
+        "party": "APGA",
+        "running_mate": "Nkata Chuku",
+        "votes": 52189,
+        "percent": 15.24,
+        "position": 3,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Governor",
+    "state": "Enugu",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2112793,
+    "accredited_voters": null,
+    "total_votes": 358463,
+    "source": "https://en.wikipedia.org/wiki/2023_Enugu_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Peter Mbah",
+        "party": "PDP",
+        "running_mate": "Ifeanyi Ossai",
+        "votes": 160895,
+        "percent": 44.88,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Chijioke Edeoga",
+        "party": "LP",
+        "running_mate": "John Nwokeabia",
+        "votes": 157552,
+        "percent": 43.95,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Frank Nweke",
+        "party": "APGA",
+        "running_mate": "Edith Ugwuanyi",
+        "votes": 17983,
+        "percent": 5.02,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Uche Nnaji",
+        "party": "APC",
+        "running_mate": "George Ogara",
+        "votes": 14575,
+        "percent": 4.07,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Other candidates",
+        "party": "Others",
+        "running_mate": null,
+        "votes": 7458,
+        "percent": 2.08,
+        "position": 5,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Governor",
+    "state": "Gombe",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 1575794,
+    "accredited_voters": null,
+    "total_votes": 605355,
+    "source": "https://en.wikipedia.org/wiki/2023_Gombe_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Muhammad Inuwa Yahaya",
+        "party": "APC",
+        "running_mate": "Manasseh Daniel Jatau",
+        "votes": 342821,
+        "percent": 56.63,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Mohammed Jibrin Barde",
+        "party": "PDP",
+        "running_mate": "Timothy Danlele",
+        "votes": 233131,
+        "percent": 38.51,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Jigawa",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2351298,
+    "accredited_voters": null,
+    "total_votes": 1032175,
+    "source": "https://en.wikipedia.org/wiki/2023_Jigawa_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Umar Namadi",
+        "party": "APC",
+        "running_mate": "Aminu Usman",
+        "votes": 618449,
+        "percent": 59.89,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Mustapha Sule Lamido",
+        "party": "PDP",
+        "running_mate": "Babandi Ibrahim Gumel",
+        "votes": 368726,
+        "percent": 35.71,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Aminu Ibrahim Ringim",
+        "party": "NNPP",
+        "running_mate": "Abdulaziz Usman",
+        "votes": null,
+        "percent": null,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Kaduna",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 4335208,
+    "accredited_voters": null,
+    "total_votes": 1547481,
+    "source": "https://en.wikipedia.org/wiki/2023_Kaduna_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Uba Sani",
+        "party": "APC",
+        "running_mate": "Hadiza Sabuwa Balarabe",
+        "votes": 730002,
+        "percent": 47.2,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Isa Ashiru",
+        "party": "PDP",
+        "running_mate": "John Ayuba",
+        "votes": 719196,
+        "percent": 46.49,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Jonathan Asake",
+        "party": "LP",
+        "running_mate": "Bashir Idris Aliyu",
+        "votes": 58283,
+        "percent": 3.77,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Kano",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 5921370,
+    "accredited_voters": null,
+    "total_votes": 1976607,
+    "source": "https://en.wikipedia.org/wiki/2023_Kano_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Abba Kabir Yusuf",
+        "party": "NNPP",
+        "running_mate": "Aminu Abdussalam Gwarzo",
+        "votes": 1019602,
+        "percent": 51.55,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Nasir Yusuf Gawuna",
+        "party": "APC",
+        "running_mate": "Murtala Sule Garo",
+        "votes": 890705,
+        "percent": 45.03,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Sadiq Wali",
+        "party": "PDP",
+        "running_mate": "Yusuf Bello Dambatta",
+        "votes": 15957,
+        "percent": 0.81,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Sha'aban Ibrahim Sharada",
+        "party": "ADP",
+        "running_mate": "Rabiu Ahmad Bako",
+        "votes": 12832,
+        "percent": 0.65,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Khalid Ibrahim Idris",
+        "party": "ADC",
+        "running_mate": "Aminu A. Anas",
+        "votes": 9500,
+        "percent": 0.48,
+        "position": 5,
+        "won": false
+      },
+      {
+        "name": "Salihu Tanko Yakasai",
+        "party": "PRP",
+        "running_mate": "Shazali Muhammad",
+        "votes": 2183,
+        "percent": 0.11,
+        "position": 6,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Governor",
+    "state": "Katsina",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 3516719,
+    "accredited_voters": null,
+    "total_votes": 1365848,
+    "source": "https://en.wikipedia.org/wiki/2023_Katsina_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Dikko Umar Radda",
+        "party": "APC",
+        "running_mate": "Faruk Lawal Jobe",
+        "votes": 859892,
+        "percent": 62.96,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Garba Yakubu Lado",
+        "party": "PDP",
+        "running_mate": "Ahmed Aminu Yar'Adua",
+        "votes": 486620,
+        "percent": 35.63,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Kebbi",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2032041,
+    "accredited_voters": null,
+    "total_votes": 780165,
+    "source": "https://en.wikipedia.org/wiki/2023_Kebbi_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Nasir Idris",
+        "party": "APC",
+        "running_mate": "Abubakar Umar Argungu",
+        "votes": 409225,
+        "percent": 52.37,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Aminu Bande",
+        "party": "PDP",
+        "running_mate": "Samaila Salihu Bui",
+        "votes": 360940,
+        "percent": 46.19,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Kwara",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 1695927,
+    "accredited_voters": null,
+    "total_votes": 460497,
+    "source": "https://en.wikipedia.org/wiki/2023_Kwara_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "AbdulRahman AbdulRazaq",
+        "party": "APC",
+        "running_mate": "Kayode Alabi",
+        "votes": 273424,
+        "percent": 59.38,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Shuaib Yaman Abdullahi",
+        "party": "PDP",
+        "running_mate": "Gbenga Peter Makanjuola",
+        "votes": 155490,
+        "percent": 33.77,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Hakeem Lawal",
+        "party": "SDP",
+        "running_mate": "Joshua Olayinka Olakunle",
+        "votes": 18922,
+        "percent": 4.11,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Other candidates",
+        "party": "Others",
+        "running_mate": null,
+        "votes": 12661,
+        "percent": 2.75,
+        "position": 4,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Governor",
+    "state": "Lagos",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 7060195,
+    "accredited_voters": null,
+    "total_votes": 1158506,
+    "source": "https://en.wikipedia.org/wiki/2023_Lagos_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Babajide Sanwo-Olu",
+        "party": "APC",
+        "running_mate": "Femi Hamzat",
+        "votes": 762134,
+        "percent": 65.95,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Gbadebo Rhodes-Vivour",
+        "party": "LP",
+        "running_mate": "Abiodun Oyefusi",
+        "votes": 312329,
+        "percent": 27.03,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Abdul-Azeez Olajide Adediran",
+        "party": "PDP",
+        "running_mate": "Funke Akindele",
+        "votes": 62449,
+        "percent": 5.4,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Nasarawa",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 1899244,
+    "accredited_voters": null,
+    "total_votes": 653818,
+    "source": "https://en.wikipedia.org/wiki/2023_Nasarawa_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Abdullahi Sule",
+        "party": "APC",
+        "running_mate": "Emmanuel Agbadu Akabe",
+        "votes": 347209,
+        "percent": 53.1,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "David Ombugadu",
+        "party": "PDP",
+        "running_mate": "Yahaya Usman-Ohinoyi",
+        "votes": 283016,
+        "percent": 43.28,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Niger",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2698344,
+    "accredited_voters": null,
+    "total_votes": 873372,
+    "source": "https://en.wikipedia.org/wiki/2023_Niger_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Mohammed Umar Bago",
+        "party": "APC",
+        "running_mate": "Yakubu Garba",
+        "votes": 469896,
+        "percent": 53.82,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Isah Liman Kantigi",
+        "party": "PDP",
+        "running_mate": "Samuel Gomna",
+        "votes": 387476,
+        "percent": 44.38,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Ogun",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2688305,
+    "accredited_voters": null,
+    "total_votes": 645275,
+    "source": "https://en.wikipedia.org/wiki/2023_Ogun_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Dapo Abiodun",
+        "party": "APC",
+        "running_mate": "Noimot Salako-Oyedele",
+        "votes": 276298,
+        "percent": 42.83,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Ladi Adebutu",
+        "party": "PDP",
+        "running_mate": "Adekunle Akinlade",
+        "votes": 262383,
+        "percent": 40.67,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Olubiyi Otegbeye",
+        "party": "ADC",
+        "running_mate": "Olatunde Awonuga",
+        "votes": 94754,
+        "percent": 14.69,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Oyo",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 3276675,
+    "accredited_voters": null,
+    "total_votes": 888798,
+    "source": "https://en.wikipedia.org/wiki/2023_Oyo_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Seyi Makinde",
+        "party": "PDP",
+        "running_mate": "Bayo Lawal",
+        "votes": 563756,
+        "percent": 63.37,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Teslim Folarin",
+        "party": "APC",
+        "running_mate": "David Oluwafemi Okunlola",
+        "votes": 256685,
+        "percent": 28.86,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Adebayo Adelabu",
+        "party": "Accord",
+        "running_mate": "Abiodun Ayanfemi Ayandele",
+        "votes": 38357,
+        "percent": 4.31,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Plateau",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2789528,
+    "accredited_voters": null,
+    "total_votes": 1081309,
+    "source": "https://en.wikipedia.org/wiki/2023_Plateau_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Caleb Mutfwang",
+        "party": "PDP",
+        "running_mate": "Josephine Piyo",
+        "votes": 525299,
+        "percent": 48.62,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Nentawe Yilwatda",
+        "party": "APC",
+        "running_mate": "Pam Bot-mang",
+        "votes": 481400,
+        "percent": 44.55,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Patrick Dakum",
+        "party": "LP",
+        "running_mate": "Edward Gyang Pwajok",
+        "votes": 60310,
+        "percent": 5.58,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Rivers",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 3537190,
+    "accredited_voters": null,
+    "total_votes": 485092,
+    "source": "https://en.wikipedia.org/wiki/2023_Rivers_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Siminalayi Fubara",
+        "party": "PDP",
+        "running_mate": "Ngozi Odu",
+        "votes": 302614,
+        "percent": 62.53,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Tonye Cole",
+        "party": "APC",
+        "running_mate": "Innocent Barikor",
+        "votes": 95274,
+        "percent": 19.69,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Magnus Abe",
+        "party": "SDP",
+        "running_mate": "Patricia Wudhiga Ogbonnaya",
+        "votes": 46981,
+        "percent": 9.71,
+        "position": 3,
+        "won": false
+      },
+      {
+        "name": "Beatrice Itubo",
+        "party": "LP",
+        "running_mate": "Kinanee Barikpoa",
+        "votes": 22224,
+        "percent": 4.59,
+        "position": 4,
+        "won": false
+      },
+      {
+        "name": "Sam Agwor",
+        "party": "NNPP",
+        "running_mate": "Tubonimi Johnson Isokariari",
+        "votes": 335,
+        "percent": 0.07,
+        "position": 5,
+        "won": false
+      }
+    ]
+  },
+  {
+    "office": "Governor",
+    "state": "Sokoto",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2172056,
+    "accredited_voters": null,
+    "total_votes": 864693,
+    "source": "https://en.wikipedia.org/wiki/2023_Sokoto_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Ahmad Aliyu",
+        "party": "APC",
+        "running_mate": "Idris Muhammad Gobir",
+        "votes": 453661,
+        "percent": 52.48,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Saidu Umar",
+        "party": "PDP",
+        "running_mate": "Sagir Bafarawa",
+        "votes": 404632,
+        "percent": 46.81,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Taraba",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 2022374,
+    "accredited_voters": null,
+    "total_votes": null,
+    "source": "https://en.wikipedia.org/wiki/2023_Taraba_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Agbu Kefas",
+        "party": "PDP",
+        "running_mate": "Aminu Abdullahi Alkali",
+        "votes": 302614,
+        "percent": null,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Muhammad Sani Yahaya",
+        "party": "NNPP",
+        "running_mate": "Danladi Yakubu Balutu",
+        "votes": 202277,
+        "percent": null,
+        "position": 2,
+        "won": false
+      },
+      {
+        "name": "Emmanuel Bwacha",
+        "party": "APC",
+        "running_mate": "Iliyasu Kirim",
+        "votes": 142502,
+        "percent": null,
+        "position": 3,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true,
+    "verify": "kefas votes need re-check (matched Rivers figure on first pass)"
+  },
+  {
+    "office": "Governor",
+    "state": "Yobe",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 1485146,
+    "accredited_voters": null,
+    "total_votes": 444574,
+    "source": "https://en.wikipedia.org/wiki/2023_Yobe_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Mai Mala Buni",
+        "party": "APC",
+        "running_mate": "Idi Barde Gubana",
+        "votes": 317113,
+        "percent": 71.33,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Sharif Abdullahi",
+        "party": "PDP",
+        "running_mate": "Abubakar Bashir Sadiq",
+        "votes": 124259,
+        "percent": 27.95,
+        "position": 2,
+        "won": false
+      }
+    ],
+    "incomplete_minor": true
+  },
+  {
+    "office": "Governor",
+    "state": "Zamfara",
+    "year": 2023,
+    "date": "2023-03-18",
+    "registered_voters": 1926870,
+    "accredited_voters": null,
+    "total_votes": 689702,
+    "source": "https://en.wikipedia.org/wiki/2023_Zamfara_State_gubernatorial_election",
+    "candidates": [
+      {
+        "name": "Dauda Lawal",
+        "party": "PDP",
+        "running_mate": "Mani Mallam Mummuni",
+        "votes": 377726,
+        "percent": 54.76,
+        "position": 1,
+        "won": true
+      },
+      {
+        "name": "Bello Matawalle",
+        "party": "APC",
+        "running_mate": "Hassan Nasiha",
+        "votes": 311976,
+        "percent": 45.24,
+        "position": 2,
+        "won": false
+      }
+    ]
+  }
+]

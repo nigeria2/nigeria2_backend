@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
+from .models import Analysis, Governor, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -393,6 +393,83 @@ def seed_party_history(db: Session) -> int:
                 year="2019", election_type="governor", votes=g["votes"], position=g["position"],
             ))
             n += 1
+    db.commit()
+    return n
+
+
+_ELECTIONS_DIR = pathlib.Path(__file__).resolve().parent / "data" / "elections"
+
+
+def _find_or_create_politician(db: Session, cache: dict, name: str, state: str, party: str, title: str) -> Politician:
+    key = (name.strip().lower(), state)
+    pol = cache.get(key)
+    if pol is None:
+        pol = Politician(name=name.strip(), state=state, party=party or "", title=title)
+        db.add(pol)
+        db.flush()
+        cache[key] = pol
+    return pol
+
+
+def _gov_run_title(office: str, year: int, position: int) -> str:
+    rank = "Won" if position == 1 else ("runner-up" if position == 2 else "candidate")
+    if position == 1:
+        return f"Won {year} {office.lower()}ship"
+    return f"{year} {office.lower()}ship {rank}"
+
+
+def seed_governor_2023_results(db: Session) -> int:
+    """Load the mined 2023 gubernatorial results: one party-history row per
+    candidate that gained votes, with a find-or-create politician each. This is
+    the vote-pull dataset (how many votes each politician can pull)."""
+    path = _ELECTIONS_DIR / "governor_2023.json"
+    if not path.exists():
+        return 0
+    # idempotent: skip if 2023 governor rows already present
+    if db.scalar(select(func.count()).select_from(PartyHistory).where(PartyHistory.year == "2023", PartyHistory.election_type == "governor")):
+        return 0
+    cache: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        cache[(p.name.strip().lower(), p.state)] = p
+    n = 0
+    for elec in json.loads(path.read_text(encoding="utf-8")):
+        state = elec["state"]
+        for c in elec.get("candidates", []):
+            if c.get("votes") is None:
+                continue  # ran but no tally in source
+            title = _gov_run_title("Governor", 2023, c["position"])
+            pol = _find_or_create_politician(db, cache, c["name"], state, c.get("party", ""), title)
+            db.add(PartyHistory(
+                politician_id=pol.id, politician_name=c["name"].strip(), party=c.get("party", ""), state=state,
+                year="2023", election_type="governor", votes=c["votes"], position=c["position"],
+                percent=c.get("percent"), running_mate=c.get("running_mate") or "",
+            ))
+            n += 1
+    db.commit()
+    return n
+
+
+def seed_governors_current(db: Session) -> int:
+    """Seed current (incumbent) governors + link/create a politician for each."""
+    path = _ELECTIONS_DIR / "governors_current.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(Governor)):
+        return 0
+    cache: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        cache[(p.name.strip().lower(), p.state)] = p
+    n = 0
+    for g in json.loads(path.read_text(encoding="utf-8")).get("governors", []):
+        state = g["state"]
+        title = f"Governor of {state} State"
+        pol = _find_or_create_politician(db, cache, g["name"], state, g.get("party", ""), title)
+        db.add(Governor(
+            state=state, name=g["name"].strip(), party=g.get("party", ""),
+            party_elected=g.get("party_elected", ""), term_start=g.get("term_start", ""),
+            term_end=g.get("term_end", ""), politician_id=pol.id,
+        ))
+        n += 1
     db.commit()
     return n
 
