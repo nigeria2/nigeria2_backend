@@ -34,6 +34,7 @@ from .models import (
     Senator,
     State,
     StatePrediction,
+    StatePresidential,
     User,
     Ward,
     WardResult,
@@ -62,6 +63,8 @@ from .seed import (
     seed_governors_history,
     seed_house_members,
     seed_presidential_2023,
+    seed_presidential_primaries,
+    seed_presidential_states,
     seed_senate_2023,
     seed_lga_results,
     seed_lgas,
@@ -153,6 +156,12 @@ async def lifespan(app: FastAPI):
                 p23 = seed_presidential_2023(db)
                 if p23:
                     print(f"[startup] seeded {p23} 2023 presidential candidates")
+                pst = seed_presidential_states(db)
+                if pst:
+                    print(f"[startup] seeded {pst} state presidential results")
+                ppr = seed_presidential_primaries(db)
+                if ppr:
+                    print(f"[startup] seeded {ppr} presidential primary results")
                 gov = seed_governors_current(db)
                 if gov:
                     print(f"[startup] seeded {gov} current governors")
@@ -182,7 +191,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.32.1", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.33.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -463,7 +472,7 @@ def politician_to_dict(p: Politician, assessments: list, runs: list | None = Non
          "aka": _load_list(p.aka)}
     d.update(_assess_agg(assessments, lga_names))
     runs = runs or []
-    voted = [r for r in runs if r.votes]
+    voted = [r for r in runs if r.votes and r.election_type != "primary"]  # primaries = delegate votes, not vote-pull
     best = max(voted, key=lambda r: r.votes) if voted else None
     d["max_votes"] = best.votes if best else None
     d["best_run"] = (
@@ -523,6 +532,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
     senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
     senate_wins = _senate_win_votes(db)
+    pres23 = db.scalar(select(StatePresidential).where(StatePresidential.state == state, StatePresidential.year == 2023))
     reps = db.scalars(select(HouseMember).where(HouseMember.state == state).order_by(HouseMember.constituency)).all()
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
     gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
@@ -537,6 +547,10 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
         "senators": [_senator_dict(s, senate_wins.get(s.politician_id)) for s in senators],
         "reps": [_house_dict(m) for m in reps],
+        "presidential_2023": ({
+            "APC": pres23.apc, "PDP": pres23.pdp, "LP": pres23.lp, "NNPP": pres23.nnpp,
+            "others": pres23.others, "total": pres23.total_votes, "turnout": pres23.turnout, "winner": pres23.winner,
+        } if pres23 else None),
         "governor": _governor_dict(incumbent) if incumbent else None,
         "governor_history": [
             {"name": g.name, "party": g.party, "term_start": g.term_start or None, "term_end": g.term_end or None,

@@ -1,0 +1,33 @@
+{
+  "_note": "2022 APC & PDP presidential primary results (delegate votes). Recorded as 'primary' runs — excluded from general-election vote-pull. Home state chosen to match each figure's existing profile where possible.",
+  "primaries": [
+    { "party": "APC", "label": "2022 APC presidential primary", "candidates": [
+      { "name": "Bola Tinubu", "state": "Lagos", "votes": 1271, "percent": 60.47 },
+      { "name": "Rotimi Amaechi", "state": "Rivers", "votes": 316, "percent": 15.03 },
+      { "name": "Yemi Osinbajo", "state": "Ogun", "votes": 235, "percent": 11.18 },
+      { "name": "Ahmad Lawan", "state": "Yobe", "votes": 152, "percent": 7.23 },
+      { "name": "Yahaya Bello", "state": "Kogi", "votes": 47, "percent": 2.24 },
+      { "name": "David Umahi", "state": "Ebonyi", "votes": 38, "percent": 1.81 },
+      { "name": "Benedict Ayade", "state": "Cross River", "votes": 37, "percent": 1.76 },
+      { "name": "Ahmad Sani Yerima", "state": "Zamfara", "votes": 4, "percent": 0.19 },
+      { "name": "Ogbonnaya Onu", "state": "Abia", "votes": 1, "percent": 0.05 },
+      { "name": "Chukwuemeka Nwajiuba", "state": "Imo", "votes": 1, "percent": 0.05 },
+      { "name": "Tunde Bakare", "state": "Ogun", "votes": 0, "percent": 0.00 },
+      { "name": "Tein Jack-Rich", "state": "Rivers", "votes": 0, "percent": 0.00 },
+      { "name": "Ikeobasi Mokelu", "state": "Anambra", "votes": 0, "percent": 0.00 },
+      { "name": "Rochas Okorocha", "state": "Imo", "votes": 0, "percent": 0.00 }
+    ] },
+    { "party": "PDP", "label": "2022 PDP presidential primary", "candidates": [
+      { "name": "Atiku Abubakar", "state": "Adamawa", "votes": 371, "percent": 49.34 },
+      { "name": "Nyesom Wike", "state": "Rivers", "votes": 237, "percent": 31.52 },
+      { "name": "Bukola Saraki", "state": "Kwara", "votes": 70, "percent": 9.31 },
+      { "name": "Udom Emmanuel", "state": "Akwa Ibom", "votes": 38, "percent": 5.05 },
+      { "name": "Bala Mohammed", "state": "Bauchi", "votes": 20, "percent": 2.66 },
+      { "name": "Anyim Pius Anyim", "state": "Ebonyi", "votes": 14, "percent": 1.86 },
+      { "name": "Sam Ohuabunwa", "state": "Abia", "votes": 1, "percent": 0.13 },
+      { "name": "Ayodele Fayose", "state": "Ekiti", "votes": 0, "percent": 0.00 },
+      { "name": "Dele Momodu", "state": "Edo", "votes": 0, "percent": 0.00 },
+      { "name": "Charles Ugwu", "state": "Enugu", "votes": 0, "percent": 0.00 }
+    ] }
+  ]
+}

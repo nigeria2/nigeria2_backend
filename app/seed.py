@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
+from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, StatePresidential, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -517,6 +517,55 @@ def seed_presidential_2023(db: Session) -> int:
     return n
 
 
+def seed_presidential_states(db: Session) -> int:
+    """Seed the official 2023 presidential result by state (Tinubu/Atiku/Obi/Kwankwaso)."""
+    path = _ELECTIONS_DIR / "presidential_states_2023.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(StatePresidential)):
+        return 0
+    n = 0
+    for s in json.loads(path.read_text(encoding="utf-8")).get("states", []):
+        parties = {"APC": s.get("APC", 0), "PDP": s.get("PDP", 0), "LP": s.get("LP", 0), "NNPP": s.get("NNPP", 0)}
+        winner = max(parties, key=parties.get)
+        db.add(StatePresidential(
+            state=s["state"], year=2023, apc=s.get("APC", 0), pdp=s.get("PDP", 0), lp=s.get("LP", 0),
+            nnpp=s.get("NNPP", 0), others=s.get("others", 0), total_votes=s.get("total", 0),
+            turnout=s.get("turnout"), winner=winner,
+        ))
+        n += 1
+    db.commit()
+    return n
+
+
+def seed_presidential_primaries(db: Session) -> int:
+    """Seed the 2022 APC/PDP presidential primary results. Each contestant is
+    find-or-created (linking to their existing profile) with a 'primary' party-history
+    row — recorded but excluded from general-election vote-pull."""
+    path = _ELECTIONS_DIR / "presidential_primaries_2023.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(PartyHistory).where(PartyHistory.election_type == "primary")):
+        return 0
+    cache: dict[tuple[str, str], Politician] = {}
+    for p in db.scalars(select(Politician)).all():
+        cache[(p.name.strip().lower(), p.state)] = p
+    n = 0
+    for pr in json.loads(path.read_text(encoding="utf-8")).get("primaries", []):
+        party, label = pr["party"], pr["label"]
+        for i, c in enumerate(pr.get("candidates", []), 1):
+            title = f"{party} presidential aspirant (2023)"
+            pol = _find_or_create_politician(db, cache, c["name"], c["state"], party, title)
+            db.add(PartyHistory(
+                politician_id=pol.id, politician_name=c["name"].strip(), party=party, state=c["state"],
+                year="2022", election_type="primary", votes=c.get("votes") or 0, position=i,
+                percent=c.get("percent"), constituency=label,
+            ))
+            n += 1
+    db.commit()
+    return n
+
+
 def seed_house_members(db: Session) -> int:
     """Seed the (partial) 2023-2027 House of Representatives roster. Each member is
     linked to an existing politician when their name already appears (by name or aka,
@@ -864,6 +913,7 @@ _ALIAS_GROUPS: list[tuple[str, list[str]]] = [
     ("Cross River", ["Ben Ayade", "Benedict Ayade"]),
     ("Yobe", ["Ahmed Lawan", "Ahmad Lawan"]),
     ("Jigawa", ["Ahmed Abdulhamid Mallam Madori", "Ahmad Abdulhamid Malam Madori"]),
+    ("Ebonyi", ["David Umahi", "David Nweze Umahi", "DAVID UMAHI NWEZE", "Dave Umahi"]),
 ]
 
 _FK_MODELS = (PartyHistory, Senator, Governor, GovernorHistory, PoliticianAssessment, PoliticianPhoto)

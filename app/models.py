@@ -277,6 +277,24 @@ class Senator(Base):
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class StatePresidential(Base):
+    """2023 presidential result for a state (official, by-state)."""
+
+    __tablename__ = "state_presidential"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    year: Mapped[int] = mapped_column(Integer, default=2023)
+    apc: Mapped[int] = mapped_column(Integer, default=0)
+    pdp: Mapped[int] = mapped_column(Integer, default=0)
+    lp: Mapped[int] = mapped_column(Integer, default=0)
+    nnpp: Mapped[int] = mapped_column(Integer, default=0)
+    others: Mapped[int] = mapped_column(Integer, default=0)
+    total_votes: Mapped[int] = mapped_column(Integer, default=0)
+    turnout: Mapped[float | None] = mapped_column(Float, nullable=True)
+    winner: Mapped[str] = mapped_column(String(20), default="")
+
+
 class HouseMember(Base):
     """A member of the House of Representatives (10th Assembly, 2023-2027)."""
 
