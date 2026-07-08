@@ -173,7 +173,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.30.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.30.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -513,6 +513,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
 
     ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
     senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
+    senate_wins = _senate_win_votes(db)
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
     gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
     return {
@@ -524,7 +525,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "lgas": [_lga_result_dict(x) for x in lgas],
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
-        "senators": [_senator_dict(s) for s in senators],
+        "senators": [_senator_dict(s, senate_wins.get(s.politician_id)) for s in senators],
         "governor": _governor_dict(incumbent) if incumbent else None,
         "governor_history": [
             {"name": g.name, "party": g.party, "term_start": g.term_start or None, "term_end": g.term_end or None,
@@ -543,18 +544,35 @@ def _governor_dict(g: Governor) -> dict:
     }
 
 
-def _senator_dict(s: Senator) -> dict:
+def _senate_win_votes(db: Session) -> dict[int, dict]:
+    """politician_id -> {votes, constituency} for their winning 2023 Senate run.
+    Used to show how many votes each sitting senator polled (where Wikipedia had it)."""
+    out: dict[int, dict] = {}
+    for h in db.scalars(
+        select(PartyHistory).where(
+            PartyHistory.election_type == "senate", PartyHistory.year == "2023", PartyHistory.position == 1
+        )
+    ).all():
+        if h.politician_id and h.votes:
+            out[h.politician_id] = {"votes": h.votes, "constituency": h.constituency or None}
+    return out
+
+
+def _senator_dict(s: Senator, win: dict | None = None) -> dict:
     return {
         "id": s.id, "name": s.name, "state": s.state, "district": s.district, "party": s.party,
         "gender": s.gender or None, "age": s.age, "terms": s.terms,
         "leadership": s.leadership or None, "politician_id": s.politician_id,
+        "votes_2023": (win or {}).get("votes"),
+        "constituency": (win or {}).get("constituency"),
     }
 
 
 @app.get("/api/senators")
 def list_senators(db: Session = Depends(get_db)):
     rows = db.scalars(select(Senator).order_by(Senator.state, Senator.district)).all()
-    return [_senator_dict(s) for s in rows]
+    wins = _senate_win_votes(db)
+    return [_senator_dict(s, wins.get(s.politician_id)) for s in rows]
 
 
 @app.get("/api/governors")
