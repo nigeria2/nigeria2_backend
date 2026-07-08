@@ -277,6 +277,19 @@ class Senator(Base):
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
+class HouseMember(Base):
+    """A member of the House of Representatives (10th Assembly, 2023-2027)."""
+
+    __tablename__ = "house_members"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    constituency: Mapped[str] = mapped_column(String(160))  # federal constituency
+    name: Mapped[str] = mapped_column(String(200))
+    party: Mapped[str] = mapped_column(String(20), default="")
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # link if already a politician
+
+
 class Ward(Base):
     """An electoral ward with its coordinates."""
 

@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, Governor, GovernorHistory, Lga, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
+from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -479,6 +479,34 @@ def seed_governors_history(db: Session) -> int:
                 acting=bool(g.get("acting")), seq=g.get("order", 0), politician_id=pol_id,
             ))
             n += 1
+    db.commit()
+    return n
+
+
+def seed_house_members(db: Session) -> int:
+    """Seed the (partial) 2023-2027 House of Representatives roster. Each member is
+    linked to an existing politician when their name already appears (by name or aka,
+    within the state) — but no new politician is created, to keep the heavyweight
+    boards focused on figures we actually have vote data for."""
+    path = _ELECTIONS_DIR / "house_2023.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(HouseMember)):
+        return 0
+    # name/aka -> politician id, per state
+    idx: dict[tuple[str, str], int] = {}
+    for p in db.scalars(select(Politician)).all():
+        idx[(p.state, p.name.strip().lower())] = p.id
+        for a in json.loads(p.aka or "[]"):
+            idx.setdefault((p.state, str(a).strip().lower()), p.id)
+    n = 0
+    for m in json.loads(path.read_text(encoding="utf-8")):
+        pid = idx.get((m["state"], m["name"].strip().lower()))
+        db.add(HouseMember(
+            state=m["state"], constituency=m["constituency"], name=m["name"].strip(),
+            party=m.get("party", ""), politician_id=pid,
+        ))
+        n += 1
     db.commit()
     return n
 

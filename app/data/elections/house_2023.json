@@ -1,0 +1,1256 @@
+[
+  {
+    "state": "Abia",
+    "constituency": "Aba North/Aba South",
+    "name": "Alex Ikwechegh",
+    "party": "PDP"
+  },
+  {
+    "state": "Abia",
+    "constituency": "Arochukwu/Ohafia",
+    "name": "Ibe Osonwa",
+    "party": "LP"
+  },
+  {
+    "state": "Abia",
+    "constituency": "Bende",
+    "name": "Benjamin Kalu",
+    "party": "APC"
+  },
+  {
+    "state": "Abia",
+    "constituency": "Ikwuano/Umuahia North/Umuahia South",
+    "name": "Obi Aguocha",
+    "party": "LP"
+  },
+  {
+    "state": "Abia",
+    "constituency": "Isiala Ngwa North/South",
+    "name": "Ginger Onwusibe",
+    "party": "LP"
+  },
+  {
+    "state": "Abia",
+    "constituency": "Isuikwuato/Umunneochi",
+    "name": "Amobi Ogah",
+    "party": "LP"
+  },
+  {
+    "state": "Abia",
+    "constituency": "Obingwa/Ugwunagbo/Osisioma",
+    "name": "Munachim Alozie",
+    "party": "LP"
+  },
+  {
+    "state": "Abia",
+    "constituency": "Ukwa East/West",
+    "name": "Chris Nkwonta",
+    "party": "APC"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Demsa/Lamurde/Numan",
+    "name": "Kwamoti Laori",
+    "party": "PDP"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Fufore/Song",
+    "name": "Aliyu Wakili Boya",
+    "party": "APC"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Ganye/Jada/Mayo Belwa/Toungo",
+    "name": "Mohammed Inuwa Bassi",
+    "party": "PDP"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Gombi/Hong",
+    "name": "James Shuaibu Barka",
+    "party": "PDP"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Guyuk/Shelleng",
+    "name": "Kobis Ari Thimnu",
+    "party": "PDP"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Madagali/Michika",
+    "name": "Zakaria Dauda Nyampa",
+    "party": "PDP"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Maiha/Mubi North/Mubi South",
+    "name": "Ja'afar Abubakar Magaji",
+    "party": "APC"
+  },
+  {
+    "state": "Adamawa",
+    "constituency": "Yola North/Yola South/Girei",
+    "name": "Abubakar Baba Zango",
+    "party": "APC"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Abak/Etim Ekpo/Ika",
+    "name": "Jimbo Ernest Clement",
+    "party": "APC"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Eket/Esit Eket/Ibeno/Onna",
+    "name": "Etteh Ikpong Okpolupm",
+    "party": "PDP"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Etinan/Nsit Ibom/Nsit Ubium",
+    "name": "Ekpo Paul Asuquo",
+    "party": "PDP"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Ikono/Ini",
+    "name": "Emmanuel Ukpong-Udo",
+    "party": "YPP"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Ikot Abasi/Mkpat Enin/Eastern Obolo",
+    "name": "Odudoh Uduak Alphonsus",
+    "party": "PDP"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Ikot Ekpene/Essien Udim/Obot Akara",
+    "name": "Patrick Umoh",
+    "party": "APC"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Itu/Ibiono Ibom",
+    "name": "Okon Ime Bassey",
+    "party": "PDP"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Mbo/Okobo/Oron/Udung Uko/Urue",
+    "name": "Esin Martins Etim",
+    "party": "PDP"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Ukanafun/Oruk Anam",
+    "name": "Unyime Idem",
+    "party": "PDP"
+  },
+  {
+    "state": "Akwa Ibom",
+    "constituency": "Uyo/Uruan/Nsit Atai/Ibesikpo Asutan",
+    "name": "Esset Mark Udo",
+    "party": "PDP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Aguata",
+    "name": "Ifeanyi Dominic Okafor",
+    "party": "APC"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Anambra East/West",
+    "name": "Aniekwe Peter Udogalanya",
+    "party": "LP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Awka North/South",
+    "name": "Lilian Orogbu Obiageli",
+    "party": "LP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Idemili North/South",
+    "name": "Harris Uchenna Okonkwo",
+    "party": "LP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Ihiala",
+    "name": "Agbodike Paschal",
+    "party": "APGA"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Njikoka/Dunukofia/Anaocha",
+    "name": "George Ozodinobi",
+    "party": "LP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Nnewi North/South/Ekwusigo",
+    "name": "Uchenna Nwachukwu",
+    "party": "APGA"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Ogbaru",
+    "name": "Afam Ogene",
+    "party": "LP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Onitsha North/South",
+    "name": "Emeka Obiajulu",
+    "party": "LP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Orumba North/South",
+    "name": "Clara Chinwe Nnabuife",
+    "party": "YPP"
+  },
+  {
+    "state": "Anambra",
+    "constituency": "Oyi/Ayamelum",
+    "name": "Maureen Gwacham",
+    "party": "APC"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Alkaleri/Kirfi",
+    "name": "Kabiru Yusuf Alhaji",
+    "party": "APC"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Bauchi",
+    "name": "Aliyu Aminu Garu",
+    "party": "PDP"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Bogoro/Dass/Tafawa Balewa",
+    "name": "Leko Jafaru Gambo",
+    "party": "APC"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Darazo/Ganjuwa",
+    "name": "Mansur Manu Soro",
+    "party": "PDP"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Gamawa",
+    "name": "Adamu Ibrahim Gamawa",
+    "party": "APC"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Jama'Are/Itas Gadau",
+    "name": "Rabilu Bala",
+    "party": "APC"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Katagum",
+    "name": "Auwalu Abdu Gwalabe",
+    "party": "PDP"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Misau/Dambam",
+    "name": "Aliyu Bappa Misau",
+    "party": "PDP"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Ningi/Warji",
+    "name": "Hashimu Adamu",
+    "party": "PDP"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Shira/Giade",
+    "name": "Sani Ibrahim Tanko",
+    "party": "PDP"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Toro",
+    "name": "Dabo Ismaila Haruna",
+    "party": "APC"
+  },
+  {
+    "state": "Bauchi",
+    "constituency": "Zaki",
+    "name": "Muhammed Dan Abba Shehu",
+    "party": "PDP"
+  },
+  {
+    "state": "Bayelsa",
+    "constituency": "Brass/Nembe",
+    "name": "Marie Ebikake",
+    "party": "PDP"
+  },
+  {
+    "state": "Bayelsa",
+    "constituency": "Ekeremor/Sagbama",
+    "name": "Fred Agbedi",
+    "party": "PDP"
+  },
+  {
+    "state": "Bayelsa",
+    "constituency": "Ogbia",
+    "name": "Obordor Mitema",
+    "party": "PDP"
+  },
+  {
+    "state": "Bayelsa",
+    "constituency": "Southern Ijaw",
+    "name": "Rodney Ebikebina Ambaiowei",
+    "party": "PDP"
+  },
+  {
+    "state": "Bayelsa",
+    "constituency": "Yenagoa/Kolokuna/Opokuma",
+    "name": "Oboku Abonsizibe Oforji",
+    "party": "PDP"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Ado/Ogbadigbo/Okpokwu",
+    "name": "Philip Agbese",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Apa/Agatu",
+    "name": "Ojotu Ojema",
+    "party": "PDP"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Buruku",
+    "name": "Dzua Sekav Iyortyom",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Gboko/Tarka",
+    "name": "Regina Akume",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Guma/Makurdi",
+    "name": "Dickson Tarkighir",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Gwer East/Gwer West",
+    "name": "Austin Asema Achado",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Katsina Ala/Ukum/Logo",
+    "name": "Solomon Wombo",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Konshisha/Vandeikya",
+    "name": "Sesoo Ikpacher",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Kwande/Ushongo",
+    "name": "Terseer Ugbor",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Oju/Obi",
+    "name": "David Ogewu",
+    "party": "APC"
+  },
+  {
+    "state": "Benue",
+    "constituency": "Otukpo/Ohimini",
+    "name": "Blessing Onuh",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Askira Uba/Hawul",
+    "name": "Midala Usman Balami",
+    "party": "PDP"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Bama/Ngala/Kala Balge",
+    "name": "Zainab Gimba",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Biu/Kwaya Kusar/Shani/Bayo",
+    "name": "Muktar Aliyu Betara",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Damboa/Gwoza/Chibok",
+    "name": "Ahmadu Usman Jaha",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Dikwa/Mafa/Konduga",
+    "name": "Mohammed Ibrahim Bukar",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Jere",
+    "name": "Ahmad Satomi",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Kaga/Gubio/Magumeri",
+    "name": "Usman Zannah",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Kukawa/Mobbar/Abadam/Guzamali",
+    "name": "Gana Mallam Bukar",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Maiduguri (Metropolitan)",
+    "name": "Abdukadir Rahis",
+    "party": "APC"
+  },
+  {
+    "state": "Borno",
+    "constituency": "Monguno/Marte/Nganzai",
+    "name": "Bukar Talba",
+    "party": "APC"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Akamkpa/Biase",
+    "name": "Emil Inyang",
+    "party": "PDP"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Calabar Municipal/Odukpani",
+    "name": "Bassey Akiba",
+    "party": "APC"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Calabar South/Akpabuyo/Bakassi South",
+    "name": "Joseph Bassey",
+    "party": "APC"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Ikom/Boki",
+    "name": "Victor Abang",
+    "party": "APC"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Obanliku/Obudu/Bekwarra",
+    "name": "Peter Akpanke",
+    "party": "PDP"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Obubra/Etung",
+    "name": "Michael Etaba",
+    "party": "APC"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Ogoja/Yala",
+    "name": "Ekpo Godwin Odey Offiong",
+    "party": "PDP"
+  },
+  {
+    "state": "Cross River",
+    "constituency": "Yakurr/Abi",
+    "name": "Alex Egbona",
+    "party": "APC"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Aniocha North/Aniocha South/Oshimili North/Oshimili South",
+    "name": "Ngozi Okolie",
+    "party": "LP"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Bomadi/Patani",
+    "name": "Nicholas Mutu",
+    "party": "PDP"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Burutu",
+    "name": "Julius Gbabojor Pondi",
+    "party": "PDP"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Ethiope East/Ethiope West",
+    "name": "Erhiatake Ibori-Suenu",
+    "party": "APC"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Ika North East/Ika South",
+    "name": "Victor Onyemaechi Nwokolo",
+    "party": "PDP"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Isoko North/South",
+    "name": "Ukodhiko Ajirioghene Jonathan",
+    "party": "PDP"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Ndokwa East/Ndokwa West/Ukwuani",
+    "name": "Nnamdi Ezechi",
+    "party": "PDP"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Okpe/Sapele/Uvwie",
+    "name": "Benedict Etanabene",
+    "party": "LP"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Ughelli North/Ughelli South/Udu",
+    "name": "Francis E. Waive",
+    "party": "APC"
+  },
+  {
+    "state": "Delta",
+    "constituency": "Warri North/Warri South/Warri South West",
+    "name": "Thomas Ereyitomi",
+    "party": "PDP"
+  },
+  {
+    "state": "Ebonyi",
+    "constituency": "Abakaliki/Izzi",
+    "name": "Uguru Emmanuel",
+    "party": "APC"
+  },
+  {
+    "state": "Ebonyi",
+    "constituency": "Afikpo North/Afikpo South",
+    "name": "Iduma Igariwey Enwo",
+    "party": "PDP"
+  },
+  {
+    "state": "Ebonyi",
+    "constituency": "Ebonyi/Ohaukwu",
+    "name": "Eze Nwachukwu Eze",
+    "party": "APC"
+  },
+  {
+    "state": "Ebonyi",
+    "constituency": "Ezza North/Ishielu",
+    "name": "Nwobashi Joseph",
+    "party": "APGA"
+  },
+  {
+    "state": "Ebonyi",
+    "constituency": "Ezza South/Ikwo",
+    "name": "Ogah Chinedu Nweke",
+    "party": "APC"
+  },
+  {
+    "state": "Ebonyi",
+    "constituency": "Ivo/Ohaozara/Onicha",
+    "name": "Osi Kama Nkemkanma Standy",
+    "party": "LP"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Akoko Edo",
+    "name": "Peter Akpatason",
+    "party": "APC"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Egor/Ikpoba Okha",
+    "name": "Omoruyi Murphy Osaro",
+    "party": "LP"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Esan Central/West/Igueben",
+    "name": "Marcus Onobun",
+    "party": "PDP"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Esan North East/Esan South East",
+    "name": "Okojie Odianosen",
+    "party": "APC"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Etsako East/West/Central",
+    "name": "Anamero Sunday Dekeri",
+    "party": "APC"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Oredo",
+    "name": "Esosa Iyawe",
+    "party": "APC"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Orhionmwon/Uhunmwonde",
+    "name": "Osawaru Billy Famous Adesuwa",
+    "party": "APC"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Ovia South West/Ovia North East",
+    "name": "Dennis Amadi Idahosa",
+    "party": "APC"
+  },
+  {
+    "state": "Edo",
+    "constituency": "Owan West/East",
+    "name": "Julius Ihonvbere",
+    "party": "APC"
+  },
+  {
+    "state": "Ekiti",
+    "constituency": "Ado Ekiti/Irepodun/Ifelodun",
+    "name": "Olusola Steve Fatoba",
+    "party": "APC"
+  },
+  {
+    "state": "Ekiti",
+    "constituency": "Ekiti South West/Ikere/Orun/Ise",
+    "name": "Ojuawo Rufus Adeniyi",
+    "party": "APC"
+  },
+  {
+    "state": "Ekiti",
+    "constituency": "Gbonyin/Ekiti East/Emure",
+    "name": "Richard Bamisile",
+    "party": "APC"
+  },
+  {
+    "state": "Ekiti",
+    "constituency": "Ido/Osi/Moba/Ilejemeje",
+    "name": "Kolawole Davidson Akinlayo",
+    "party": "APC"
+  },
+  {
+    "state": "Ekiti",
+    "constituency": "Ijero/Ekiti West/Efon",
+    "name": "Biodun Omoleye",
+    "party": "APC"
+  },
+  {
+    "state": "Ekiti",
+    "constituency": "Ikole/Oye",
+    "name": "Rotimi Akintunde Oluwaseun",
+    "party": "APC"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Aninri/Awgu/Oji River",
+    "name": "Anayo Onwuegbu",
+    "party": "PDP"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Enugu East/Isi Uzo",
+    "name": "Nnamchi Paul Sunday",
+    "party": "LP"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Enugu North/South",
+    "name": "Chimaobi Sam Atu",
+    "party": "LP"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Ezeagu/Udi",
+    "name": "Sunday Cyriacus Umeha",
+    "party": "LP"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Igbo Etiti/Uzo Uwani",
+    "name": "Nwodo Stainless Chijioke",
+    "party": "LP"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Igboeze North/Udenu",
+    "name": "Dennis Nnamdi Agbo",
+    "party": "LP"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Nkanu East/Nkanu West",
+    "name": "Nnolim Nnaji",
+    "party": "PDP"
+  },
+  {
+    "state": "Enugu",
+    "constituency": "Nsukka/Igboeze South",
+    "name": "Obetta Chidi",
+    "party": "LP"
+  },
+  {
+    "state": "Gombe",
+    "constituency": "Akko",
+    "name": "Usman Bello Kumo",
+    "party": "APC"
+  },
+  {
+    "state": "Gombe",
+    "constituency": "Balanga/Billiri",
+    "name": "Ali Isa",
+    "party": "PDP"
+  },
+  {
+    "state": "Gombe",
+    "constituency": "Dukku/Nafada",
+    "name": "Abdullahi El-Rasheed",
+    "party": "PDP"
+  },
+  {
+    "state": "Gombe",
+    "constituency": "Gombe/Kwami/Funakaye",
+    "name": "Yaya Bauchi Tongo",
+    "party": "PDP"
+  },
+  {
+    "state": "Gombe",
+    "constituency": "Kaltungo/Shongom",
+    "name": "Paul Obed Shehu",
+    "party": "PDP"
+  },
+  {
+    "state": "Gombe",
+    "constituency": "Yamaltu/Deba",
+    "name": "Garba Inuwa",
+    "party": "PDP"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Aboh Mbaise/Ngor Okpala",
+    "name": "Matthew Nwogu",
+    "party": "LP"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Ahiazu Mbaise/Ezinihitte",
+    "name": "Emeka Chinedu",
+    "party": "PDP"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Ehimembano/Ihitte Uboma/Obowo",
+    "name": "Okeke Jonas Onwuegbuchulam",
+    "party": "PDP"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Ideato North/Ideato South",
+    "name": "Ikenga Ugochinyere",
+    "party": "PDP"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Ikeduru/Mbaitoli",
+    "name": "Akarachi Etinosa Amadi",
+    "party": "APC"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Isiala Mbano/Okigwe/Onuimo",
+    "name": "Miriam Onuoha",
+    "party": "APC"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Isu/Njaba/Nkwerre/Nwangele",
+    "name": "Ugonna Ozurigbo",
+    "party": "APC"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Oguta/Ohaji Egbema/Oru West",
+    "name": "Dibiagwu Eugene Okechukwu",
+    "party": "APC"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Orlu/Oru East/Orsu",
+    "name": "Chukwugozie Nwachukwu",
+    "party": "APC"
+  },
+  {
+    "state": "Imo",
+    "constituency": "Owerri Municipal/Owerri North/Owerri West",
+    "name": "Chinedu Tochukwu Okere",
+    "party": "APC"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Bagwai/Shanono",
+    "name": "Yusuf Ahmad Badau",
+    "party": "APC"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Bichi",
+    "name": "Abubakar Kabir Abubakar",
+    "party": "APC"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Dawakin Kudu/Warawa",
+    "name": "Hassan Mohammed",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Dawakin-Tofa/Tofa/Rimin Gado",
+    "name": "Tijjani Abdulkadir Jobe",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Gaya/Ajingi/Albasu",
+    "name": "Ghali Mustapha Panda",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Gezawa/Gabasawa",
+    "name": "Mohammed Chiroma",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Karaye/Rogo",
+    "name": "Abdullahi Sani",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Kura/Madobi/Garun Malam",
+    "name": "Yusuf Datti",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Minjibir/Ungogo",
+    "name": "Sani Adamu",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Nassarawa",
+    "name": "Hassan Shehu Hussain",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Rano/Bunkure/Kibiya",
+    "name": "Kabiru Alhassan Rurum",
+    "party": "NNPP"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Tsanyawa/Kunchi",
+    "name": "Sani Umar Bala",
+    "party": "APC"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Tudun-Wada/Doguwa",
+    "name": "Alhassan Doguwa",
+    "party": "APC"
+  },
+  {
+    "state": "Kano",
+    "constituency": "Wudil/Garko",
+    "name": "Abdulhakeem Kamilu Ado",
+    "party": "NNPP"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Agege",
+    "name": "Hameed Adewale",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Ajeromi/Ifelodun",
+    "name": "Kolawole Taiwo",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Alimosho",
+    "name": "Oluwafemi Adebanjo",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Amuwo/Odofin",
+    "name": "Ajokpa Oghene",
+    "party": "PDP"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Apapa",
+    "name": "Egberongbe Mufutau",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Badagry",
+    "name": "Adande Babatunde",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Epe",
+    "name": "Tasir Raji",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Eti-Osa",
+    "name": "Obanikoro Ibrahim",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Ifako-Ijaiye",
+    "name": "Owolabi Adisa",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Ikeja",
+    "name": "James Abiodun Faleke",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Ikorodu",
+    "name": "Babajimi Benson",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Kosofe",
+    "name": "Oluwarotimi Agunsoye",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Lagos Island I",
+    "name": "Kayode Akiolu",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Lagos Island II",
+    "name": "Yakubu Balogun",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Lagos Mainland",
+    "name": "Olanrewaju Moshood Oshun",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Mushin I",
+    "name": "Alli Adeyemi",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Mushin II",
+    "name": "Moses Fayinka",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Ojo",
+    "name": "Tajudeen Obasa",
+    "party": "PDP"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Oshodi-Isolo I",
+    "name": "Dawodu Bashiru",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Oshodi-Isolo II",
+    "name": "Jese Okey-Joe Onuakalusi",
+    "party": "LP"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Somolu",
+    "name": "Kuye Ademorin",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Surulere I",
+    "name": "Femi Gbajabiamila",
+    "party": "APC"
+  },
+  {
+    "state": "Lagos",
+    "constituency": "Surulere II",
+    "name": "Lanre Okunlola",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Atakunmosa East/West/Ilesa East/West",
+    "name": "Omorin Emmanuel Olusanya",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Ayedaade/Irewole/Isokan",
+    "name": "Oladebo Lanre Olomololaye",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Ayedire/Iwo/Ola-Oluwa",
+    "name": "Mudashiru Lukman Alani",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Boluwaduro/Ifedayo/Ila",
+    "name": "Akanni Clement Ademola",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Ede North/South/Egbedore/Ejigbo",
+    "name": "Bamidele Salam",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Ife Central/East/North/South",
+    "name": "Ajilesoro Abimbola Taofeek",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Irepodun/Olorunda/Osogbo/Orolu",
+    "name": "Adewale Morufu Adebayo",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Obokun/Oriade",
+    "name": "Oluwole Oke Busayo",
+    "party": "PDP"
+  },
+  {
+    "state": "Osun",
+    "constituency": "Odo-Otin/Ifelodun/Boripe",
+    "name": "Adetunji Abidemi Olusoji",
+    "party": "PDP"
+  },
+  {
+    "state": "Oyo",
+    "constituency": "Afijio/Atiba/Oyo East/Oyo West",
+    "name": "Akeem Adeyemi",
+    "party": "APC"
+  },
+  {
+    "state": "Oyo",
+    "constituency": "Ibadan North",
+    "name": "Olaide Adewale Akinremi",
+    "party": "APC"
+  },
+  {
+    "state": "Oyo",
+    "constituency": "Ibadan North West/South West",
+    "name": "Adedeji Stanley Olajide",
+    "party": "PDP"
+  },
+  {
+    "state": "Oyo",
+    "constituency": "Ibadan North-East/South-East",
+    "name": "Abass Adigun",
+    "party": "PDP"
+  },
+  {
+    "state": "Oyo",
+    "constituency": "Ona-Ara/Egbeda",
+    "name": "Akin Alabi",
+    "party": "APC"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Barkin Ladi/Riyom",
+    "name": "Peter Gyendeng",
+    "party": "PDP"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Jos North/Bassa",
+    "name": "Musa Agah Avia",
+    "party": "PDP"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Jos South/Jos East",
+    "name": "Dachung Musa Bagos",
+    "party": "PDP"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Langtang North/Langtang South",
+    "name": "Beni Lar",
+    "party": "PDP"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Mangu/Bokkos",
+    "name": "Ishaya David Lalu",
+    "party": "PDP"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Mikang/Shendam/Qua'an-Pan",
+    "name": "Isaac Kyale Kwalu",
+    "party": "APC"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Pankshin/Kanke/Kanam",
+    "name": "Yusuf Adamu Gagdi",
+    "party": "APC"
+  },
+  {
+    "state": "Plateau",
+    "constituency": "Wase",
+    "name": "Ahmed Idris Wase",
+    "party": "APC"
+  },
+  {
+    "state": "Taraba",
+    "constituency": "Bali/Gassol",
+    "name": "Jaafaru Chiroma Yakubu",
+    "party": "PDP"
+  },
+  {
+    "state": "Taraba",
+    "constituency": "Gashaka/Kurmi/Sarduana",
+    "name": "David Abel Fuoh",
+    "party": "APC"
+  },
+  {
+    "state": "Taraba",
+    "constituency": "Ibi/Wukari",
+    "name": "Ayuba Dampar",
+    "party": "APC"
+  },
+  {
+    "state": "Taraba",
+    "constituency": "Jalingo/Yorro/Zing",
+    "name": "Sadiq Abbas Tafida",
+    "party": "PDP"
+  },
+  {
+    "state": "Taraba",
+    "constituency": "Karim Lamido/Lau/Ardo Kola",
+    "name": "Audu Mohammed Lauya",
+    "party": "PDP"
+  },
+  {
+    "state": "Taraba",
+    "constituency": "Takum/Donga/Ussa",
+    "name": "Useni Mark Bako",
+    "party": "PDP"
+  },
+  {
+    "state": "Yobe",
+    "constituency": "Bade/Jakusko",
+    "name": "Hassan Ibnjaks",
+    "party": "PDP"
+  },
+  {
+    "state": "Yobe",
+    "constituency": "Bursari/Geidam/Yunusari",
+    "name": "Lawan Shettima Ali",
+    "party": "APC"
+  },
+  {
+    "state": "Yobe",
+    "constituency": "Damaturu/Gujba/Gulani/Tarmuwa",
+    "name": "Khadija Bukar Abba Ibrahim",
+    "party": "APC"
+  },
+  {
+    "state": "Yobe",
+    "constituency": "Fika/Fune",
+    "name": "Muhammad Buba Jajere",
+    "party": "PDP"
+  },
+  {
+    "state": "Yobe",
+    "constituency": "Machina/Nguru/Karasuwa/Yusufari",
+    "name": "Tijjani Zannah Zakariya",
+    "party": "APC"
+  },
+  {
+    "state": "Yobe",
+    "constituency": "Nangere/Potiskum",
+    "name": "Fatima Talba",
+    "party": "APC"
+  }
+]

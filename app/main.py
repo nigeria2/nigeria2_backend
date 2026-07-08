@@ -18,6 +18,7 @@ from .models import (
     Analysis,
     Governor,
     GovernorHistory,
+    HouseMember,
     InterestedUser,
     Lga,
     LgaResult,
@@ -59,6 +60,7 @@ from .seed import (
     seed_governor_2023_results,
     seed_governors_current,
     seed_governors_history,
+    seed_house_members,
     seed_senate_2023,
     seed_lga_results,
     seed_lgas,
@@ -159,6 +161,9 @@ async def lifespan(app: FastAPI):
                 ma = migrate_assessment_lgas(db)
                 if ma:
                     print(f"[startup] migrated {ma} assessments to LGA ids")
+                hm = seed_house_members(db)
+                if hm:
+                    print(f"[startup] seeded {hm} house members")
                 wd = seed_wards(db)
                 if wd:
                     print(f"[startup] seeded {wd} wards")
@@ -173,7 +178,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.30.1", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.31.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -514,6 +519,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
     senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
     senate_wins = _senate_win_votes(db)
+    reps = db.scalars(select(HouseMember).where(HouseMember.state == state).order_by(HouseMember.constituency)).all()
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
     gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
     return {
@@ -526,6 +532,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
         "senators": [_senator_dict(s, senate_wins.get(s.politician_id)) for s in senators],
+        "reps": [_house_dict(m) for m in reps],
         "governor": _governor_dict(incumbent) if incumbent else None,
         "governor_history": [
             {"name": g.name, "party": g.party, "term_start": g.term_start or None, "term_end": g.term_end or None,
@@ -579,6 +586,17 @@ def list_senators(db: Session = Depends(get_db)):
 def list_governors(db: Session = Depends(get_db)):
     rows = db.scalars(select(Governor).order_by(Governor.state)).all()
     return [_governor_dict(g) for g in rows]
+
+
+def _house_dict(m: HouseMember) -> dict:
+    return {"id": m.id, "state": m.state, "constituency": m.constituency, "name": m.name,
+            "party": m.party, "politician_id": m.politician_id}
+
+
+@app.get("/api/reps")
+def list_reps(db: Session = Depends(get_db)):
+    rows = db.scalars(select(HouseMember).order_by(HouseMember.state, HouseMember.constituency)).all()
+    return [_house_dict(m) for m in rows]
 
 
 @app.get("/api/states/{state}/wards")
