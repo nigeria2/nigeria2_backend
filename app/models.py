@@ -199,6 +199,31 @@ class PollingUnit(Base):
     pu_code: Mapped[str] = mapped_column(String(40), default="")
     registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     known_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_apc: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_lp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_pdp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_nnpp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    winner: Mapped[str] = mapped_column(String(20), default="")  # 2023 presidential winner at this PU
+    runner_up: Mapped[str] = mapped_column(String(20), default="")
+
+
+class WardResult(Base):
+    """Aggregated 2023 presidential result per ward (from verified polling units)."""
+
+    __tablename__ = "ward_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    lga: Mapped[str] = mapped_column(String(120))
+    ward: Mapped[str] = mapped_column(String(160))
+    ward_code: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    votes_apc: Mapped[int] = mapped_column(Integer, default=0)
+    votes_lp: Mapped[int] = mapped_column(Integer, default=0)
+    votes_pdp: Mapped[int] = mapped_column(Integer, default=0)
+    votes_nnpp: Mapped[int] = mapped_column(Integer, default=0)
+    total_votes: Mapped[int] = mapped_column(Integer, default=0)
+    winner: Mapped[str] = mapped_column(String(20), default="")
+    runner_up: Mapped[str] = mapped_column(String(20), default="")
 
 
 class Ward(Base):

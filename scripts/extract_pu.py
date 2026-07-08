@@ -19,6 +19,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 PU_CSV = ROOT / "data" / "Nigeria_polling_units.csv"
 DATA_DIR = ROOT / "data" / "2023_data"
 OUT = ROOT / "backend" / "app" / "data" / "polling_units.csv.gz"
+OUT_WARDS = ROOT / "backend" / "app" / "data" / "ward_results.csv.gz"
 
 PARTIES = ["APC", "LP", "PDP", "NNPP"]
 APP_STATES = [
@@ -52,9 +53,9 @@ def _int(v):
 
 
 def load_2023():
-    """norm(PU-Code) -> (registered, known_votes)."""
+    """norm(PU-Code) -> registered, and -> {party: votes} (from crosschecked)."""
     reg = {}
-    votes = {}
+    pvotes = {}
     for path in glob.glob(str(DATA_DIR / "*.csv")):
         crosschecked = path.endswith("_crosschecked.csv")
         with open(path, encoding="utf-8", newline="") as fh:
@@ -66,22 +67,33 @@ def load_2023():
                 if r is not None and code not in reg:
                     reg[code] = r
                 if crosschecked:
-                    kv = sum((_int(row.get(p)) or 0) for p in PARTIES)
-                    if kv > 0:
-                        votes[code] = kv
-    return reg, votes
+                    v = {p: (_int(row.get(p)) or 0) for p in PARTIES}
+                    if sum(v.values()) > 0:
+                        pvotes[code] = v
+    return reg, pvotes
+
+
+def top2(v: dict) -> tuple:
+    ranked = sorted(PARTIES, key=lambda p: v[p], reverse=True)
+    return ranked[0], ranked[1]
 
 
 def main():
-    reg, votes = load_2023()
-    print(f"2023: registered for {len(reg):,} PUs | known votes for {len(votes):,} PUs")
+    import collections
+
+    reg, pvotes = load_2023()
+    print(f"2023: registered for {len(reg):,} PUs | party votes for {len(pvotes):,} PUs")
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     n = 0
     matched_reg = matched_votes = 0
+    ward_agg = collections.defaultdict(lambda: {p: 0 for p in PARTIES})
+    ward_meta = {}
+
     with open(PU_CSV, encoding="utf-8", newline="") as fh, gzip.open(OUT, "wt", encoding="utf-8", newline="") as out:
         w = csv.writer(out)
-        w.writerow(["state", "lga", "ward", "ward_code", "pu_name", "pu_code", "registered_voters", "known_votes"])
+        w.writerow(["state", "lga", "ward", "ward_code", "pu_name", "pu_code", "registered_voters",
+                    "apc", "lp", "pdp", "nnpp", "known_votes", "winner", "runner_up"])
         for row in csv.DictReader(fh):
             state = canon_state(row.get("state", ""))
             if state is None:
@@ -89,28 +101,47 @@ def main():
             code = (row.get("code") or "").strip()
             ncode = norm_code(code)
             ward_code = code.rsplit("/", 1)[0] if "/" in code else ""
+            lga = (row.get("lg") or "").strip().title()
+            ward = (row.get("ward") or "").strip().title()
             r = reg.get(ncode)
-            kv = votes.get(ncode)
+            v = pvotes.get(ncode)
             if r is not None:
                 matched_reg += 1
-            if kv is not None:
+            winner = runner = ""
+            kv = ""
+            va = vl = vp = vn = ""
+            if v is not None:
                 matched_votes += 1
-            w.writerow([
-                state,
-                (row.get("lg") or "").strip().title(),
-                (row.get("ward") or "").strip().title(),
-                ward_code,
-                (row.get("location") or "").strip(),
-                code,
-                r if r is not None else "",
-                kv if kv is not None else "",
-            ])
+                kv = sum(v.values())
+                va, vl, vp, vn = v["APC"], v["LP"], v["PDP"], v["NNPP"]
+                winner, runner = top2(v)
+                agg = ward_agg[ward_code]
+                for p in PARTIES:
+                    agg[p] += v[p]
+                ward_meta[ward_code] = (state, lga, ward)
+            w.writerow([state, lga, ward, ward_code, (row.get("location") or "").strip(), code,
+                        r if r is not None else "", va, vl, vp, vn, kv, winner, runner])
             n += 1
 
     print(f"polling units written: {n:,}")
     print(f"  with registered voters: {matched_reg:,} ({100*matched_reg/n:.0f}%)")
-    print(f"  with known votes:       {matched_votes:,} ({100*matched_votes/n:.0f}%)")
+    print(f"  with a winner:          {matched_votes:,} ({100*matched_votes/n:.0f}%)")
     print(f"Wrote {OUT}  ({OUT.stat().st_size // 1024} KB gzipped)")
+
+    # ward results
+    nw = 0
+    with gzip.open(OUT_WARDS, "wt", encoding="utf-8", newline="") as out:
+        w = csv.writer(out)
+        w.writerow(["state", "lga", "ward", "ward_code", "apc", "lp", "pdp", "nnpp", "total_votes", "winner", "runner_up"])
+        for ward_code, agg in ward_agg.items():
+            total = sum(agg.values())
+            if total <= 0:
+                continue
+            state, lga, ward = ward_meta[ward_code]
+            winner, runner = top2(agg)
+            w.writerow([state, lga, ward, ward_code, agg["APC"], agg["LP"], agg["PDP"], agg["NNPP"], total, winner, runner])
+            nw += 1
+    print(f"ward results written: {nw:,}  ({OUT_WARDS.stat().st_size // 1024} KB gzipped)")
 
 
 if __name__ == "__main__":

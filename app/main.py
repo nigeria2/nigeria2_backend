@@ -31,6 +31,7 @@ from .models import (
     StatePrediction,
     User,
     Ward,
+    WardResult,
 )
 from .schemas import (
     AnalysisIn,
@@ -59,6 +60,7 @@ from .seed import (
     seed_polling_units,
     seed_state_predictions,
     seed_states,
+    seed_ward_results,
     seed_wards,
 )
 
@@ -123,12 +125,15 @@ async def lifespan(app: FastAPI):
                 pu = seed_polling_units(db)
                 if pu:
                     print(f"[startup] seeded {pu} polling units")
+                wr = seed_ward_results(db)
+                if wr:
+                    print(f"[startup] seeded {wr} ward results")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.22.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.23.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -446,10 +451,20 @@ def state_pu_wards(state: str, db: Session = Depends(get_db)):
         .group_by(PollingUnit.lga, PollingUnit.ward, PollingUnit.ward_code)
         .order_by(PollingUnit.lga, PollingUnit.ward)
     ).all()
-    return [
-        {"lga": r.lga, "ward": r.ward, "ward_code": r.ward_code, "pu_count": r.pu, "registered_voters": int(r.reg) if r.reg else None}
-        for r in rows
-    ]
+    wr = {w.ward_code: w for w in db.scalars(select(WardResult).where(WardResult.state == state)).all()}
+    out = []
+    for r in rows:
+        w = wr.get(r.ward_code)
+        out.append({
+            "lga": r.lga, "ward": r.ward, "ward_code": r.ward_code, "pu_count": r.pu,
+            "registered_voters": int(r.reg) if r.reg else None,
+            "winner": w.winner if w else "", "runner_up": w.runner_up if w else "",
+        })
+    return out
+
+
+def _pu_scores(p: PollingUnit) -> dict:
+    return {"APC": p.votes_apc, "LP": p.votes_lp, "PDP": p.votes_pdp, "NNPP": p.votes_nnpp}
 
 
 @app.get("/api/wards/{ward_code}/polling-units")
@@ -457,15 +472,26 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
     code = ward_code.replace("-", "/")
     rows = db.scalars(select(PollingUnit).where(PollingUnit.ward_code == code).order_by(PollingUnit.pu_code)).all()
     if not rows:
-        return {"state": "", "lga": "", "ward": "", "ward_code": code, "polling_units": []}
+        return {"state": "", "lga": "", "ward": "", "ward_code": code, "result": None, "polling_units": []}
     first = rows[0]
+    wr = db.scalar(select(WardResult).where(WardResult.ward_code == code))
+    result = None
+    if wr is not None:
+        result = {
+            "winner": wr.winner, "runner_up": wr.runner_up, "total_votes": wr.total_votes,
+            "scores": {"APC": wr.votes_apc, "LP": wr.votes_lp, "PDP": wr.votes_pdp, "NNPP": wr.votes_nnpp},
+        }
     return {
         "state": first.state,
         "lga": first.lga,
         "ward": first.ward,
         "ward_code": code,
+        "result": result,
         "polling_units": [
-            {"pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters, "known_votes": p.known_votes}
+            {
+                "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
+                "known_votes": p.known_votes, "winner": p.winner, "runner_up": p.runner_up, "scores": _pu_scores(p),
+            }
             for p in rows
         ],
     }

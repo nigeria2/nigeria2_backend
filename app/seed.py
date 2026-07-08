@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, State, StatePrediction, Ward
+from .models import Analysis, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, Prediction, ProblemUnit, State, StatePrediction, Ward, WardResult
 from .state_data import STATE_DATA
 
 # Bump when the seed logic changes so deployments refresh the illustrative data.
@@ -439,10 +439,15 @@ def seed_wards(db: Session) -> int:
 
 
 _PU_CSV = pathlib.Path(__file__).resolve().parent / "data" / "polling_units.csv.gz"
+_WARD_RESULTS_CSV = pathlib.Path(__file__).resolve().parent / "data" / "ward_results.csv.gz"
+
+
+def _optint(v):
+    return int(v) if v not in (None, "") else None
 
 
 def seed_polling_units(db: Session) -> int:
-    """Seed all polling units (with 2023 registered voters + known votes) once."""
+    """Seed all polling units (2023 registered voters, party votes, winner, runner-up) once."""
     if db.scalar(select(func.count()).select_from(PollingUnit)):
         return 0
     if not _PU_CSV.exists():
@@ -454,8 +459,11 @@ def seed_polling_units(db: Session) -> int:
             batch.append({
                 "state": row["state"], "lga": row["lga"], "ward": row["ward"],
                 "ward_code": row["ward_code"], "pu_name": row["pu_name"], "pu_code": row["pu_code"],
-                "registered_voters": int(row["registered_voters"]) if row["registered_voters"] else None,
-                "known_votes": int(row["known_votes"]) if row["known_votes"] else None,
+                "registered_voters": _optint(row["registered_voters"]),
+                "votes_apc": _optint(row["apc"]), "votes_lp": _optint(row["lp"]),
+                "votes_pdp": _optint(row["pdp"]), "votes_nnpp": _optint(row["nnpp"]),
+                "known_votes": _optint(row["known_votes"]),
+                "winner": row["winner"] or "", "runner_up": row["runner_up"] or "",
             })
             n += 1
             if len(batch) >= 5000:
@@ -465,6 +473,26 @@ def seed_polling_units(db: Session) -> int:
             db.execute(PollingUnit.__table__.insert(), batch)
     db.commit()
     return n
+
+
+def seed_ward_results(db: Session) -> int:
+    """Seed aggregated 2023 ward results (winner + runner-up) once."""
+    if db.scalar(select(func.count()).select_from(WardResult)):
+        return 0
+    if not _WARD_RESULTS_CSV.exists():
+        return 0
+    rows = []
+    with gzip.open(_WARD_RESULTS_CSV, "rt", encoding="utf-8", newline="") as fh:
+        for r in csv.DictReader(fh):
+            rows.append({
+                "state": r["state"], "lga": r["lga"], "ward": r["ward"], "ward_code": r["ward_code"],
+                "votes_apc": int(r["apc"]), "votes_lp": int(r["lp"]), "votes_pdp": int(r["pdp"]), "votes_nnpp": int(r["nnpp"]),
+                "total_votes": int(r["total_votes"]), "winner": r["winner"], "runner_up": r["runner_up"],
+            })
+    if rows:
+        db.execute(WardResult.__table__.insert(), rows)
+        db.commit()
+    return len(rows)
 
 
 def seed_lga_results(db: Session) -> int:
