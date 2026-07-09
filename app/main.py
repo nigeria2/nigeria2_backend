@@ -209,7 +209,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.34.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.34.1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -556,11 +556,22 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     reps = db.scalars(select(HouseMember).where(HouseMember.state == state).order_by(HouseMember.constituency)).all()
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
     gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
+    # Our model's projected winner per race (newest model prediction wins). The
+    # state map is coloured from this — blank when we have no prediction yet.
+    model_prediction: dict[str, dict] = {}
+    for p in preds:
+        if p.source == "model" and p.election_type not in model_prediction:
+            try:
+                m_scores = json.loads(p.scores) if p.scores else {}
+            except Exception:
+                m_scores = {}
+            model_prediction[p.election_type] = {"id": p.id, "party": p.leading_party, "scores": m_scores}
     return {
         "state": state,
         "facts": facts,
         "ward_count": ward_count,
         "predictions": [_public_prediction_dict(p) for p in preds],
+        "model_prediction": model_prediction,
         "politicians": [politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, []), lga_names) for x in pols],
         "lgas": [_lga_result_dict(x) for x in lgas],
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
