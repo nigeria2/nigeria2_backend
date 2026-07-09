@@ -124,8 +124,70 @@ class StatePrediction(Base):
     scores: Mapped[str] = mapped_column(Text, default="{}")  # JSON per-party shares
     notes: Mapped[str] = mapped_column(Text, default="")
     year: Mapped[str] = mapped_column(String(10), default="2027")
+    # When source == "model": the scenario that generated this row and a JSON
+    # trace of exactly how the projection was computed (for the details view).
+    scenario_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    detail: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class PredictionScenario(Base):
+    """A named set of assumptions that a background job turns into a full set of
+    per-state model predictions. The job is resumable: `cursor` records how many
+    states have been processed, so a killed job resumes from where it stopped."""
+
+    __tablename__ = "prediction_scenarios"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(160))
+    description: Mapped[str] = mapped_column(Text, default="")
+    election_type: Mapped[str] = mapped_column(String(30), default="presidential")
+    base_year: Mapped[str] = mapped_column(String(10), default="2023")
+    target_year: Mapped[str] = mapped_column(String(10), default="2027")
+    # draft | running | paused | done | error
+    status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
+    cursor: Mapped[int] = mapped_column(Integer, default=0)  # states processed so far
+    total: Mapped[int] = mapped_column(Integer, default=0)  # states to process
+    message: Mapped[str] = mapped_column(String(300), default="")
+    log: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of progress lines
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ScenarioPolitician(Base):
+    """A politician's assumed influence within a scenario. His historical votes in
+    the elections he ran get re-allocated to his `new_party`, scaled by his
+    `delta_popularity` (how popular he is now vs his last run) and `influence_pct`
+    (the share of the vote pool he can swing)."""
+
+    __tablename__ = "scenario_politicians"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    scenario_id: Mapped[int] = mapped_column(Integer, index=True)
+    politician_id: Mapped[int] = mapped_column(Integer, index=True)
+    politician_name: Mapped[str] = mapped_column(String(200), default="")
+    new_party: Mapped[str] = mapped_column(String(20), default="")
+    delta_popularity: Mapped[float] = mapped_column(Float, default=0.0)  # signed %, e.g. +20 / -10
+    influence_pct: Mapped[float] = mapped_column(Float, default=0.0)  # % of the vote pool he swings
+    scope: Mapped[str] = mapped_column(String(20), default="local")  # local | national | election
+    home_state: Mapped[str] = mapped_column(String(50), default="")
+
+
+class ScenarioTrend(Base):
+    """A free-form popularity trend within a scenario (e.g. "Christian vote"): it
+    shifts `shift_pct` of a state's votes toward `target_party`. Optionally scoped
+    to a subset of states (JSON list); empty = all states."""
+
+    __tablename__ = "scenario_trends"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    scenario_id: Mapped[int] = mapped_column(Integer, index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    shift_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    target_party: Mapped[str] = mapped_column(String(20), default="")
+    scope_states: Mapped[str] = mapped_column(Text, default="[]")  # JSON list of state names; empty = all
 
 
 class State(Base):

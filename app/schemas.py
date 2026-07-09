@@ -108,6 +108,39 @@ class StatePredictionUpdate(BaseModel):
     label: str | None = None
 
 
+class ScenarioIn(BaseModel):
+    """Admin: create a prediction scenario."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=160)
+    description: str | None = None
+    election_type: str = "presidential"
+
+
+class ScenarioPoliticianIn(BaseModel):
+    """Admin: attach a politician's assumed influence to a scenario."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    politician_id: int
+    new_party: str = Field(min_length=1, max_length=20)
+    delta_popularity: float = 0.0
+    influence_pct: float = Field(default=0.0, ge=0, le=100)
+    scope: str = "local"  # local | national | election
+
+
+class ScenarioTrendIn(BaseModel):
+    """Admin: add a free-form popularity trend to a scenario."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=120)
+    shift_pct: float = Field(ge=0, le=100)
+    target_party: str = Field(min_length=1, max_length=20)
+    scope_states: list[str] = Field(default_factory=list)
+
+
 class PoliticianIn(BaseModel):
     """Admin: add a politician."""
 

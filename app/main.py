@@ -30,7 +30,10 @@ from .models import (
     PoliticianAssessment,
     PoliticianPhoto,
     Prediction,
+    PredictionScenario,
     ProblemUnit,
+    ScenarioPolitician,
+    ScenarioTrend,
     Senator,
     State,
     StatePrediction,
@@ -39,6 +42,7 @@ from .models import (
     Ward,
     WardResult,
 )
+from . import prediction_worker
 from .schemas import (
     AnalysisIn,
     AssessmentIn,
@@ -50,6 +54,9 @@ from .schemas import (
     PoliticianIn,
     PredictionSetIn,
     ProfileUpdate,
+    ScenarioIn,
+    ScenarioPoliticianIn,
+    ScenarioTrendIn,
     StatePredictionIn,
     StatePredictionUpdate,
 )
@@ -123,9 +130,13 @@ async def lifespan(app: FastAPI):
                 pu = seed_problem_units(db)
                 if pu:
                     print(f"[startup] seeded {pu} problem units")
-                sp = seed_state_predictions(db)
-                if sp:
-                    print(f"[startup] seeded {sp} state predictions")
+                # The seeded "past performance" (2023 result) predictions were removed.
+                removed_pp = db.execute(
+                    delete(StatePrediction).where(StatePrediction.source == "past_performance")
+                ).rowcount
+                if removed_pp:
+                    db.commit()
+                    print(f"[startup] removed {removed_pp} past-performance predictions")
                 pol = seed_politicians(db)
                 if pol:
                     print(f"[startup] seeded {pol} politicians")
@@ -188,10 +199,17 @@ async def lifespan(app: FastAPI):
                     print(f"[startup] seeded {wr} ward results")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
+    # Relaunch any model job that was mid-run when the process last died.
+    try:
+        resumed = prediction_worker.resume_running()
+        if resumed:
+            print(f"[startup] resumed {resumed} running prediction scenario(s)")
+    except Exception as exc:
+        print(f"[startup] scenario resume error: {exc}")
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.33.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.34.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -412,6 +430,8 @@ def _public_prediction_dict(p: StatePrediction) -> dict:
         "scores": scores,
         "notes": p.notes,
         "year": p.year,
+        "scenario_id": p.scenario_id,
+        "has_detail": bool(p.source == "model" and p.detail and p.detail != "{}"),
     }
 
 
@@ -857,6 +877,8 @@ def state_prediction_to_dict(p: StatePrediction, user: User) -> dict:
         "scores": scores,
         "notes": p.notes,
         "year": p.year,
+        "scenario_id": p.scenario_id,
+        "has_detail": bool(p.source == "model" and p.detail and p.detail != "{}"),
         "is_mine": bool(p.user_id is not None and p.user_id == user.id),
         "can_edit": _can_edit_pred(user, p),
         "created_at": p.created_at.isoformat() if p.created_at else None,
@@ -937,6 +959,273 @@ def board_delete_prediction(pid: int, user: User = Depends(current_user), db: Se
     db.delete(p)
     db.commit()
     return {"ok": True}
+
+
+# --- public: full detail of a single prediction (powers the click-through view) ---
+@app.get("/api/predictions/{pid}")
+def prediction_detail(pid: int, db: Session = Depends(get_db)):
+    p = db.get(StatePrediction, pid)
+    if p is None:
+        raise HTTPException(status_code=404, detail="prediction not found")
+    try:
+        scores = json.loads(p.scores) if p.scores else {}
+    except Exception:
+        scores = {}
+    try:
+        detail = json.loads(p.detail) if p.detail else {}
+    except Exception:
+        detail = {}
+    scenario = db.get(PredictionScenario, p.scenario_id) if p.scenario_id else None
+    return {
+        "id": p.id,
+        "state": p.state,
+        "election_type": p.election_type,
+        "source": p.source,
+        "label": p.label,
+        "author_name": p.author_name,
+        "leading_party": p.leading_party,
+        "scores": scores,
+        "notes": p.notes,
+        "year": p.year,
+        "detail": detail,
+        "scenario": (
+            {"id": scenario.id, "name": scenario.name, "description": scenario.description,
+             "target_year": scenario.target_year, "election_type": scenario.election_type}
+            if scenario else None
+        ),
+    }
+
+
+# ============================================================================
+# Admin: the prediction model (scenarios → resumable background jobs)
+# ============================================================================
+def _scenario_progress(s: PredictionScenario) -> dict:
+    try:
+        log = json.loads(s.log) if s.log else []
+    except Exception:
+        log = []
+    pct = round(100 * s.cursor / s.total) if s.total else 0
+    return {
+        "id": s.id,
+        "name": s.name,
+        "description": s.description,
+        "election_type": s.election_type,
+        "target_year": s.target_year,
+        "status": s.status,
+        "cursor": s.cursor,
+        "total": s.total,
+        "percent": pct,
+        "message": s.message,
+        "log": log,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+    }
+
+
+def _scenario_politician_dict(p: ScenarioPolitician) -> dict:
+    return {
+        "id": p.id,
+        "politician_id": p.politician_id,
+        "politician_name": p.politician_name,
+        "new_party": p.new_party,
+        "delta_popularity": p.delta_popularity,
+        "influence_pct": p.influence_pct,
+        "scope": p.scope,
+        "home_state": p.home_state,
+    }
+
+
+def _scenario_trend_dict(t: ScenarioTrend) -> dict:
+    try:
+        states = json.loads(t.scope_states) if t.scope_states else []
+    except Exception:
+        states = []
+    return {"id": t.id, "name": t.name, "shift_pct": t.shift_pct, "target_party": t.target_party, "scope_states": states}
+
+
+def _scenario_full(s: PredictionScenario, db: Session) -> dict:
+    d = _scenario_progress(s)
+    pols = db.scalars(select(ScenarioPolitician).where(ScenarioPolitician.scenario_id == s.id).order_by(ScenarioPolitician.id)).all()
+    trends = db.scalars(select(ScenarioTrend).where(ScenarioTrend.scenario_id == s.id).order_by(ScenarioTrend.id)).all()
+    d["politicians"] = [_scenario_politician_dict(p) for p in pols]
+    d["trends"] = [_scenario_trend_dict(t) for t in trends]
+    return d
+
+
+@app.get("/api/admin/scenarios")
+def admin_scenarios(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.scalars(select(PredictionScenario).order_by(PredictionScenario.created_at.desc())).all()
+    return [_scenario_progress(s) for s in rows]
+
+
+@app.post("/api/admin/scenarios", status_code=201)
+def admin_create_scenario(payload: ScenarioIn, user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = PredictionScenario(
+        name=payload.name,
+        description=payload.description or "",
+        election_type=payload.election_type or "presidential",
+        created_by=user.id,
+    )
+    db.add(s)
+    db.commit()
+    db.refresh(s)
+    return _scenario_full(s, db)
+
+
+@app.get("/api/admin/scenarios/{sid}")
+def admin_scenario(sid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = db.get(PredictionScenario, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="scenario not found")
+    return _scenario_full(s, db)
+
+
+@app.delete("/api/admin/scenarios/{sid}")
+def admin_delete_scenario(sid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = db.get(PredictionScenario, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="scenario not found")
+    s.status = "paused"  # signal any running worker to stop
+    db.commit()
+    db.execute(delete(ScenarioPolitician).where(ScenarioPolitician.scenario_id == sid))
+    db.execute(delete(ScenarioTrend).where(ScenarioTrend.scenario_id == sid))
+    db.execute(delete(StatePrediction).where(StatePrediction.scenario_id == sid))
+    db.delete(s)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/admin/scenarios/{sid}/politicians", status_code=201)
+def admin_scenario_add_politician(sid: int, payload: ScenarioPoliticianIn, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = db.get(PredictionScenario, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="scenario not found")
+    pol = db.get(Politician, payload.politician_id)
+    if pol is None:
+        raise HTTPException(status_code=404, detail="politician not found")
+    row = ScenarioPolitician(
+        scenario_id=sid,
+        politician_id=pol.id,
+        politician_name=pol.name,
+        new_party=payload.new_party.strip().upper(),
+        delta_popularity=payload.delta_popularity,
+        influence_pct=payload.influence_pct,
+        scope=payload.scope if payload.scope in ("local", "national", "election") else "local",
+        home_state=pol.state,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _scenario_politician_dict(row)
+
+
+@app.delete("/api/admin/scenario-politicians/{rid}")
+def admin_scenario_remove_politician(rid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    row = db.get(ScenarioPolitician, rid)
+    if row is not None:
+        db.delete(row)
+        db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/admin/scenarios/{sid}/trends", status_code=201)
+def admin_scenario_add_trend(sid: int, payload: ScenarioTrendIn, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = db.get(PredictionScenario, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="scenario not found")
+    row = ScenarioTrend(
+        scenario_id=sid,
+        name=payload.name,
+        shift_pct=payload.shift_pct,
+        target_party=payload.target_party.strip().upper(),
+        scope_states=json.dumps([st for st in payload.scope_states if st]),
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _scenario_trend_dict(row)
+
+
+@app.delete("/api/admin/scenario-trends/{rid}")
+def admin_scenario_remove_trend(rid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    row = db.get(ScenarioTrend, rid)
+    if row is not None:
+        db.delete(row)
+        db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/admin/scenarios/{sid}/run")
+def admin_scenario_run(sid: int, restart: bool = False, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = db.get(PredictionScenario, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="scenario not found")
+    if restart or s.status in ("done", "error"):
+        s.cursor = 0  # start over
+        s.log = "[]"
+    s.status = "running"
+    s.message = "Queued…"
+    db.commit()
+    prediction_worker.start_scenario(sid)
+    return _scenario_progress(s)
+
+
+@app.post("/api/admin/scenarios/{sid}/pause")
+def admin_scenario_pause(sid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = db.get(PredictionScenario, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="scenario not found")
+    if s.status == "running":
+        s.status = "paused"
+        s.message = f"Paused at {s.cursor}/{s.total}."
+        db.commit()
+    return _scenario_progress(s)
+
+
+@app.get("/api/admin/scenarios/{sid}/status")
+def admin_scenario_status(sid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    s = db.get(PredictionScenario, sid)
+    if s is None:
+        raise HTTPException(status_code=404, detail="scenario not found")
+    return _scenario_progress(s)
+
+
+@app.get("/api/admin/politician-search")
+def admin_politician_search(q: str = "", _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    query = select(Politician).order_by(Politician.name)
+    term = q.strip()
+    if term:
+        query = query.where(Politician.name.ilike(f"%{term}%"))
+    rows = db.scalars(query.limit(25)).all()
+    return [{"id": p.id, "name": p.name, "state": p.state, "party": p.party, "title": p.title} for p in rows]
+
+
+@app.get("/api/admin/politician-info/{pid}")
+def admin_politician_info(pid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    pol = db.get(Politician, pid)
+    if pol is None:
+        raise HTTPException(status_code=404, detail="politician not found")
+    runs = db.scalars(
+        select(PartyHistory).where(PartyHistory.politician_id == pid).order_by(PartyHistory.year.desc())
+    ).all()
+    run_dicts = [
+        {"year": r.year, "election_type": r.election_type, "party": r.party, "state": r.state,
+         "votes": r.votes, "percent": r.percent, "constituency": r.constituency}
+        for r in runs
+    ]
+    # suggest an influence % from his best recorded vote share (primaries excluded)
+    shares = [r.percent for r in runs if r.percent and r.election_type != "primary"]
+    suggested = round(max(shares)) if shares else 0
+    return {
+        "id": pol.id,
+        "name": pol.name,
+        "state": pol.state,
+        "party": pol.party,
+        "title": pol.title,
+        "aka": _load_list(pol.aka),
+        "runs": run_dicts,
+        "suggested_influence_pct": suggested,
+        "current_party": pol.party or "",
+    }
 
 
 # --- auth ---
