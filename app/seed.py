@@ -517,6 +517,40 @@ def seed_presidential_2023(db: Session) -> int:
     return n
 
 
+def seed_presidential_2019(db: Session) -> int:
+    """Seed the official 2019 presidential result (all 73 candidates) as national
+    runs. To avoid flooding the state boards with dozens of one-off candidates we do
+    NOT create politicians here — instead each row links to an existing politician
+    where a confident name match exists (so e.g. Atiku's profile gains his 2019 run),
+    and is otherwise stored as a national record (politician_id null)."""
+    path = _ELECTIONS_DIR / "presidential_2019.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(PartyHistory).where(PartyHistory.year == "2019", PartyHistory.election_type == "presidential")):
+        return 0
+    # index existing politicians by token set for a conservative subset match
+    existing = [(p, _pol_tokens(p.name)) for p in db.scalars(select(Politician)).all()]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    n = 0
+    for c in data.get("candidates", []):
+        ct = _pol_tokens(c["name"])
+        match = None
+        for p, pt in existing:
+            if len(ct & pt) >= 2 and (ct <= pt or pt <= ct):  # reordered / fuller name
+                match = p
+                break
+        db.add(PartyHistory(
+            politician_id=match.id if match else None,
+            politician_name=c["name"].strip(), party=c.get("party", ""), state="Nigeria",
+            year="2019", election_type="presidential", votes=c.get("votes") or 0,
+            position=c.get("position") or 0, percent=c.get("percent"),
+            constituency="Nigeria (national)",
+        ))
+        n += 1
+    db.commit()
+    return n
+
+
 def seed_presidential_states(db: Session) -> int:
     """Seed the official 2023 presidential result by state (Tinubu/Atiku/Obi/Kwankwaso)."""
     path = _ELECTIONS_DIR / "presidential_states_2023.json"

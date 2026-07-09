@@ -1,0 +1,673 @@
+{
+  "office": "presidential",
+  "year": 2019,
+  "date": "2019-02-23",
+  "summary": {
+    "registered_voters": 84004084,
+    "registered_voters_collated": 82344107,
+    "accredited_voters": 29364209,
+    "valid_votes": 27324583,
+    "rejected_votes": 1289607,
+    "total_votes_cast": 28614190,
+    "turnout_percent": 35.66
+  },
+  "candidates": [
+    {
+      "name": "Buhari Muhammadu",
+      "party": "APC",
+      "gender": "M",
+      "votes": 15191847,
+      "percent": 55.598,
+      "elected": true,
+      "position": 1
+    },
+    {
+      "name": "Abubakar Atiku",
+      "party": "PDP",
+      "gender": "M",
+      "votes": 11262978,
+      "percent": 41.219,
+      "elected": false,
+      "position": 2
+    },
+    {
+      "name": "Felix Nicolas",
+      "party": "PCP",
+      "gender": "M",
+      "votes": 110196,
+      "percent": 0.403,
+      "elected": false,
+      "position": 3
+    },
+    {
+      "name": "Mailafia Obadiah",
+      "party": "ADC",
+      "gender": "M",
+      "votes": 97874,
+      "percent": 0.358,
+      "elected": false,
+      "position": 4
+    },
+    {
+      "name": "Gbor John Wilson Terwase",
+      "party": "APGA",
+      "gender": "M",
+      "votes": 66851,
+      "percent": 0.245,
+      "elected": false,
+      "position": 5
+    },
+    {
+      "name": "Yabagi Sani Yusuf",
+      "party": "ADP",
+      "gender": "M",
+      "votes": 54930,
+      "percent": 0.201,
+      "elected": false,
+      "position": 6
+    },
+    {
+      "name": "Akhimien Davidson Isibor",
+      "party": "GDPN",
+      "gender": "M",
+      "votes": 41852,
+      "percent": 0.153,
+      "elected": false,
+      "position": 7
+    },
+    {
+      "name": "Ibrahim Aliyu Hassan",
+      "party": "APA",
+      "gender": "M",
+      "votes": 36866,
+      "percent": 0.135,
+      "elected": false,
+      "position": 8
+    },
+    {
+      "name": "Donald Duke",
+      "party": "SDP",
+      "gender": "M",
+      "votes": 34746,
+      "percent": 0.127,
+      "elected": false,
+      "position": 9
+    },
+    {
+      "name": "Omoyele Sowore",
+      "party": "AAC",
+      "gender": "M",
+      "votes": 33953,
+      "percent": 0.124,
+      "elected": false,
+      "position": 10
+    },
+    {
+      "name": "Da-Silva Thomas Ayo",
+      "party": "SNC",
+      "gender": "M",
+      "votes": 28680,
+      "percent": 0.105,
+      "elected": false,
+      "position": 11
+    },
+    {
+      "name": "Shitu Mohammed Kabir",
+      "party": "APDA",
+      "gender": "M",
+      "votes": 26558,
+      "percent": 0.097,
+      "elected": false,
+      "position": 12
+    },
+    {
+      "name": "Yusuf Mamman Dantalle",
+      "party": "APM",
+      "gender": "M",
+      "votes": 26039,
+      "percent": 0.095,
+      "elected": false,
+      "position": 13
+    },
+    {
+      "name": "Moghalu Kingsley Bosah Chiedu",
+      "party": "YPP",
+      "gender": "M",
+      "votes": 21886,
+      "percent": 0.08,
+      "elected": false,
+      "position": 14
+    },
+    {
+      "name": "Ameh Peter Ojonugwa",
+      "party": "PPA",
+      "gender": "M",
+      "votes": 21822,
+      "percent": 0.08,
+      "elected": false,
+      "position": 15
+    },
+    {
+      "name": "Ositelu Isaac Babatunde",
+      "party": "A",
+      "gender": "M",
+      "votes": 19219,
+      "percent": 0.07,
+      "elected": false,
+      "position": 16
+    },
+    {
+      "name": "Durotoye Adetokunbo Olufela",
+      "party": "ANN",
+      "gender": "M",
+      "votes": 16779,
+      "percent": 0.061,
+      "elected": false,
+      "position": 17
+    },
+    {
+      "name": "Bashayi Isa Dansarki",
+      "party": "MMN",
+      "gender": "M",
+      "votes": 14540,
+      "percent": 0.053,
+      "elected": false,
+      "position": 18
+    },
+    {
+      "name": "Osakwe Felix Johnson",
+      "party": "DPP",
+      "gender": "M",
+      "votes": 14483,
+      "percent": 0.053,
+      "elected": false,
+      "position": 19
+    },
+    {
+      "name": "Abdulrashid Hassan Baba",
+      "party": "AA",
+      "gender": "M",
+      "votes": 14380,
+      "percent": 0.053,
+      "elected": false,
+      "position": 20
+    },
+    {
+      "name": "Nwokeafor Ikechukwu Ndubuisi",
+      "party": "ACD",
+      "gender": "M",
+      "votes": 11325,
+      "percent": 0.041,
+      "elected": false,
+      "position": 21
+    },
+    {
+      "name": "Maina Maimuna Kyari",
+      "party": "NPC",
+      "gender": "F",
+      "votes": 10081,
+      "percent": 0.037,
+      "elected": false,
+      "position": 22
+    },
+    {
+      "name": "Victor Okhai",
+      "party": "PPC",
+      "gender": "M",
+      "votes": 8979,
+      "percent": 0.033,
+      "elected": false,
+      "position": 23
+    },
+    {
+      "name": "Chike Ukaegbu",
+      "party": "AAP",
+      "gender": "M",
+      "votes": 8902,
+      "percent": 0.033,
+      "elected": false,
+      "position": 24
+    },
+    {
+      "name": "Ezekwesili Obiageli Katryn",
+      "party": "ACPN",
+      "gender": "F",
+      "votes": 7223,
+      "percent": 0.026,
+      "elected": false,
+      "position": 25
+    },
+    {
+      "name": "Ibrahim Usman Alhaji",
+      "party": "NRM",
+      "gender": "M",
+      "votes": 6229,
+      "percent": 0.023,
+      "elected": false,
+      "position": 26
+    },
+    {
+      "name": "Ike Keke",
+      "party": "NNPP",
+      "gender": "M",
+      "votes": 6111,
+      "percent": 0.022,
+      "elected": false,
+      "position": 27
+    },
+    {
+      "name": "Moses Ayibiowu",
+      "party": "NUP",
+      "gender": "M",
+      "votes": 5323,
+      "percent": 0.019,
+      "elected": false,
+      "position": 28
+    },
+    {
+      "name": "Awosola Williams Olusola",
+      "party": "DPC",
+      "gender": "M",
+      "votes": 5242,
+      "percent": 0.019,
+      "elected": false,
+      "position": 29
+    },
+    {
+      "name": "Muhammed Usman Zaki",
+      "party": "LP",
+      "gender": "M",
+      "votes": 5074,
+      "percent": 0.019,
+      "elected": false,
+      "position": 30
+    },
+    {
+      "name": "Eke Samuel Chukwuma",
+      "party": "GPN",
+      "gender": "M",
+      "votes": 4924,
+      "percent": 0.018,
+      "elected": false,
+      "position": 31
+    },
+    {
+      "name": "Nwachukwu Chuks Nwabuikwu",
+      "party": "AGA",
+      "gender": "M",
+      "votes": 4689,
+      "percent": 0.017,
+      "elected": false,
+      "position": 32
+    },
+    {
+      "name": "Hamza Al Mustafa",
+      "party": "PPN",
+      "gender": "M",
+      "votes": 4622,
+      "percent": 0.017,
+      "elected": false,
+      "position": 33
+    },
+    {
+      "name": "Okotie Christopher Oghenebrorie",
+      "party": "FRESH",
+      "gender": "M",
+      "votes": 4554,
+      "percent": 0.017,
+      "elected": false,
+      "position": 34
+    },
+    {
+      "name": "Shipi Moses Godia",
+      "party": "ABP",
+      "gender": "M",
+      "votes": 4523,
+      "percent": 0.017,
+      "elected": false,
+      "position": 35
+    },
+    {
+      "name": "Fasua Tope Kolade",
+      "party": "ANRP",
+      "gender": "M",
+      "votes": 4340,
+      "percent": 0.016,
+      "elected": false,
+      "position": 36
+    },
+    {
+      "name": "Onwubuya Rev Dr",
+      "party": "FJP",
+      "gender": "M",
+      "votes": 4174,
+      "percent": 0.015,
+      "elected": false,
+      "position": 37
+    },
+    {
+      "name": "Asukwo Mendie Archibong",
+      "party": "NFD",
+      "gender": "M",
+      "votes": 4096,
+      "percent": 0.015,
+      "elected": false,
+      "position": 38
+    },
+    {
+      "name": "Ahmed Buhari",
+      "party": "SNP",
+      "gender": "M",
+      "votes": 3941,
+      "percent": 0.014,
+      "elected": false,
+      "position": 39
+    },
+    {
+      "name": "Salisu Yunusa Tanko",
+      "party": "NCP",
+      "gender": "M",
+      "votes": 3799,
+      "percent": 0.014,
+      "elected": false,
+      "position": 40
+    },
+    {
+      "name": "Shittu Moshood Asiwaju",
+      "party": "ANP",
+      "gender": "M",
+      "votes": 3586,
+      "percent": 0.013,
+      "elected": false,
+      "position": 41
+    },
+    {
+      "name": "Obinna Uchechukwu Ikeagwuonu",
+      "party": "APP",
+      "gender": "M",
+      "votes": 3585,
+      "percent": 0.013,
+      "elected": false,
+      "position": 42
+    },
+    {
+      "name": "Balogun Isiaka Ishola",
+      "party": "UDP",
+      "gender": "M",
+      "votes": 3170,
+      "percent": 0.012,
+      "elected": false,
+      "position": 43
+    },
+    {
+      "name": "Obaje Yusufu Ameh",
+      "party": "ANDP",
+      "gender": "M",
+      "votes": 3104,
+      "percent": 0.011,
+      "elected": false,
+      "position": 44
+    },
+    {
+      "name": "Chief Umenwa Godwin",
+      "party": "AGAP",
+      "gender": "M",
+      "votes": 3071,
+      "percent": 0.011,
+      "elected": false,
+      "position": 45
+    },
+    {
+      "name": "Israel Nonyerem Davidson",
+      "party": "RAP",
+      "gender": "M",
+      "votes": 2972,
+      "percent": 0.011,
+      "elected": false,
+      "position": 46
+    },
+    {
+      "name": "Ukonga Frank",
+      "party": "DA",
+      "gender": "M",
+      "votes": 2769,
+      "percent": 0.01,
+      "elected": false,
+      "position": 47
+    },
+    {
+      "name": "Santuraki Hamisu",
+      "party": "MPN",
+      "gender": "M",
+      "votes": 2752,
+      "percent": 0.01,
+      "elected": false,
+      "position": 48
+    },
+    {
+      "name": "Adesanya-Davies Mercy Olufunmilayo",
+      "party": "MAJA",
+      "gender": "F",
+      "votes": 2651,
+      "percent": 0.01,
+      "elected": false,
+      "position": 49
+    },
+    {
+      "name": "Gbenga Olawepo-Hashim",
+      "party": "PT",
+      "gender": "M",
+      "votes": 2613,
+      "percent": 0.01,
+      "elected": false,
+      "position": 50
+    },
+    {
+      "name": "Ali Soyode",
+      "party": "YES",
+      "gender": "M",
+      "votes": 2394,
+      "percent": 0.009,
+      "elected": false,
+      "position": 51
+    },
+    {
+      "name": "Ojinika Geff Chizee",
+      "party": "CC",
+      "gender": "M",
+      "votes": 2391,
+      "percent": 0.009,
+      "elected": false,
+      "position": 52
+    },
+    {
+      "name": "Nsehe Nseobong",
+      "party": "RP",
+      "gender": "M",
+      "votes": 2388,
+      "percent": 0.009,
+      "elected": false,
+      "position": 53
+    },
+    {
+      "name": "Rabia Yasai Hassan Cengiz",
+      "party": "NAC",
+      "gender": "F",
+      "votes": 2279,
+      "percent": 0.008,
+      "elected": false,
+      "position": 54
+    },
+    {
+      "name": "Atuejide Eunice Uche Julian",
+      "party": "NIP",
+      "gender": "F",
+      "votes": 2248,
+      "percent": 0.008,
+      "elected": false,
+      "position": 55
+    },
+    {
+      "name": "Dara John",
+      "party": "ASD",
+      "gender": "M",
+      "votes": 2146,
+      "percent": 0.008,
+      "elected": false,
+      "position": 56
+    },
+    {
+      "name": "Fagbenro-Byron Samuel Adesina",
+      "party": "KP",
+      "gender": "M",
+      "votes": 1911,
+      "percent": 0.007,
+      "elected": false,
+      "position": 57
+    },
+    {
+      "name": "Etim Emmanuel Ishie",
+      "party": "CNP",
+      "gender": "M",
+      "votes": 1874,
+      "percent": 0.007,
+      "elected": false,
+      "position": 58
+    },
+    {
+      "name": "Chukwu-Eguzolugo Sunday Chikendu",
+      "party": "JMPP",
+      "gender": "M",
+      "votes": 1853,
+      "percent": 0.007,
+      "elected": false,
+      "position": 59
+    },
+    {
+      "name": "Madu Nnamdi Edozie",
+      "party": "ID",
+      "gender": "M",
+      "votes": 1845,
+      "percent": 0.007,
+      "elected": false,
+      "position": 60
+    },
+    {
+      "name": "Osuala Chukwudi John Kennedy",
+      "party": "RBNP",
+      "gender": "M",
+      "votes": 1792,
+      "percent": 0.007,
+      "elected": false,
+      "position": 61
+    },
+    {
+      "name": "Albert Owuru Ambrose",
+      "party": "HDP",
+      "gender": "M",
+      "votes": 1663,
+      "percent": 0.006,
+      "elected": false,
+      "position": 62
+    },
+    {
+      "name": "David Esosa Ize-Iyamu",
+      "party": "BNPP",
+      "gender": "M",
+      "votes": 1649,
+      "percent": 0.006,
+      "elected": false,
+      "position": 63
+    },
+    {
+      "name": "Inwa Ahmed Sakil",
+      "party": "UPN",
+      "gender": "M",
+      "votes": 1631,
+      "percent": 0.006,
+      "elected": false,
+      "position": 64
+    },
+    {
+      "name": "Akpua Robinson",
+      "party": "NDLP",
+      "gender": "M",
+      "votes": 1588,
+      "percent": 0.006,
+      "elected": false,
+      "position": 65
+    },
+    {
+      "name": "Mark Emmanuel Audu",
+      "party": "UP",
+      "gender": "M",
+      "votes": 1561,
+      "percent": 0.006,
+      "elected": false,
+      "position": 66
+    },
+    {
+      "name": "Ishaka Paul Ofemile",
+      "party": "NEPP",
+      "gender": "M",
+      "votes": 1524,
+      "percent": 0.006,
+      "elected": false,
+      "position": 67
+    },
+    {
+      "name": "Kriz David",
+      "party": "LM",
+      "gender": "M",
+      "votes": 1438,
+      "percent": 0.005,
+      "elected": false,
+      "position": 68
+    },
+    {
+      "name": "Ademola Babatunde Abidemi",
+      "party": "NCMP",
+      "gender": "M",
+      "votes": 1378,
+      "percent": 0.005,
+      "elected": false,
+      "position": 69
+    },
+    {
+      "name": "Edosomwan Johnson",
+      "party": "NDCP",
+      "gender": "M",
+      "votes": 1192,
+      "percent": 0.004,
+      "elected": false,
+      "position": 70
+    },
+    {
+      "name": "Abah Lewis Elaigwu",
+      "party": "CAP",
+      "gender": "M",
+      "votes": 1111,
+      "percent": 0.004,
+      "elected": false,
+      "position": 71
+    },
+    {
+      "name": "Angela Johnson",
+      "party": "AUN",
+      "gender": "F",
+      "votes": 1092,
+      "percent": 0.004,
+      "elected": false,
+      "position": 72
+    },
+    {
+      "name": "Nwangwu Uchenna Peter",
+      "party": "WTPN",
+      "gender": "M",
+      "votes": 732,
+      "percent": 0.003,
+      "elected": false,
+      "position": 73
+    }
+  ]
+}

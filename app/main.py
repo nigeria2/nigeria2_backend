@@ -69,6 +69,7 @@ from .seed import (
     seed_governors_current,
     seed_governors_history,
     seed_house_members,
+    seed_presidential_2019,
     seed_presidential_2023,
     seed_presidential_primaries,
     seed_presidential_states,
@@ -91,6 +92,7 @@ from .seed import (
 )
 
 STATE_NAMES = sorted(BASE.keys())
+_ELECTIONS_DIR = pathlib.Path(__file__).resolve().parent / "data" / "elections"
 
 
 def run_migrations() -> None:
@@ -173,6 +175,9 @@ async def lifespan(app: FastAPI):
                 ppr = seed_presidential_primaries(db)
                 if ppr:
                     print(f"[startup] seeded {ppr} presidential primary results")
+                p19 = seed_presidential_2019(db)
+                if p19:
+                    print(f"[startup] seeded {p19} 2019 presidential candidates")
                 gov = seed_governors_current(db)
                 if gov:
                     print(f"[startup] seeded {gov} current governors")
@@ -209,7 +214,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.34.2", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.35.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -654,6 +659,30 @@ def list_senators(db: Session = Depends(get_db)):
 def list_governors(db: Session = Depends(get_db)):
     rows = db.scalars(select(Governor).order_by(Governor.state)).all()
     return [_governor_dict(g) for g in rows]
+
+
+@app.get("/api/elections/presidential/2019")
+def presidential_2019_results(db: Session = Depends(get_db)):
+    """The official 2019 presidential result — all 73 candidates + INEC summary."""
+    rows = db.scalars(
+        select(PartyHistory).where(
+            PartyHistory.year == "2019", PartyHistory.election_type == "presidential"
+        ).order_by(PartyHistory.position)
+    ).all()
+    summary = {}
+    try:
+        summary = json.loads((_ELECTIONS_DIR / "presidential_2019.json").read_text(encoding="utf-8")).get("summary", {})
+    except Exception:
+        pass
+    return {
+        "year": 2019,
+        "summary": summary,
+        "candidates": [
+            {"name": r.politician_name, "party": r.party, "votes": r.votes, "percent": r.percent,
+             "position": r.position, "politician_id": r.politician_id, "elected": r.position == 1}
+            for r in rows
+        ],
+    }
 
 
 def _house_dict(m: HouseMember) -> dict:
