@@ -175,6 +175,24 @@ class ScenarioPolitician(Base):
     home_state: Mapped[str] = mapped_column(String(50), default="")
 
 
+class ElectionResult(Base):
+    """A historical election result for one state (or 'Nigeria' national), one office,
+    one year — the party→votes tally, plus the winner. Backs the party pages."""
+
+    __tablename__ = "election_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, index=True)
+    office: Mapped[str] = mapped_column(String(20), index=True)  # presidential | governor
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    scores: Mapped[str] = mapped_column(Text, default="{}")  # JSON {PARTY: votes}
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    winner_party: Mapped[str] = mapped_column(String(20), index=True, default="")
+    winner_name: Mapped[str] = mapped_column(String(200), default="")
+    source: Mapped[str] = mapped_column(String(40), default="")
+
+
 class ScenarioTrend(Base):
     """A free-form popularity trend within a scenario (e.g. "Christian vote"): it
     shifts `shift_pct` of a state's votes toward `target_party`. Optionally scoped

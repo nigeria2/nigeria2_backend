@@ -26,6 +26,7 @@ from .models import (
     PartyElection,
     PartyHistory,
     PollingUnit,
+    ElectionResult,
     Politician,
     PoliticianAssessment,
     PoliticianPhoto,
@@ -43,6 +44,7 @@ from .models import (
     WardResult,
 )
 from . import prediction_worker
+from .history_ingest import PARTY_NAMES, seed_election_history
 from .schemas import (
     AnalysisIn,
     AssessmentIn,
@@ -178,6 +180,9 @@ async def lifespan(app: FastAPI):
                 p19 = seed_presidential_2019(db)
                 if p19:
                     print(f"[startup] seeded {p19} 2019 presidential candidates")
+                hist = seed_election_history(db, _ELECTIONS_DIR.parent / "history")
+                if hist:
+                    print(f"[startup] seeded {hist} historical election results")
                 gov = seed_governors_current(db)
                 if gov:
                     print(f"[startup] seeded {gov} current governors")
@@ -214,7 +219,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.35.0", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.36.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -682,6 +687,115 @@ def presidential_2019_results(db: Session = Depends(get_db)):
              "position": r.position, "politician_id": r.politician_id, "elected": r.position == 1}
             for r in rows
         ],
+    }
+
+
+# ============================================================================
+# Party pages — what each party has achieved, from the historical results
+# ============================================================================
+def _scores(r: ElectionResult) -> dict:
+    try:
+        return {k: int(v) for k, v in json.loads(r.scores or "{}").items()}
+    except Exception:
+        return {}
+
+
+def _national_pres_winners(db: Session) -> dict[int, tuple[str, str]]:
+    """year -> (winning party, winner name) for the presidency."""
+    by_year: dict[int, dict] = defaultdict(lambda: defaultdict(int))
+    national: dict[int, tuple[str, str]] = {}
+    for r in db.scalars(select(ElectionResult).where(ElectionResult.office == "presidential")).all():
+        sc = _scores(r)
+        if r.state == "Nigeria":
+            if r.winner_party:
+                national[r.year] = (r.winner_party, r.winner_name)
+        else:
+            for p, v in sc.items():
+                if p != "OTHERS":
+                    by_year[r.year][p] += v
+    winners: dict[int, tuple[str, str]] = {}
+    for year in set(list(by_year) + list(national)):
+        if year in national:
+            winners[year] = national[year]
+        else:
+            sc = by_year.get(year, {})
+            if sc:
+                winners[year] = (max(sc, key=lambda p: sc[p]), "")
+    return winners
+
+
+@app.get("/api/parties/history")
+def parties_history(db: Session = Depends(get_db)):
+    """Every party that appears in the historical results, with headline counts."""
+    rows = db.scalars(select(ElectionResult)).all()
+    agg: dict[str, dict] = defaultdict(lambda: {"gov": 0, "pres_states": 0, "years": set()})
+    for r in rows:
+        for p in _scores(r):
+            if p != "OTHERS":
+                agg[p]["years"].add(r.year)
+        if r.winner_party and r.winner_party != "OTHERS":
+            if r.office == "governor":
+                agg[r.winner_party]["gov"] += 1
+            elif r.state != "Nigeria":
+                agg[r.winner_party]["pres_states"] += 1
+    nat = _national_pres_winners(db)
+    nat_counts: dict[str, int] = defaultdict(int)
+    for _, (wp, _n) in nat.items():
+        if wp:
+            nat_counts[wp] += 1
+    out = []
+    for acr, d in agg.items():
+        out.append({
+            "acronym": acr, "name": PARTY_NAMES.get(acr, acr),
+            "gov_wins": d["gov"], "pres_state_wins": d["pres_states"],
+            "pres_national_wins": nat_counts.get(acr, 0),
+            "first_year": min(d["years"]) if d["years"] else None,
+            "last_year": max(d["years"]) if d["years"] else None,
+        })
+    out.sort(key=lambda x: (-(x["pres_national_wins"] * 1000 + x["gov_wins"] * 10 + x["pres_state_wins"]), x["acronym"]))
+    return out
+
+
+@app.get("/api/parties/{acronym}/summary")
+def party_summary(acronym: str, db: Session = Depends(get_db)):
+    acr = acronym.strip().upper()
+    rows = db.scalars(select(ElectionResult)).all()
+    gov_wins: list[dict] = []
+    pres_states: dict[int, list[str]] = defaultdict(list)
+    gov_votes = pres_votes = 0
+    years: set[int] = set()
+    for r in rows:
+        sc = _scores(r)
+        if acr in sc:
+            years.add(r.year)
+        if r.office == "governor":
+            gov_votes += sc.get(acr, 0)
+            if r.winner_party == acr:
+                gov_wins.append({"year": r.year, "state": r.state, "name": r.winner_name})
+        else:
+            pres_votes += sc.get(acr, 0)
+            if r.state != "Nigeria" and r.winner_party == acr:
+                pres_states[r.year].append(r.state)
+    nat = _national_pres_winners(db)
+    pres_national = sorted(
+        [{"year": y, "name": nm} for y, (wp, nm) in nat.items() if wp == acr],
+        key=lambda x: x["year"],
+    )
+    gov_wins.sort(key=lambda x: (-x["year"], x["state"]))
+    return {
+        "acronym": acr,
+        "name": PARTY_NAMES.get(acr, acr),
+        "gov_wins": gov_wins,
+        "gov_win_count": len(gov_wins),
+        "gov_states": sorted({g["state"] for g in gov_wins}),
+        "pres_state_wins": [{"year": y, "states": sorted(s)} for y, s in sorted(pres_states.items(), reverse=True)],
+        "pres_state_win_count": sum(len(s) for s in pres_states.values()),
+        "pres_national_wins": pres_national,
+        "total_gov_votes": gov_votes,
+        "total_pres_votes": pres_votes,
+        "years_active": sorted(years),
+        "first_year": min(years) if years else None,
+        "last_year": max(years) if years else None,
     }
 
 
