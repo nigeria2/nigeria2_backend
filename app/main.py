@@ -209,7 +209,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Nigeria 2.0 API", version="0.34.1", lifespan=lifespan)
+app = FastAPI(title="Nigeria 2.0 API", version="0.34.2", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -552,6 +552,24 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
     senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
     senate_wins = _senate_win_votes(db)
+    # 2023 senatorial races (winner + losers) grouped by district, for the
+    # expandable "history" under each incumbent senator.
+    senate_races: dict[str, dict] = {}
+    for h in db.scalars(
+        select(PartyHistory).where(
+            PartyHistory.state == state, PartyHistory.election_type == "senate", PartyHistory.year == "2023"
+        ).order_by(PartyHistory.constituency, PartyHistory.position)
+    ).all():
+        d = senate_races.get(h.constituency)
+        if d is None:
+            short = h.constituency
+            if short.lower().startswith(state.lower()):
+                short = short[len(state):].strip()
+            d = senate_races[h.constituency] = {"district": h.constituency, "district_short": short, "candidates": []}
+        d["candidates"].append({
+            "name": h.politician_name, "party": h.party, "votes": h.votes or None,
+            "position": h.position, "politician_id": h.politician_id,
+        })
     pres23 = db.scalar(select(StatePresidential).where(StatePresidential.state == state, StatePresidential.year == 2023))
     reps = db.scalars(select(HouseMember).where(HouseMember.state == state).order_by(HouseMember.constituency)).all()
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
@@ -577,6 +595,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
         "senators": [_senator_dict(s, senate_wins.get(s.politician_id)) for s in senators],
+        "senate_2023": list(senate_races.values()),
         "reps": [_house_dict(m) for m in reps],
         "presidential_2023": ({
             "APC": pres23.apc, "PDP": pres23.pdp, "LP": pres23.lp, "NNPP": pres23.nnpp,
