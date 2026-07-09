@@ -478,6 +478,25 @@ class ProblemUnit(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class DeclaredCandidate(Base):
+    """A politician publicly declared/expected to run for a party in a future
+    election that hasn't happened yet -- no votes/position/percent, since
+    those only make sense for a completed race (see PartyHistory for that).
+    `state` is "Nigeria" for a national presidential candidacy."""
+
+    __tablename__ = "declared_candidates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state: Mapped[str] = mapped_column(String(50), index=True)
+    election_type: Mapped[str] = mapped_column(String(30), index=True)  # presidential | governor | senate
+    year: Mapped[str] = mapped_column(String(10), default="2027", index=True)
+    party: Mapped[str] = mapped_column(String(20), default="")
+    politician_name: Mapped[str] = mapped_column(String(200))
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    running_mate: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class Analysis(Base):
     """A contributor's per-party projection for a state (feeds the aggregation)."""
 

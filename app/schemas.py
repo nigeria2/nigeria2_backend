@@ -130,6 +130,20 @@ class ScenarioPoliticianIn(BaseModel):
     scope: str = "local"  # local | national | election
 
 
+class DeclaredCandidateIn(BaseModel):
+    """Admin: declare a politician as a party's candidate for a future election."""
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    state: str = Field(min_length=1, max_length=50)  # "Nigeria" for a national presidential run
+    election_type: str = Field(min_length=1, max_length=30)  # presidential | governor | senate
+    year: str = "2027"
+    party: str = Field(default="", max_length=20)
+    politician_name: str = Field(min_length=1, max_length=200)
+    politician_id: int | None = None
+    running_mate: str = ""
+
+
 class ScenarioTrendIn(BaseModel):
     """Admin: add a free-form popularity trend to a scenario."""
 

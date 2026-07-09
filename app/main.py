@@ -16,6 +16,7 @@ from .auth import create_token, current_user, require_admin, verify_google_crede
 from .db import SessionLocal, engine, get_db
 from .models import (
     Analysis,
+    DeclaredCandidate,
     Governor,
     GovernorHistory,
     HouseMember,
@@ -48,6 +49,7 @@ from .history_ingest import PARTY_NAMES, seed_election_history
 from .schemas import (
     AnalysisIn,
     AssessmentIn,
+    DeclaredCandidateIn,
     GoogleAuthIn,
     JoinIn,
     JoinOut,
@@ -357,6 +359,13 @@ def predictions_trend(db: Session = Depends(get_db)):
 @app.get("/api/parties")
 def list_parties(db: Session = Depends(get_db)):
     rows = db.scalars(select(Party).order_by(Party.name)).all()
+    # "Active" = fielded at least one candidate in the 2019 general elections
+    # (governor/presidential/senate/house) -- our most complete single-year
+    # dataset, so the most reliable signal for "still contests elections".
+    active_2019 = {
+        (a or "").strip().upper()
+        for a in db.scalars(select(PartyHistory.party).where(PartyHistory.year == "2019").distinct()).all()
+    }
     return [
         {
             "acronym": p.acronym,
@@ -367,6 +376,7 @@ def list_parties(db: Session = Depends(get_db)):
             "financial_secretary": p.financial_secretary,
             "legal_adviser": p.legal_adviser,
             "address": p.address,
+            "active": p.acronym.strip().upper() in active_2019,
         }
         for p in rows
     ]
@@ -513,6 +523,16 @@ def politician_to_dict(p: Politician, assessments: list, runs: list | None = Non
     return d
 
 
+def _is_heavyweight(d: dict) -> bool:
+    """Hide fringe candidates (a handful of real, known votes in the low
+    single digits -- from a large ward or a joke campaign, not a real
+    contender) from the heavyweight boards. Anyone whose best vote count is
+    unknown (no non-primary run on record) is kept, since "unknown" isn't
+    evidence of being a fringe candidate. Their full record is still visible
+    from a state's full politician list -- this only trims the headline board."""
+    return d["max_votes"] is None or d["max_votes"] >= 10
+
+
 def _runs_map(db: Session, pol_ids: list[int]) -> dict[int, list]:
     """Map politician_id -> their PartyHistory rows (election runs), oldest first."""
     out: dict[int, list] = defaultdict(list)
@@ -584,6 +604,13 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     reps = db.scalars(select(HouseMember).where(HouseMember.state == state).order_by(HouseMember.constituency)).all()
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
     gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
+    # 2027 declared candidates: national presidential ones (shown on every
+    # state page) plus any declared specifically for this state's own race.
+    declared_2027 = db.scalars(
+        select(DeclaredCandidate).where(
+            DeclaredCandidate.year == "2027", DeclaredCandidate.state.in_([state, "Nigeria"])
+        ).order_by(DeclaredCandidate.election_type, DeclaredCandidate.party)
+    ).all()
     # Our model's projected winner per race (newest model prediction wins). The
     # state map is coloured from this — blank when we have no prediction yet.
     model_prediction: dict[str, dict] = {}
@@ -600,7 +627,11 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "ward_count": ward_count,
         "predictions": [_public_prediction_dict(p) for p in preds],
         "model_prediction": model_prediction,
-        "politicians": [politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, []), lga_names) for x in pols],
+        "declared_candidates_2027": [_declared_candidate_dict(c) for c in declared_2027],
+        "politicians": [
+            d for x in pols
+            if _is_heavyweight(d := politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, []), lga_names))
+        ],
         "lgas": [_lga_result_dict(x) for x in lgas],
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
@@ -617,6 +648,23 @@ def state_detail(state: str, db: Session = Depends(get_db)):
              "acting": g.acting, "incumbent": g.term_end == "present", "politician_id": g.politician_id}
             for g in gov_hist
         ],
+    }
+
+
+@app.get("/api/states/{state}/politicians")
+def state_politicians_all(state: str, db: Session = Depends(get_db)):
+    """The full politician list for a state, with no heavyweight cutoff --
+    backs the "view everyone" page linked from the state's heavyweight board."""
+    pols = db.scalars(select(Politician).where(Politician.state == state).order_by(Politician.name)).all()
+    pol_assess: dict[int, list] = defaultdict(list)
+    if pols:
+        for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
+            pol_assess[a.politician_id].append(a)
+    pol_runs = _runs_map(db, [p.id for p in pols])
+    lga_names = _lga_names(db)
+    return {
+        "state": state,
+        "politicians": [politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, []), lga_names) for x in pols],
     }
 
 
@@ -886,7 +934,8 @@ def list_politicians(db: Session = Depends(get_db)):
         by_pol[a.politician_id].append(a)
     runs = _runs_map(db, [p.id for p in pols])
     lga_names = _lga_names(db)
-    return [politician_to_dict(p, by_pol.get(p.id, []), runs.get(p.id, []), lga_names) for p in pols]
+    dicts = [politician_to_dict(p, by_pol.get(p.id, []), runs.get(p.id, []), lga_names) for p in pols]
+    return [d for d in dicts if _is_heavyweight(d)]
 
 
 @app.get("/api/politicians/{pid}")
@@ -1056,6 +1105,66 @@ def state_prediction_to_dict(p: StatePrediction, user: User) -> dict:
         "can_edit": _can_edit_pred(user, p),
         "created_at": p.created_at.isoformat() if p.created_at else None,
     }
+
+
+# States with off-cycle governorship terms (different year than the main
+# 31-state cycle) plus FCT, which has no governorship at all.
+OFF_CYCLE_GOVERNOR_STATES = {"Anambra", "Edo", "Ekiti", "Ondo", "Osun", "FCT"}
+GOVERNOR_2027_STATES = [s for s in STATE_NAMES if s not in OFF_CYCLE_GOVERNOR_STATES]
+
+
+def _declared_candidate_dict(c: DeclaredCandidate) -> dict:
+    return {
+        "id": c.id, "state": c.state, "election_type": c.election_type, "year": c.year,
+        "party": c.party, "politician_name": c.politician_name, "politician_id": c.politician_id,
+        "running_mate": c.running_mate or None,
+    }
+
+
+@app.get("/api/declared-candidates")
+def list_declared_candidates(
+    election_type: str | None = None, year: str = "2027", state: str | None = None, db: Session = Depends(get_db),
+):
+    q = select(DeclaredCandidate).where(DeclaredCandidate.year == year)
+    if election_type:
+        q = q.where(DeclaredCandidate.election_type == election_type)
+    if state:
+        q = q.where(DeclaredCandidate.state == state)
+    rows = db.scalars(q.order_by(DeclaredCandidate.state, DeclaredCandidate.party)).all()
+    return [_declared_candidate_dict(c) for c in rows]
+
+
+@app.get("/api/declared-candidates/governor-states")
+def declared_candidate_governor_states(year: str = "2027"):
+    """Which states actually hold a governor election in `year` (main 31-state
+    cycle only, for now) -- backs the admin dropdown so off-cycle states can't
+    be mis-entered."""
+    return {"year": year, "states": GOVERNOR_2027_STATES}
+
+
+@app.post("/api/admin/declared-candidates", status_code=201)
+def admin_add_declared_candidate(payload: DeclaredCandidateIn, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    if payload.election_type == "governor" and payload.year == "2027" and payload.state not in GOVERNOR_2027_STATES:
+        raise HTTPException(status_code=400, detail=f"{payload.state} does not hold a governor election in 2027 (off-cycle)")
+    pol = db.get(Politician, payload.politician_id) if payload.politician_id else None
+    row = DeclaredCandidate(
+        state=payload.state, election_type=payload.election_type, year=payload.year,
+        party=payload.party.strip().upper(), politician_name=(pol.name if pol else payload.politician_name),
+        politician_id=pol.id if pol else None, running_mate=payload.running_mate,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return _declared_candidate_dict(row)
+
+
+@app.delete("/api/admin/declared-candidates/{cid}")
+def admin_delete_declared_candidate(cid: int, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    row = db.get(DeclaredCandidate, cid)
+    if row is not None:
+        db.delete(row)
+        db.commit()
+    return {"ok": True}
 
 
 @app.get("/api/board/states")
