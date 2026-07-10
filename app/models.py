@@ -540,3 +540,21 @@ class Analysis(Base):
     notes: Mapped[str] = mapped_column(Text, default="")
     measurement_week: Mapped[str] = mapped_column(String(10), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LgaPrediction(Base):
+    """A single per-LGA vote prediction: a party (and candidate) is projected to get
+    `votes` votes in one local government. States/candidates are aggregated up from
+    these for the /2027/<race>/states view."""
+
+    __tablename__ = "lga_predictions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    election_type: Mapped[str] = mapped_column(String(30), default="presidential", index=True)
+    year: Mapped[str] = mapped_column(String(10), default="2027", index=True)
+    party: Mapped[str] = mapped_column(String(20), default="")
+    lga_id: Mapped[int] = mapped_column(Integer, index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -22,6 +22,7 @@ from .models import (
     HouseMember,
     InterestedUser,
     Lga,
+    LgaPrediction,
     LgaResult,
     Party,
     PartyElection,
@@ -78,6 +79,7 @@ from .seed import (
     seed_presidential_states,
     seed_senate_2023,
     seed_lga_results,
+    seed_lga_predictions,
     seed_lgas,
     refresh_lga_names,
     link_lga_references,
@@ -206,6 +208,9 @@ async def lifespan(app: FastAPI):
                 ll = link_lga_references(db)
                 if ll:
                     print(f"[startup] linked {ll} rows to canonical LGAs")
+                lp = seed_lga_predictions(db)
+                if lp:
+                    print(f"[startup] seeded {lp} LGA prediction(s)")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     # Relaunch any model job that was mid-run when the process last died.
@@ -1077,6 +1082,55 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
         "registered_voters": sum((w["registered_voters"] or 0) for w in wards),
         "strongholds": strongholds[:12], "problem_units": problems,
     }
+
+
+# --- 2027 predictions (per-LGA vote projections, aggregated up to states) ---
+@app.get("/api/lga-predictions/states")
+def lga_prediction_states(election_type: str = "presidential", year: str = "2027", db: Session = Depends(get_db)):
+    """States that have any per-LGA prediction, with the projected votes per party."""
+    rows = db.scalars(select(LgaPrediction).where(
+        LgaPrediction.election_type == election_type, LgaPrediction.year == year
+    )).all()
+    agg: dict[str, dict] = defaultdict(lambda: {"parties": defaultdict(int), "lga_count": 0})
+    for r in rows:
+        agg[r.state_geo]["parties"][r.party] += r.votes
+        agg[r.state_geo]["lga_count"] += 1
+    out = []
+    for geo_id, d in agg.items():
+        parties = dict(d["parties"])
+        out.append({
+            "geo_id": geo_id, "state": geo.state_name(geo_id),
+            "parties": parties,
+            "leading_party": (max(parties, key=parties.get) if parties else ""),
+            "total_votes": sum(parties.values()), "lga_count": d["lga_count"],
+        })
+    out.sort(key=lambda x: x["total_votes"], reverse=True)
+    return {"election_type": election_type, "year": year, "states": out}
+
+
+@app.get("/api/lga-predictions/states/{geo_id}")
+def lga_prediction_state(geo_id: str, election_type: str = "presidential", year: str = "2027", db: Session = Depends(get_db)):
+    """The per-LGA predictions for one state (which LGA, party/candidate, votes)."""
+    state = geo.state_name(geo_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="unknown state geo id")
+    rows = db.scalars(select(LgaPrediction).where(
+        LgaPrediction.state_geo == geo_id, LgaPrediction.election_type == election_type, LgaPrediction.year == year
+    ).order_by(LgaPrediction.votes.desc())).all()
+    lga_names = _lga_names(db)
+    pol_ids = [r.politician_id for r in rows if r.politician_id]
+    pols = {p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_(pol_ids))).all()} if pol_ids else {}
+    lgas = [
+        {
+            "lga_id": r.lga_id, "lga_name": lga_names.get(r.lga_id, ""),
+            "party": r.party, "votes": r.votes,
+            "politician_id": r.politician_id,
+            "politician_name": (pols[r.politician_id].name if r.politician_id in pols else None),
+            "politician_photo": (pols[r.politician_id].photo or "" if r.politician_id in pols else ""),
+        }
+        for r in rows
+    ]
+    return {"geo_id": geo_id, "state": state, "election_type": election_type, "year": year, "lgas": lgas}
 
 
 # --- politicians (public list + detail; logged-in submissions) ---

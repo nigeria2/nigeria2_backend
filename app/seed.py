@@ -813,6 +813,34 @@ def seed_ward_results(db: Session) -> int:
     return len(rows)
 
 
+def seed_lga_predictions(db: Session) -> int:
+    """Seed our first real per-LGA prediction: assign Peter Obi (LP) the votes he
+    polled in the single LGA where he did best in 2023 (his strongest ground). We read
+    that straight from the verified per-ward results, so it tracks the data."""
+    from .models import LgaPrediction
+    if db.scalar(select(func.count()).select_from(LgaPrediction)):
+        return 0
+    top = db.execute(
+        select(WardResult.lga_id, func.sum(WardResult.votes_lp).label("v"))
+        .where(WardResult.lga_id.isnot(None))
+        .group_by(WardResult.lga_id)
+        .order_by(func.sum(WardResult.votes_lp).desc())
+        .limit(1)
+    ).first()
+    if not top or not top.v:
+        return 0
+    lga_id, votes = top.lga_id, int(top.v)
+    lga = db.get(Lga, lga_id)
+    obi = db.scalar(select(Politician).where(func.lower(Politician.name) == "peter obi"))
+    db.add(LgaPrediction(
+        election_type="presidential", year="2027", party="LP", lga_id=lga_id,
+        state_geo=(lga.state_geo if lga else None),
+        politician_id=(obi.id if obi else None), votes=votes,
+    ))
+    db.commit()
+    return 1
+
+
 def seed_lga_results(db: Session) -> int:
     """Seed the verified 2023 presidential result per LGA once."""
     if db.scalar(select(func.count()).select_from(LgaResult)):
