@@ -463,7 +463,7 @@ def _lga_result_dict(x: LgaResult) -> dict:
         scores = json.loads(x.scores) if x.scores else {}
     except Exception:
         scores = {}
-    return {"lga": x.lga, "leading_party": x.leading_party, "scores": scores, "total_votes": x.total_votes, "year": x.year}
+    return {"lga": x.lga, "lga_id": x.lga_id, "leading_party": x.leading_party, "scores": scores, "total_votes": x.total_votes, "year": x.year}
 
 
 def _load_list(s: str) -> list:
@@ -982,6 +982,103 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
             }
             for p in rows
         ],
+    }
+
+
+# --- local governments (canonical Lga is the single source of truth) ---
+@app.get("/api/states/{geo_id}/lgas")
+def state_lgas(geo_id: str, db: Session = Depends(get_db)):
+    """Every local government in a state, with a summary (2023 winner, votes, ward &
+    polling-unit counts). Built from the canonical `lga` table joined by lga_id."""
+    state = geo.state_name(geo_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="unknown state geo id")
+    lgas = db.scalars(select(Lga).where(Lga.state_geo == geo_id).order_by(Lga.name)).all()
+    res = {r.lga_id: r for r in db.scalars(select(LgaResult).where(LgaResult.state_geo == geo_id)).all() if r.lga_id}
+    ward_counts = dict(db.execute(
+        select(Ward.lga_id, func.count()).where(Ward.state_geo == geo_id).group_by(Ward.lga_id)
+    ).all())
+    pu_counts = {
+        lid: (cnt, reg)
+        for lid, cnt, reg in db.execute(
+            select(PollingUnit.lga_id, func.count(), func.sum(PollingUnit.registered_voters))
+            .where(PollingUnit.state_geo == geo_id).group_by(PollingUnit.lga_id)
+        ).all()
+    }
+    out = []
+    for l in lgas:
+        r = res.get(l.id)
+        cnt, reg = pu_counts.get(l.id, (0, None))
+        out.append({
+            "id": l.id, "name": l.name,
+            "leading_party": r.leading_party if r else "",
+            "total_votes": r.total_votes if r else 0,
+            "scores": (json.loads(r.scores) if r and r.scores else {}),
+            "ward_count": ward_counts.get(l.id, 0) or 0,
+            "pu_count": cnt or 0, "registered_voters": int(reg) if reg else None,
+        })
+    return {"state": state, "geo_id": geo_id, "lgas": out}
+
+
+@app.get("/api/lga/{lga_id}")
+def lga_detail(lga_id: int, db: Session = Depends(get_db)):
+    """Everything we know about one local government: its 2023 presidential result,
+    its wards & polling units, the politicians whose strongholds include it, and any
+    flagged problem units."""
+    l = db.get(Lga, lga_id)
+    if l is None:
+        raise HTTPException(status_code=404, detail="local government not found")
+    r = db.scalar(select(LgaResult).where(LgaResult.lga_id == lga_id))
+    result = None
+    if r is not None:
+        result = {
+            "leading_party": r.leading_party, "total_votes": r.total_votes,
+            "scores": (json.loads(r.scores) if r.scores else {}), "year": r.year,
+        }
+    ward_rows = db.execute(
+        select(PollingUnit.ward, PollingUnit.ward_code, func.count(), func.sum(PollingUnit.registered_voters))
+        .where(PollingUnit.lga_id == lga_id)
+        .group_by(PollingUnit.ward, PollingUnit.ward_code)
+        .order_by(PollingUnit.ward)
+    ).all()
+    wr = {w.ward_code: w for w in db.scalars(select(WardResult).where(WardResult.lga_id == lga_id)).all()}
+    wards = [
+        {
+            "ward": ward, "ward_code": code, "pu_count": cnt,
+            "registered_voters": int(reg) if reg else None,
+            "winner": (wr[code].winner if code in wr else ""),
+            "runner_up": (wr[code].runner_up if code in wr else ""),
+        }
+        for ward, code, cnt, reg in ward_rows
+    ]
+    # politicians whose contributor assessments cite this LGA as a stronghold
+    by_pol: dict[int, list] = defaultdict(list)
+    for a in db.scalars(select(PoliticianAssessment)).all():
+        if lga_id in _load_list(a.influential_lgas):
+            by_pol[a.politician_id].append(a)
+    strongholds = []
+    if by_pol:
+        pols = {p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_(list(by_pol)))).all()}
+        for pid, alist in by_pol.items():
+            p = pols.get(pid)
+            if p is None:
+                continue
+            strongholds.append({
+                "id": p.id, "name": p.name, "party": p.party, "photo": p.photo or "", "title": p.title,
+                "mentions": len(alist),
+                "avg_electoral_value": round(sum(a.electoral_value for a in alist) / len(alist)),
+            })
+        strongholds.sort(key=lambda x: (x["mentions"], x["avg_electoral_value"]), reverse=True)
+    problems = [
+        problem_unit_to_dict(u)
+        for u in db.scalars(select(ProblemUnit).where(ProblemUnit.lga_id == lga_id).order_by(ProblemUnit.severity)).all()
+    ]
+    return {
+        "id": l.id, "name": l.name, "state": l.state, "geo_id": l.state_geo,
+        "result": result, "wards": wards, "ward_count": len(wards),
+        "pu_count": sum(w["pu_count"] for w in wards),
+        "registered_voters": sum((w["registered_voters"] or 0) for w in wards),
+        "strongholds": strongholds[:12], "problem_units": problems,
     }
 
 
