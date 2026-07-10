@@ -25,6 +25,7 @@ from .models import (
     StatePrediction,
     StatePresidential,
 )
+from . import geo
 from . import prediction_engine as engine
 
 # scenario_id -> running asyncio.Task (this process only)
@@ -99,6 +100,7 @@ def _upsert(db: Session, scenario: PredictionScenario, detail: dict) -> None:
         existing = StatePrediction(
             user_id=None,
             state=detail["state"],
+            state_geo=geo.state_geo_id(detail["state"]),
             election_type=scenario.election_type,
             source="model",
             scenario_id=scenario.id,

@@ -71,6 +71,7 @@ class Prediction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     election_type: Mapped[str] = mapped_column(String(20), index=True)  # presidential | governor | senate
     party: Mapped[str] = mapped_column(String(20))
     score: Mapped[float] = mapped_column(Float)  # projected polling share (0-100)
@@ -117,6 +118,7 @@ class StatePrediction(Base):
     author_name: Mapped[str] = mapped_column(String(200), default="")
     author_email: Mapped[str] = mapped_column(String(255), default="")
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     election_type: Mapped[str] = mapped_column(String(30), default="presidential")
     source: Mapped[str] = mapped_column(String(30), default="expert")  # expert | past_performance
     label: Mapped[str] = mapped_column(String(120), default="")
@@ -185,6 +187,7 @@ class ElectionResult(Base):
     year: Mapped[int] = mapped_column(Integer, index=True)
     office: Mapped[str] = mapped_column(String(20), index=True)  # presidential | governor
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     scores: Mapped[str] = mapped_column(Text, default="{}")  # JSON {PARTY: votes}
     registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -215,6 +218,7 @@ class State(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    geo_id: Mapped[str | None] = mapped_column(String(20), unique=True, index=True, nullable=True)
     code: Mapped[str] = mapped_column(String(10), default="")
     capital: Mapped[str] = mapped_column(String(80), default="")
     area_sq_km: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -244,6 +248,7 @@ class PartyHistory(Base):
     politician_name: Mapped[str] = mapped_column(String(200), index=True)
     party: Mapped[str] = mapped_column(String(30), default="")
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     year: Mapped[str] = mapped_column(String(10), default="")
     election_type: Mapped[str] = mapped_column(String(30), default="")
     votes: Mapped[int] = mapped_column(Integer, default=0)
@@ -260,6 +265,7 @@ class Governor(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     party: Mapped[str] = mapped_column(String(30), default="")
     party_elected: Mapped[str] = mapped_column(String(30), default="")  # if defected since
@@ -275,6 +281,7 @@ class GovernorHistory(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     party: Mapped[str] = mapped_column(String(30), default="")
     term_start: Mapped[str] = mapped_column(String(10), default="")
@@ -291,6 +298,7 @@ class LgaResult(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     lga: Mapped[str] = mapped_column(String(120))
     leading_party: Mapped[str] = mapped_column(String(20), default="")
     scores: Mapped[str] = mapped_column(Text, default="{}")  # JSON per-party shares
@@ -306,6 +314,7 @@ class PollingUnit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     lga: Mapped[str] = mapped_column(String(120))
     ward: Mapped[str] = mapped_column(String(160))
     ward_code: Mapped[str] = mapped_column(String(30), index=True)
@@ -328,6 +337,7 @@ class WardResult(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     lga: Mapped[str] = mapped_column(String(120))
     ward: Mapped[str] = mapped_column(String(160))
     ward_code: Mapped[str] = mapped_column(String(30), unique=True, index=True)
@@ -348,6 +358,7 @@ class Senator(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     district: Mapped[str] = mapped_column(String(60))  # senatorial district (e.g. "Central")
     party: Mapped[str] = mapped_column(String(20), default="")
     gender: Mapped[str] = mapped_column(String(12), default="")
@@ -364,6 +375,7 @@ class StatePresidential(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     year: Mapped[int] = mapped_column(Integer, default=2023)
     apc: Mapped[int] = mapped_column(Integer, default=0)
     pdp: Mapped[int] = mapped_column(Integer, default=0)
@@ -382,6 +394,7 @@ class HouseMember(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     constituency: Mapped[str] = mapped_column(String(160))  # federal constituency
     name: Mapped[str] = mapped_column(String(200))
     party: Mapped[str] = mapped_column(String(20), default="")
@@ -395,6 +408,7 @@ class Ward(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     lga: Mapped[str] = mapped_column(String(120), index=True)
     ward: Mapped[str] = mapped_column(String(160))
     latitude: Mapped[float] = mapped_column(Float)
@@ -409,6 +423,7 @@ class Lga(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(120))
 
 
@@ -420,6 +435,7 @@ class Politician(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(120), default="")
     party: Mapped[str] = mapped_column(String(20), default="")
     note: Mapped[str] = mapped_column(Text, default="")
@@ -464,6 +480,7 @@ class ProblemUnit(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     lga: Mapped[str] = mapped_column(String(120), default="")
     ward: Mapped[str] = mapped_column(String(120), default="")
     polling_unit: Mapped[str] = mapped_column(String(200), default="")
@@ -488,6 +505,7 @@ class DeclaredCandidate(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     election_type: Mapped[str] = mapped_column(String(30), index=True)  # presidential | governor | senate
     year: Mapped[str] = mapped_column(String(10), default="2027", index=True)
     party: Mapped[str] = mapped_column(String(20), default="")
@@ -508,6 +526,7 @@ class Analysis(Base):
     contributor_email: Mapped[str] = mapped_column(String(255), default="")
     election_type: Mapped[str] = mapped_column(String(30))  # presidential | governor | senate
     state: Mapped[str] = mapped_column(String(50), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     lga: Mapped[str] = mapped_column(String(120), default="")
     senatorial_district: Mapped[str] = mapped_column(String(120), default="")
     leading_party: Mapped[str] = mapped_column(String(20), default="")  # party with the highest score

@@ -44,7 +44,7 @@ from .models import (
     Ward,
     WardResult,
 )
-from . import prediction_worker
+from . import geo, prediction_worker
 from .history_ingest import PARTY_NAMES, seed_election_history
 from .schemas import (
     AnalysisIn,
@@ -336,7 +336,7 @@ def predictions(election_type: str, week: str, db: Session = Depends(get_db)):
             Prediction.measurement_week == week,
         )
     ).all()
-    return [{"state": r.state, "party": r.party, "score": r.score} for r in rows]
+    return [{"state": r.state, "geo_id": r.state_geo, "party": r.party, "score": r.score} for r in rows]
 
 
 @app.get("/api/predictions/trend")
@@ -412,13 +412,13 @@ def problem_unit_to_dict(u: ProblemUnit) -> dict:
 
 @app.get("/api/problem-units")
 def list_problem_units(
-    state: str | None = None,
+    geo_id: str | None = None,
     anomaly_type: str | None = None,
     db: Session = Depends(get_db),
 ):
     stmt = select(ProblemUnit)
-    if state:
-        stmt = stmt.where(ProblemUnit.state == state)
+    if geo_id:
+        stmt = stmt.where(ProblemUnit.state_geo == geo_id)
     if anomaly_type:
         stmt = stmt.where(ProblemUnit.anomaly_type == anomaly_type)
     stmt = stmt.order_by(ProblemUnit.state, ProblemUnit.lga)
@@ -427,7 +427,10 @@ def list_problem_units(
 
 @app.get("/api/problem-units/meta")
 def problem_units_meta(db: Session = Depends(get_db)):
-    states = [s for (s,) in db.execute(select(ProblemUnit.state).distinct().order_by(ProblemUnit.state)).all()]
+    states = [
+        {"name": s, "geo_id": geo.state_geo_id(s)}
+        for (s,) in db.execute(select(ProblemUnit.state).distinct().order_by(ProblemUnit.state)).all()
+    ]
     types = [t for (t,) in db.execute(select(ProblemUnit.anomaly_type).distinct().order_by(ProblemUnit.anomaly_type)).all()]
     total = db.scalar(select(func.count()).select_from(ProblemUnit))
     return {"states": states, "anomaly_types": types, "total": total}
@@ -584,20 +587,23 @@ def _runs_map(db: Session, pol_ids: list[int]) -> dict[int, list]:
     return out
 
 
-@app.get("/api/states/{state}")
-def state_detail(state: str, db: Session = Depends(get_db)):
+@app.get("/api/states/{geo_id}")
+def state_detail(geo_id: str, db: Session = Depends(get_db)):
+    state = geo.state_name(geo_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="unknown state geo id")
     preds = db.scalars(
-        select(StatePrediction).where(StatePrediction.state == state).order_by(StatePrediction.source, StatePrediction.created_at.desc())
+        select(StatePrediction).where(StatePrediction.state_geo == geo_id).order_by(StatePrediction.source, StatePrediction.created_at.desc())
     ).all()
-    pols = db.scalars(select(Politician).where(Politician.state == state).order_by(Politician.id)).all()
-    lgas = db.scalars(select(LgaResult).where(LgaResult.state == state).order_by(LgaResult.lga)).all()
+    pols = db.scalars(select(Politician).where(Politician.state_geo == geo_id).order_by(Politician.id)).all()
+    lgas = db.scalars(select(LgaResult).where(LgaResult.state_geo == geo_id).order_by(LgaResult.lga)).all()
     pol_assess: dict[int, list] = defaultdict(list)
     if pols:
         for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
             pol_assess[a.politician_id].append(a)
     pol_runs = _runs_map(db, [p.id for p in pols])
     lga_names = _lga_names(db)
-    st = db.scalar(select(State).where(State.name == state))
+    st = db.scalar(select(State).where(State.geo_id == geo_id))
     facts = None
     if st is not None:
         facts = {
@@ -611,22 +617,22 @@ def state_detail(state: str, db: Session = Depends(get_db)):
             "nin_total": st.nin_total, "nin_male": st.nin_male, "nin_female": st.nin_female,
         }
     gov = db.scalars(
-        select(PartyHistory).where(PartyHistory.state == state, PartyHistory.election_type == "governor").order_by(PartyHistory.position)
+        select(PartyHistory).where(PartyHistory.state_geo == geo_id, PartyHistory.election_type == "governor").order_by(PartyHistory.position)
     ).all()
 
     def _gov_row(g: PartyHistory) -> dict:
         return {"name": g.politician_name, "party": g.party, "votes": g.votes, "percent": g.percent,
                 "position": g.position, "running_mate": g.running_mate or None, "politician_id": g.politician_id}
 
-    ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state == state))
-    senators = db.scalars(select(Senator).where(Senator.state == state).order_by(Senator.district)).all()
+    ward_count = db.scalar(select(func.count()).select_from(Ward).where(Ward.state_geo == geo_id))
+    senators = db.scalars(select(Senator).where(Senator.state_geo == geo_id).order_by(Senator.district)).all()
     senate_wins = _senate_win_votes(db)
     # 2023 senatorial races (winner + losers) grouped by district, for the
     # expandable "history" under each incumbent senator.
     senate_races: dict[str, dict] = {}
     for h in db.scalars(
         select(PartyHistory).where(
-            PartyHistory.state == state, PartyHistory.election_type == "senate", PartyHistory.year == "2023"
+            PartyHistory.state_geo == geo_id, PartyHistory.election_type == "senate", PartyHistory.year == "2023"
         ).order_by(PartyHistory.constituency, PartyHistory.position)
     ).all():
         d = senate_races.get(h.constituency)
@@ -639,7 +645,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
             "name": h.politician_name, "party": h.party, "votes": h.votes or None,
             "position": h.position, "politician_id": h.politician_id,
         })
-    pres23 = db.scalar(select(StatePresidential).where(StatePresidential.state == state, StatePresidential.year == 2023))
+    pres23 = db.scalar(select(StatePresidential).where(StatePresidential.state_geo == geo_id, StatePresidential.year == 2023))
     # politician_id per party for the 2023 national presidential tickets, so the
     # candidate names on the state page can link to their profiles.
     pres_ids = {
@@ -649,14 +655,14 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         )).all()
         if h.politician_id
     }
-    reps = db.scalars(select(HouseMember).where(HouseMember.state == state).order_by(HouseMember.constituency)).all()
-    incumbent = db.scalar(select(Governor).where(Governor.state == state))
-    gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
+    reps = db.scalars(select(HouseMember).where(HouseMember.state_geo == geo_id).order_by(HouseMember.constituency)).all()
+    incumbent = db.scalar(select(Governor).where(Governor.state_geo == geo_id))
+    gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state_geo == geo_id).order_by(GovernorHistory.seq.desc())).all()
     # 2027 declared candidates: national presidential ones (shown on every
     # state page) plus any declared specifically for this state's own race.
     declared_2027 = db.scalars(
         select(DeclaredCandidate).where(
-            DeclaredCandidate.year == "2027", DeclaredCandidate.state.in_([state, "Nigeria"])
+            DeclaredCandidate.year == "2027", DeclaredCandidate.state_geo.in_([geo_id, geo.NATIONAL_GEO_ID])
         ).order_by(DeclaredCandidate.election_type, DeclaredCandidate.party)
     ).all()
     declared_2027_pids = _declared_name_pid(db, declared_2027)
@@ -672,6 +678,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
             model_prediction[p.election_type] = {"id": p.id, "party": p.leading_party, "scores": m_scores}
     return {
         "state": state,
+        "geo_id": geo_id,
         "facts": facts,
         "ward_count": ward_count,
         "predictions": [_public_prediction_dict(p) for p in preds],
@@ -701,11 +708,14 @@ def state_detail(state: str, db: Session = Depends(get_db)):
     }
 
 
-@app.get("/api/states/{state}/politicians")
-def state_politicians_all(state: str, db: Session = Depends(get_db)):
+@app.get("/api/states/{geo_id}/politicians")
+def state_politicians_all(geo_id: str, db: Session = Depends(get_db)):
     """The full politician list for a state, with no heavyweight cutoff --
     backs the "view everyone" page linked from the state's heavyweight board."""
-    pols = db.scalars(select(Politician).where(Politician.state == state).order_by(Politician.name)).all()
+    state = geo.state_name(geo_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="unknown state geo id")
+    pols = db.scalars(select(Politician).where(Politician.state_geo == geo_id).order_by(Politician.name)).all()
     pol_assess: dict[int, list] = defaultdict(list)
     if pols:
         for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
@@ -804,7 +814,7 @@ def _national_pres_winners(db: Session) -> dict[int, tuple[str, str]]:
     national: dict[int, tuple[str, str]] = {}
     for r in db.scalars(select(ElectionResult).where(ElectionResult.office == "presidential")).all():
         sc = _scores(r)
-        if r.state == "Nigeria":
+        if r.state_geo == geo.NATIONAL_GEO_ID:
             if r.winner_party:
                 national[r.year] = (r.winner_party, r.winner_name)
         else:
@@ -908,14 +918,14 @@ def list_reps(db: Session = Depends(get_db)):
     return [_house_dict(m) for m in rows]
 
 
-@app.get("/api/states/{state}/wards")
-def state_wards(state: str, db: Session = Depends(get_db)):
-    rows = db.scalars(select(Ward).where(Ward.state == state).order_by(Ward.lga, Ward.ward)).all()
+@app.get("/api/states/{geo_id}/wards")
+def state_wards(geo_id: str, db: Session = Depends(get_db)):
+    rows = db.scalars(select(Ward).where(Ward.state_geo == geo_id).order_by(Ward.lga, Ward.ward)).all()
     return [{"lga": w.lga, "ward": w.ward, "latitude": w.latitude, "longitude": w.longitude} for w in rows]
 
 
-@app.get("/api/states/{state}/pu-wards")
-def state_pu_wards(state: str, db: Session = Depends(get_db)):
+@app.get("/api/states/{geo_id}/pu-wards")
+def state_pu_wards(geo_id: str, db: Session = Depends(get_db)):
     """Wards (from polling-unit data) with polling-unit counts and registered totals."""
     rows = db.execute(
         select(
@@ -925,11 +935,11 @@ def state_pu_wards(state: str, db: Session = Depends(get_db)):
             func.count().label("pu"),
             func.sum(PollingUnit.registered_voters).label("reg"),
         )
-        .where(PollingUnit.state == state)
+        .where(PollingUnit.state_geo == geo_id)
         .group_by(PollingUnit.lga, PollingUnit.ward, PollingUnit.ward_code)
         .order_by(PollingUnit.lga, PollingUnit.ward)
     ).all()
-    wr = {w.ward_code: w for w in db.scalars(select(WardResult).where(WardResult.state == state)).all()}
+    wr = {w.ward_code: w for w in db.scalars(select(WardResult).where(WardResult.state_geo == geo_id)).all()}
     out = []
     for r in rows:
         w = wr.get(r.ward_code)
@@ -1033,10 +1043,10 @@ def submit_politician_photo(pid: int, payload: PhotoSubmitIn, user: User = Depen
     return {"ok": True, "status": "pending"}
 
 
-def _resolve_lga_ids(db: Session, state: str, values: list) -> list[int]:
+def _resolve_lga_ids(db: Session, state_geo: str, values: list) -> list[int]:
     """Map submitted LGA names (or ids) to canonical LGA ids within a state, so we
     never store a name — a later rename of the LGA propagates automatically."""
-    rows = db.scalars(select(Lga).where(Lga.state == state)).all()
+    rows = db.scalars(select(Lga).where(Lga.state_geo == state_geo)).all()
     by_norm = {_lga_norm(l.name): l.id for l in rows}
     ids: list[int] = []
     for v in values:
@@ -1064,7 +1074,7 @@ def submit_politician_assessment(pid: int, payload: AssessmentIn, user: User = D
     pol = db.get(Politician, pid)
     if pol is None:
         raise HTTPException(status_code=404, detail="politician not found")
-    lga_ids = _resolve_lga_ids(db, pol.state, list(payload.influential_lgas))
+    lga_ids = _resolve_lga_ids(db, pol.state_geo, list(payload.influential_lgas))
     db.add(PoliticianAssessment(
         politician_id=pid, user_id=user.id, author_name=user.full_name or user.email,
         electoral_value=int(payload.electoral_value), influential_lgas=json.dumps(lga_ids), reason=payload.reason or "",
@@ -1110,6 +1120,7 @@ def create_analysis(payload: AnalysisIn, user: User = Depends(current_user), db:
         contributor_email=user.email,
         election_type=payload.election_type,
         state=payload.state,
+        state_geo=geo.state_geo_id(payload.state),
         lga=payload.lga or "",
         senatorial_district=payload.senatorial_district or "",
         leading_party=leading,
@@ -1217,13 +1228,13 @@ def _declared_candidate_dict(c: DeclaredCandidate, name_pid: dict[str, int] | No
 
 @app.get("/api/declared-candidates")
 def list_declared_candidates(
-    election_type: str | None = None, year: str = "2027", state: str | None = None, db: Session = Depends(get_db),
+    election_type: str | None = None, year: str = "2027", geo_id: str | None = None, db: Session = Depends(get_db),
 ):
     q = select(DeclaredCandidate).where(DeclaredCandidate.year == year)
     if election_type:
         q = q.where(DeclaredCandidate.election_type == election_type)
-    if state:
-        q = q.where(DeclaredCandidate.state == state)
+    if geo_id:
+        q = q.where(DeclaredCandidate.state_geo == geo_id)
     rows = db.scalars(q.order_by(DeclaredCandidate.state, DeclaredCandidate.party)).all()
     name_pid = _declared_name_pid(db, rows)
     return [_declared_candidate_dict(c, name_pid) for c in rows]
@@ -1243,7 +1254,8 @@ def admin_add_declared_candidate(payload: DeclaredCandidateIn, _: User = Depends
         raise HTTPException(status_code=400, detail=f"{payload.state} does not hold a governor election in 2027 (off-cycle)")
     pol = db.get(Politician, payload.politician_id) if payload.politician_id else None
     row = DeclaredCandidate(
-        state=payload.state, election_type=payload.election_type, year=payload.year,
+        state=payload.state, state_geo=geo.state_geo_id(payload.state),
+        election_type=payload.election_type, year=payload.year,
         party=payload.party.strip().upper(), politician_name=(pol.name if pol else payload.politician_name),
         politician_id=pol.id if pol else None, running_mate=payload.running_mate,
     )
@@ -1268,10 +1280,10 @@ def board_states(user: User = Depends(current_user), db: Session = Depends(get_d
     return [{"state": s, "count": counts.get(s, 0)} for s in STATE_NAMES]
 
 
-@app.get("/api/board/states/{state}")
-def board_state_predictions(state: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+@app.get("/api/board/states/{geo_id}")
+def board_state_predictions(geo_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
     rows = db.scalars(
-        select(StatePrediction).where(StatePrediction.state == state).order_by(StatePrediction.source, StatePrediction.created_at.desc())
+        select(StatePrediction).where(StatePrediction.state_geo == geo_id).order_by(StatePrediction.source, StatePrediction.created_at.desc())
     ).all()
     return [state_prediction_to_dict(p, user) for p in rows]
 
@@ -1289,6 +1301,7 @@ def board_add_prediction(payload: StatePredictionIn, user: User = Depends(curren
         author_name="Past performance" if is_pp else (user.full_name or user.email),
         author_email="" if is_pp else user.email,
         state=payload.state,
+        state_geo=geo.state_geo_id(payload.state),
         election_type=payload.election_type,
         source=source,
         label=payload.label or "",
@@ -1747,6 +1760,7 @@ def set_prediction(payload: PredictionSetIn, _: User = Depends(require_admin), d
         db.add(
             Prediction(
                 state=payload.state,
+                state_geo=geo.state_geo_id(payload.state),
                 election_type=payload.election_type,
                 party=str(party),
                 score=float(score),
@@ -1760,7 +1774,7 @@ def set_prediction(payload: PredictionSetIn, _: User = Depends(require_admin), d
 # --- admin: politicians (add + approve submitted photos) ---
 @app.post("/api/admin/politicians", status_code=201)
 def admin_add_politician(payload: PoliticianIn, _: User = Depends(require_admin), db: Session = Depends(get_db)):
-    p = Politician(name=payload.name, state=payload.state, title=payload.title or "", party=payload.party or "", note=payload.note or "")
+    p = Politician(name=payload.name, state=payload.state, state_geo=geo.state_geo_id(payload.state), title=payload.title or "", party=payload.party or "", note=payload.note or "")
     db.add(p)
     db.commit()
     db.refresh(p)
