@@ -831,32 +831,41 @@ def seed_lga_results(db: Session) -> int:
 
 # --- canonical LGAs + reference-by-id integrity -----------------------------
 
+_LGAS_JSON = pathlib.Path(__file__).resolve().parent / "data" / "lgas.json"
+
+
+def _authoritative_lgas() -> list[dict]:
+    """The authoritative 774-LGA list (state, name, geo_id) from data/lgas.json,
+    built by scripts/build_lgas.py from the official ward dataset."""
+    if not _LGAS_JSON.exists():
+        return []
+    return json.loads(_LGAS_JSON.read_text(encoding="utf-8")).get("lgas", [])
+
+
 def _canonical_lgas() -> dict[str, list[str]]:
-    """Authoritative LGA names per state, straight from the code constant (kept
-    current) rather than the DB (which may hold names seeded before a correction)."""
-    out: dict[str, list[str]] = {}
-    for state, rows in LGA_RESULTS_2023.items():
-        names, seen = [], set()
-        for r in rows:
-            nm = (r.get("lga") or "").strip()
-            k = nm.lower()
-            if nm and k not in seen:
-                seen.add(k)
-                names.append(nm)
-        out[state] = names
-    return out
+    """Authoritative LGA names per state (the single source of truth)."""
+    out: dict[str, list[str]] = defaultdict(list)
+    seen: set[tuple[str, str]] = set()
+    for e in _authoritative_lgas():
+        st, nm = e["state"], (e.get("name") or "").strip()
+        k = (st, nm.lower())
+        if nm and k not in seen:
+            seen.add(k)
+            out[st].append(nm)
+    return dict(out)
 
 
 def seed_lgas(db: Session) -> int:
-    """Seed the canonical LGA table from the code constant. Other rows reference
-    LGAs by id, so this is the single source of truth for LGA names."""
+    """Seed the canonical LGA table (all 774) from data/lgas.json. Every other row
+    references an LGA by id, so this is the single source of truth for LGA names."""
+    from . import geo
     if db.scalar(select(func.count()).select_from(Lga)):
         return 0
     n = 0
-    for state, names in _canonical_lgas().items():
-        for nm in names:
-            db.add(Lga(state=state, name=nm))
-            n += 1
+    for e in _authoritative_lgas():
+        db.add(Lga(state=e["state"], state_geo=geo.state_geo_id(e["state"]),
+                   geo_id=e.get("geo_id"), name=e["name"]))
+        n += 1
     db.commit()
     return n
 
@@ -888,6 +897,60 @@ def refresh_lga_names(db: Session) -> int:
 
 def _lga_norm(s: str) -> str:
     return "".join(c for c in str(s).lower() if c.isalnum())
+
+
+_LGA_DIRS = {"north", "south", "east", "west", "central"}
+
+
+def _lga_dirs(name: str) -> frozenset:
+    return frozenset(t for t in str(name or "").lower().replace("-", " ").replace("/", " ").split() if t in _LGA_DIRS)
+
+
+def _lga_match(cands: list[tuple[str, int, str]], name: str) -> int | None:
+    """Match an LGA name to a canonical id (exact/prefix, then close-variant guarded
+    against a differing directional word). `cands` = [(norm, id, raw_name)]."""
+    import difflib
+    n = _lga_norm(name)
+    for cn, cid, _raw in cands:
+        if cn == n:
+            return cid
+    pref = [cid for cn, cid, _raw in cands if (cn.startswith(n) or n.startswith(cn)) and min(len(cn), len(n)) >= 4]
+    if len(pref) == 1:
+        return pref[0]
+    d = _lga_dirs(name)
+    pool = [(cn, cid) for cn, cid, raw in cands if not (d and _lga_dirs(raw) and d != _lga_dirs(raw))]
+    close = difflib.get_close_matches(n, [cn for cn, cid in pool], n=1, cutoff=0.82)
+    if close:
+        for cn, cid in pool:
+            if cn == close[0]:
+                return cid
+    return None
+
+
+def link_lga_references(db: Session) -> int:
+    """Backfill lga_id on every table that stores an LGA name (lga_results, wards,
+    ward_results, polling_units, problem_units) where it is still null — so a freshly
+    seeded DB links to the canonical `lga` table the same way the migrations do."""
+    canon: dict[str, list[tuple[str, int, str]]] = defaultdict(list)
+    for l in db.scalars(select(Lga)).all():
+        if l.state_geo:
+            canon[l.state_geo].append((_lga_norm(l.name), l.id, l.name))
+    total = 0
+    for model in (LgaResult, Ward, WardResult, PollingUnit, ProblemUnit):
+        pairs = db.execute(
+            select(model.state_geo, model.lga).where(model.lga_id.is_(None)).distinct()
+        ).all()
+        for sg, raw in pairs:
+            if not sg or not raw:
+                continue
+            lid = _lga_match(canon.get(sg, []), raw)
+            if lid is not None:
+                total += db.execute(
+                    update(model).where(model.state_geo == sg, model.lga == raw, model.lga_id.is_(None)).values(lga_id=lid)
+                ).rowcount
+    if total:
+        db.commit()
+    return total
 
 
 def migrate_assessment_lgas(db: Session) -> int:

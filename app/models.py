@@ -428,6 +428,7 @@ class Lga(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
     state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    geo_id: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(120))
 
 

@@ -1,0 +1,3874 @@
+{
+ "lgas": [
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_1",
+   "name": "Aba North"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_2",
+   "name": "Aba South"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_3",
+   "name": "Arochukwu"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_4",
+   "name": "Bende"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_5",
+   "name": "Ikwuano"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_6",
+   "name": "Isiala Ngwa North"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_7",
+   "name": "Isiala Ngwa South"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_8",
+   "name": "Isuikwuato"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_9",
+   "name": "Oboma Ngwa"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_10",
+   "name": "Ohafia"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_11",
+   "name": "Osisioma"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_12",
+   "name": "Ugwunagbo"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_13",
+   "name": "Ukwa East"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_14",
+   "name": "Ukwa West"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_15",
+   "name": "Umu-Nneochi"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_16",
+   "name": "Umuahia North"
+  },
+  {
+   "state": "Abia",
+   "geo_id": "nga_1_17",
+   "name": "Umuahia South"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_1",
+   "name": "Demsa"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_2",
+   "name": "Fufore"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_3",
+   "name": "Ganye"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_4",
+   "name": "Girie"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_5",
+   "name": "Gombi"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_6",
+   "name": "Guyuk"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_7",
+   "name": "Hong"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_8",
+   "name": "Jada"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_9",
+   "name": "Lamurde"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_10",
+   "name": "Madagali"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_11",
+   "name": "Maiha"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_12",
+   "name": "Mayo-Belwa"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_13",
+   "name": "Michika"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_14",
+   "name": "Mubi North"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_15",
+   "name": "Mubi South"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_16",
+   "name": "Numan"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_17",
+   "name": "Shelleng"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_18",
+   "name": "Song"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_19",
+   "name": "Teungo"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_20",
+   "name": "Yola North"
+  },
+  {
+   "state": "Adamawa",
+   "geo_id": "nga_2_21",
+   "name": "Yola South"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_1",
+   "name": "Abak"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_2",
+   "name": "Eastern Obolo"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_3",
+   "name": "Eket"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_4",
+   "name": "Esit Eket"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_5",
+   "name": "Essien Udim"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_6",
+   "name": "Etim Ekpo"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_7",
+   "name": "Etinan"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_8",
+   "name": "Ibeno"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_9",
+   "name": "Ibesikpo Asutan"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_10",
+   "name": "Ibiono Ibom"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_11",
+   "name": "Ika"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_12",
+   "name": "Ikono"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_13",
+   "name": "Ikot Abasi"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_14",
+   "name": "Ikot Ekpene"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_15",
+   "name": "Ini"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_16",
+   "name": "Itu"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_17",
+   "name": "Mbo"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_18",
+   "name": "Mkpat Enin"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_19",
+   "name": "Nsit Atai"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_20",
+   "name": "Nsit Ibom"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_21",
+   "name": "Nsit Ubium"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_22",
+   "name": "Obot Akara"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_23",
+   "name": "Okobo"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_24",
+   "name": "Onna"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_25",
+   "name": "Oron"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_26",
+   "name": "Oruk Anam"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_27",
+   "name": "Udung Uko"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_28",
+   "name": "Ukanafun"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_29",
+   "name": "Uruan"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_30",
+   "name": "Urue Offong|Oruko"
+  },
+  {
+   "state": "Akwa Ibom",
+   "geo_id": "nga_3_31",
+   "name": "Uyo"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_1",
+   "name": "Aguata"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_2",
+   "name": "Anambra East"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_3",
+   "name": "Anambra West"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_4",
+   "name": "Anaocha"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_5",
+   "name": "Awka North"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_6",
+   "name": "Awka South"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_7",
+   "name": "Ayamelum"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_8",
+   "name": "Dunukofia"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_9",
+   "name": "Ekwusigo"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_10",
+   "name": "Idemili North"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_11",
+   "name": "Idemili South"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_12",
+   "name": "Ihiala"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_13",
+   "name": "Njikoka"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_14",
+   "name": "Nnewi North"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_15",
+   "name": "Nnewi South"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_16",
+   "name": "Ogbaru"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_17",
+   "name": "Onitsha North"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_18",
+   "name": "Onitsha South"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_19",
+   "name": "Orumba North"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_20",
+   "name": "Orumba South"
+  },
+  {
+   "state": "Anambra",
+   "geo_id": "nga_4_21",
+   "name": "Oyi"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_1",
+   "name": "Alkaleri"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_2",
+   "name": "Bauchi"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_3",
+   "name": "Bogoro"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_4",
+   "name": "Damban"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_5",
+   "name": "Darazo"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_6",
+   "name": "Dass"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_7",
+   "name": "Gamawa"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_8",
+   "name": "Gamjuwa"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_9",
+   "name": "Giade"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_10",
+   "name": "Itas/Gadau"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_11",
+   "name": "Jama'are"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_12",
+   "name": "Katagum"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_13",
+   "name": "Kirfi"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_14",
+   "name": "Misau"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_15",
+   "name": "Ningi"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_16",
+   "name": "Shira"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_17",
+   "name": "Tafawa-Balewa"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_18",
+   "name": "Toro"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_19",
+   "name": "Warji"
+  },
+  {
+   "state": "Bauchi",
+   "geo_id": "nga_5_20",
+   "name": "Zaki"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": "nga_6_1",
+   "name": "Brass"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": "nga_6_2",
+   "name": "Ekeremor"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": "nga_6_3",
+   "name": "Kolokuma-Opokuma"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": "nga_6_4",
+   "name": "Nembe"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": "nga_6_5",
+   "name": "Ogbia"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": "nga_6_6",
+   "name": "Sagbama"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": "nga_6_7",
+   "name": "Southern Ijaw"
+  },
+  {
+   "state": "Bayelsa",
+   "geo_id": null,
+   "name": "Yenagoa"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_1",
+   "name": "Ado"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_2",
+   "name": "Agatu"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_3",
+   "name": "Apa"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_4",
+   "name": "Buruku"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_5",
+   "name": "Gboko"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_6",
+   "name": "Guma"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_7",
+   "name": "Gwer East"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_8",
+   "name": "Gwer West"
+  },
+  {
+   "state": "Benue",
+   "geo_id": null,
+   "name": "Katsina-Ala"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_10",
+   "name": "Konshisha"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_11",
+   "name": "Kwande"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_12",
+   "name": "Logo"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_13",
+   "name": "Makurdi"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_14",
+   "name": "Obi"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_15",
+   "name": "Ogbadibo"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_16",
+   "name": "Ohimini"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_17",
+   "name": "Oju"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_18",
+   "name": "Okpokwu"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_19",
+   "name": "Oturkpo"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_20",
+   "name": "Tarka"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_21",
+   "name": "Ukum"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_22",
+   "name": "Ushongo"
+  },
+  {
+   "state": "Benue",
+   "geo_id": "nga_7_23",
+   "name": "Vandeikya"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_1",
+   "name": "Abadam"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_2",
+   "name": "Askira/Uba"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_3",
+   "name": "Bama"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_4",
+   "name": "Bayo"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_5",
+   "name": "Biu"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_6",
+   "name": "Chibok"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_7",
+   "name": "Damboa"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_8",
+   "name": "Dikwa"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_9",
+   "name": "Gubio"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_10",
+   "name": "Guzamala"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_11",
+   "name": "Gwoza"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_12",
+   "name": "Hawul"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_13",
+   "name": "Jere"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_14",
+   "name": "Kaga"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_15",
+   "name": "Kala/Balge"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_16",
+   "name": "Konduga"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_17",
+   "name": "Kukawa"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_18",
+   "name": "Kwaya Kusar"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_20",
+   "name": "Mafa"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_21",
+   "name": "Magumeri"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_22",
+   "name": "Maiduguri"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_23",
+   "name": "Marte"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_24",
+   "name": "Mobbar"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_25",
+   "name": "Monguno"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_26",
+   "name": "Ngala"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_27",
+   "name": "Nganzai"
+  },
+  {
+   "state": "Borno",
+   "geo_id": "nga_8_28",
+   "name": "Shani"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_1",
+   "name": "Abi"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_2",
+   "name": "Akamkpa"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_3",
+   "name": "Akpabuyo"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_4",
+   "name": "Bakassi"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_5",
+   "name": "Bekwarra"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_6",
+   "name": "Biase"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_7",
+   "name": "Boki"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_8",
+   "name": "Calabar Municipality"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_9",
+   "name": "Calabar South"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_10",
+   "name": "Etung"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_11",
+   "name": "Ikom"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_12",
+   "name": "Obanliku"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_13",
+   "name": "Obubra"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_14",
+   "name": "Obudu"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_15",
+   "name": "Odukpani"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_16",
+   "name": "Ogoja"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_17",
+   "name": "Yakurr"
+  },
+  {
+   "state": "Cross River",
+   "geo_id": "nga_9_18",
+   "name": "Yala"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_1",
+   "name": "AniochaN"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_2",
+   "name": "AniochaS"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_3",
+   "name": "Bomadi"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_4",
+   "name": "Burutu"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_5",
+   "name": "Ethiope West"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_6",
+   "name": "EthiopeE"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_7",
+   "name": "IkaNorth"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_8",
+   "name": "IkaSouth"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_9",
+   "name": "IsokoNor"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_10",
+   "name": "IsokoSou"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_11",
+   "name": "Ndokwa East"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_12",
+   "name": "Ndokwa West"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_13",
+   "name": "Okpe"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_14",
+   "name": "Oshimili North"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_15",
+   "name": "Oshimili South"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_16",
+   "name": "Patani"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_17",
+   "name": "Sapele"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_18",
+   "name": "Udu"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_19",
+   "name": "Ughelli North"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_20",
+   "name": "Ughelli South"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_21",
+   "name": "Ukwuani"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_22",
+   "name": "Uvwie"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_23",
+   "name": "Warri North"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_24",
+   "name": "Warri South"
+  },
+  {
+   "state": "Delta",
+   "geo_id": "nga_10_25",
+   "name": "Warri South-West"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_1",
+   "name": "Abakalik"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_2",
+   "name": "Afikpo North"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_3",
+   "name": "Afikpo South"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_4",
+   "name": "Ebonyi"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_5",
+   "name": "Ezza North"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_6",
+   "name": "Ezza South"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_7",
+   "name": "Ikwo"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_8",
+   "name": "Ishielu"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_9",
+   "name": "Ivo"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_10",
+   "name": "Izzi"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_11",
+   "name": "Ohaozara"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_12",
+   "name": "Ohaukwu"
+  },
+  {
+   "state": "Ebonyi",
+   "geo_id": "nga_11_13",
+   "name": "Onicha"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_1",
+   "name": "Akoko Edo"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_2",
+   "name": "Egor"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_3",
+   "name": "Esan Central"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_4",
+   "name": "Esan North East"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_5",
+   "name": "Esan South East"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_6",
+   "name": "Esan West"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_7",
+   "name": "Etsako Central"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_8",
+   "name": "Etsako East"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_9",
+   "name": "Etsako West"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_10",
+   "name": "Igueben"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_11",
+   "name": "Ikpoba-Okha"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_12",
+   "name": "Oredo"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_13",
+   "name": "Orhionmw"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_14",
+   "name": "Ovia North East"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_15",
+   "name": "Ovia South West"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_16",
+   "name": "Owan East"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_17",
+   "name": "Owan West"
+  },
+  {
+   "state": "Edo",
+   "geo_id": "nga_12_18",
+   "name": "Uhunmwonde"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_1",
+   "name": "Ado-Ekiti"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_2",
+   "name": "Efon"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_3",
+   "name": "Ekiti East"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_4",
+   "name": "Ekiti South West"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_5",
+   "name": "Ekiti West"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_6",
+   "name": "Emure"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_7",
+   "name": "Gboyin"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_8",
+   "name": "Ido-Osi"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_9",
+   "name": "Ijero"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_10",
+   "name": "Ikere"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_11",
+   "name": "Ikole"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_12",
+   "name": "Ilejemeje"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_13",
+   "name": "Irepodun-Ifelodun"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_14",
+   "name": "Ise-Orun"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_15",
+   "name": "Moba"
+  },
+  {
+   "state": "Ekiti",
+   "geo_id": "nga_13_16",
+   "name": "Oye"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_1",
+   "name": "Aninri"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_2",
+   "name": "Awgu"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_3",
+   "name": "Enugu East"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_4",
+   "name": "Enugu North"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_5",
+   "name": "EnuguSou"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_6",
+   "name": "Ezeagu"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_7",
+   "name": "Igbo-Eti"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_8",
+   "name": "Igbo-eze North"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_9",
+   "name": "Igbo-eze South"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_10",
+   "name": "Isi-Uzo"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_11",
+   "name": "Nkanu East"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_12",
+   "name": "Nkanu West"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_13",
+   "name": "Nsukka"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_14",
+   "name": "Oji-River"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_15",
+   "name": "Udenu"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_16",
+   "name": "Udi"
+  },
+  {
+   "state": "Enugu",
+   "geo_id": "nga_14_17",
+   "name": "Uzo-Uwani"
+  },
+  {
+   "state": "FCT",
+   "geo_id": "nga_15_1",
+   "name": "Abaji"
+  },
+  {
+   "state": "FCT",
+   "geo_id": "nga_15_3",
+   "name": "Bwari"
+  },
+  {
+   "state": "FCT",
+   "geo_id": "nga_15_4",
+   "name": "Gwagwalada"
+  },
+  {
+   "state": "FCT",
+   "geo_id": "nga_15_5",
+   "name": "Kuje"
+  },
+  {
+   "state": "FCT",
+   "geo_id": "nga_15_6",
+   "name": "Kwali"
+  },
+  {
+   "state": "FCT",
+   "geo_id": null,
+   "name": "Municipal"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_1",
+   "name": "Akko"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_2",
+   "name": "Balanga"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_3",
+   "name": "Billiri"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_4",
+   "name": "Dukku"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_5",
+   "name": "Funakaye"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_6",
+   "name": "Gombe"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_7",
+   "name": "Kaltungo"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_8",
+   "name": "Kwami"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_9",
+   "name": "Nafada"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": "nga_16_10",
+   "name": "Shomgom"
+  },
+  {
+   "state": "Gombe",
+   "geo_id": null,
+   "name": "Yalmatu/Deba"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_1",
+   "name": "Aboh-Mbaise"
+  },
+  {
+   "state": "Imo",
+   "geo_id": null,
+   "name": "Ahiazu-Mbaise"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_3",
+   "name": "Ehime-Mbano"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_4",
+   "name": "Ezinihitte Mbaise"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_6",
+   "name": "Ideato North"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_5",
+   "name": "Ideato South"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_7",
+   "name": "Ihitte-Uboma Isinweke"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_8",
+   "name": "Ikeduru"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_9",
+   "name": "Isiala Mbano"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_10",
+   "name": "Isu"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_11",
+   "name": "Mbaitoli"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_12",
+   "name": "Ngor-Okpala"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_13",
+   "name": "Njaba"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_14",
+   "name": "Nkwerre"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_15",
+   "name": "Nwangele"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_16",
+   "name": "Obowo"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_17",
+   "name": "Oguta"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_18",
+   "name": "Ohaji-Egbema"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_19",
+   "name": "Okigwe"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_20",
+   "name": "Orlu"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_21",
+   "name": "Orsu"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_22",
+   "name": "Oru-East"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_23",
+   "name": "Oru-West"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_24",
+   "name": "Owerri Municipal"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_25",
+   "name": "Owerri North"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_26",
+   "name": "Owerri West"
+  },
+  {
+   "state": "Imo",
+   "geo_id": "nga_17_27",
+   "name": "Unuimo"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_1",
+   "name": "Auyo"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_2",
+   "name": "Babura"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_3",
+   "name": "Biriniwa"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_4",
+   "name": "Birnin Kudu"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_5",
+   "name": "Buji"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_6",
+   "name": "Dutse"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_7",
+   "name": "Gagarawa"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_8",
+   "name": "Garki"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_9",
+   "name": "Gumel"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_10",
+   "name": "Guri"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_11",
+   "name": "Gwaram"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_12",
+   "name": "Gwiwa"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_13",
+   "name": "Hadejia"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_14",
+   "name": "Jahun"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_15",
+   "name": "Kafin Hausa"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_16",
+   "name": "Kaugama"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_17",
+   "name": "Kazaure"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_18",
+   "name": "Kirika Samma"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_19",
+   "name": "Kiyawa"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_20",
+   "name": "Maigatari"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_21",
+   "name": "Malam Mado"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_22",
+   "name": "Miga"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_23",
+   "name": "Ringim"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_24",
+   "name": "Roni"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_25",
+   "name": "Sule Tankarkar"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_26",
+   "name": "Taura"
+  },
+  {
+   "state": "Jigawa",
+   "geo_id": "nga_18_27",
+   "name": "Yankwashi"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_1",
+   "name": "Birnin Gwari"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_2",
+   "name": "Chikun"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_3",
+   "name": "Giwa"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_4",
+   "name": "Igabi"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_5",
+   "name": "Ikara"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_6",
+   "name": "Jaba"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_7",
+   "name": "Jema'a"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_8",
+   "name": "Kachia"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_9",
+   "name": "Kaduna North"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_10",
+   "name": "Kaduna South"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_11",
+   "name": "Kagarko"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_12",
+   "name": "Kajuru"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_13",
+   "name": "Kaura"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_14",
+   "name": "Kauru"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_15",
+   "name": "Kubau"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_16",
+   "name": "Kudan"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_17",
+   "name": "Lere"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_18",
+   "name": "Makarfi"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_19",
+   "name": "Sabon Gari"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_20",
+   "name": "Sanga"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_21",
+   "name": "Soba"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_22",
+   "name": "Zangon Kataf"
+  },
+  {
+   "state": "Kaduna",
+   "geo_id": "nga_19_23",
+   "name": "Zaria"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_1",
+   "name": "Ajingi"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_2",
+   "name": "Albasu"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_3",
+   "name": "Bagwai"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_4",
+   "name": "Bebeji"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_5",
+   "name": "Bichi"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_6",
+   "name": "Bunkure"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_7",
+   "name": "Dala"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_8",
+   "name": "Dambatta"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_9",
+   "name": "Dawakin Kudu"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_10",
+   "name": "Dawakin Tofa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_11",
+   "name": "Doguwa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_12",
+   "name": "Fagge"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_13",
+   "name": "Gabasawa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_14",
+   "name": "Garko"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_15",
+   "name": "Garum Mallam"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_16",
+   "name": "Gaya"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_17",
+   "name": "Gezawa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_18",
+   "name": "Gwale"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_19",
+   "name": "Gwarzo"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_20",
+   "name": "Kabo"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_21",
+   "name": "Kano Municipal"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_22",
+   "name": "Karaye"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_23",
+   "name": "Kibiya"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_24",
+   "name": "Kiru"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_25",
+   "name": "Kumbotso"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_26",
+   "name": "Kunchi"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_27",
+   "name": "Kura"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_28",
+   "name": "Madobi"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_29",
+   "name": "Makoda"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_30",
+   "name": "Minjibir"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_31",
+   "name": "Nasarawa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_32",
+   "name": "Rano"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_33",
+   "name": "Rimin Gado"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_34",
+   "name": "Rogo"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_35",
+   "name": "Shanono"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_36",
+   "name": "Sumaila"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_37",
+   "name": "Takai"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_38",
+   "name": "Tarauni"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_39",
+   "name": "Tofa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_40",
+   "name": "Tsanyawa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_41",
+   "name": "Tudun Wada"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_42",
+   "name": "Ungogo"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_43",
+   "name": "Warawa"
+  },
+  {
+   "state": "Kano",
+   "geo_id": "nga_20_44",
+   "name": "Wudil"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_1",
+   "name": "Bakori"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_2",
+   "name": "Batagarawa"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_3",
+   "name": "Batsari"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_4",
+   "name": "Baure"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_5",
+   "name": "Bindawa"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_6",
+   "name": "Charanchi"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_7",
+   "name": "Dandume"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_8",
+   "name": "Danja"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_9",
+   "name": "Danmusa"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_10",
+   "name": "Daura"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_11",
+   "name": "Dutsi"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_12",
+   "name": "Dutsin-M"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_13",
+   "name": "Faskari"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_14",
+   "name": "Funtua"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_15",
+   "name": "Ingawa"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_16",
+   "name": "Jibia"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_17",
+   "name": "Kafur"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_18",
+   "name": "Kaita"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_19",
+   "name": "Kankara"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_20",
+   "name": "Kankiya"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_21",
+   "name": "Katsina (K)"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_22",
+   "name": "Kurfi"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_23",
+   "name": "Kusada"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_24",
+   "name": "Mai'Adua"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_25",
+   "name": "Malumfashi"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_26",
+   "name": "Mani"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_27",
+   "name": "Mashi"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_28",
+   "name": "Matazu"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_29",
+   "name": "Musawa"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_30",
+   "name": "Rimi"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_31",
+   "name": "Sabuwa"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_32",
+   "name": "Safana"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_33",
+   "name": "Sandamu"
+  },
+  {
+   "state": "Katsina",
+   "geo_id": "nga_21_34",
+   "name": "Zango"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_1",
+   "name": "Aleiro"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_2",
+   "name": "Arewa"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_3",
+   "name": "Argungu"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_4",
+   "name": "Augie"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_5",
+   "name": "Bagudo"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_6",
+   "name": "Birnin Kebbi"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_7",
+   "name": "Bunza"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_8",
+   "name": "Dandi"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_9",
+   "name": "Danko Wasagu"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_10",
+   "name": "Fakai"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_11",
+   "name": "Gwandu"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_12",
+   "name": "Jega"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_13",
+   "name": "Kalgo"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_14",
+   "name": "Koko/Bes"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_15",
+   "name": "Maiyama"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_16",
+   "name": "Ngaski"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_17",
+   "name": "Sakaba"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_18",
+   "name": "Shanga"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_19",
+   "name": "Suru"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_20",
+   "name": "Yauri"
+  },
+  {
+   "state": "Kebbi",
+   "geo_id": "nga_22_21",
+   "name": "Zuru"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_1",
+   "name": "Adavi"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_2",
+   "name": "Ajaokuta"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_3",
+   "name": "Ankpa"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_4",
+   "name": "Bassa"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_5",
+   "name": "Dekina"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_6",
+   "name": "Ibaji"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_7",
+   "name": "Idah"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_8",
+   "name": "Igalamela-Odolu"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_9",
+   "name": "Ijumu"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_10",
+   "name": "Kabba-Bunu"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_11",
+   "name": "Koton-Karfe"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_12",
+   "name": "Lokoja"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_13",
+   "name": "Mopa-Muro"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_14",
+   "name": "Ofu"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_15",
+   "name": "Ogori Magongo"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_16",
+   "name": "Okehi"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_17",
+   "name": "Okene"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_18",
+   "name": "Olamaboro"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_19",
+   "name": "Omala"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_20",
+   "name": "Yagba East"
+  },
+  {
+   "state": "Kogi",
+   "geo_id": "nga_23_21",
+   "name": "Yagba West"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_1",
+   "name": "Asa"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_2",
+   "name": "Baruten"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_3",
+   "name": "Edu"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_4",
+   "name": "Ekiti"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_5",
+   "name": "Ifelodun"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_6",
+   "name": "Ilorin East"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_7",
+   "name": "Ilorin South"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_8",
+   "name": "Ilorin West"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_9",
+   "name": "Irepodun"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_10",
+   "name": "Isin"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_11",
+   "name": "Kaiama"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_12",
+   "name": "Moro"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_13",
+   "name": "Offa"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_14",
+   "name": "Oke-Ero"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_15",
+   "name": "Oyun"
+  },
+  {
+   "state": "Kwara",
+   "geo_id": "nga_24_16",
+   "name": "Pategi"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_1",
+   "name": "Agege"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_2",
+   "name": "Ajeromi/Ifelodun"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_3",
+   "name": "Alimosho"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_4",
+   "name": "Amuwo Odofin"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_5",
+   "name": "Apapa"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_6",
+   "name": "Badagry"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_7",
+   "name": "Epe"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_8",
+   "name": "Eti-Osa"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_9",
+   "name": "Ibeju/Lekki"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_10",
+   "name": "Ifako/Ijaye"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_11",
+   "name": "Ikeja"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_12",
+   "name": "Ikorodu"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_13",
+   "name": "Kosofe"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_14",
+   "name": "Lagos Island"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": null,
+   "name": "Lagos Mainland"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_16",
+   "name": "Mushin"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_17",
+   "name": "Ojo"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_18",
+   "name": "Oshodi/Isolo"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_19",
+   "name": "Shomolu"
+  },
+  {
+   "state": "Lagos",
+   "geo_id": "nga_25_20",
+   "name": "Surulere"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_1",
+   "name": "Akwanga"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_2",
+   "name": "Awe"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_3",
+   "name": "Doma"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_4",
+   "name": "Karu"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_5",
+   "name": "Keana"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_6",
+   "name": "Keffi"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_7",
+   "name": "Kokona"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_8",
+   "name": "Lafia"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_9",
+   "name": "Nasarawa"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_10",
+   "name": "Nassarawa Egon"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_11",
+   "name": "Obi"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_12",
+   "name": "Toto"
+  },
+  {
+   "state": "Nasarawa",
+   "geo_id": "nga_26_13",
+   "name": "Wamba"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_1",
+   "name": "Agaie"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_2",
+   "name": "Agwara"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_3",
+   "name": "Bida"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_4",
+   "name": "Borgu"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_5",
+   "name": "Bosso"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_6",
+   "name": "Chanchaga"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_7",
+   "name": "Edati"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_8",
+   "name": "Gbako"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_9",
+   "name": "Gurara"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_10",
+   "name": "Katcha"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_11",
+   "name": "Kontogur"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_12",
+   "name": "Lapai"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_13",
+   "name": "Lavun"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_14",
+   "name": "Magama"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_15",
+   "name": "Mariga"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_16",
+   "name": "Mashegu"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_17",
+   "name": "Mokwa"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_18",
+   "name": "Muya"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_19",
+   "name": "Paikoro"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_20",
+   "name": "Rafi"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_21",
+   "name": "Rijau"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_22",
+   "name": "Shiroro"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_23",
+   "name": "Suleja"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_24",
+   "name": "Tafa"
+  },
+  {
+   "state": "Niger",
+   "geo_id": "nga_27_25",
+   "name": "Wushishi"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_2",
+   "name": "Abeokuta North"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_1",
+   "name": "Abeokuta South"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_3",
+   "name": "Ado Odo-Ota"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_4",
+   "name": "Egbado North"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_5",
+   "name": "Egbado South"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_6",
+   "name": "Ewekoro"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_7",
+   "name": "Ifo"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_9",
+   "name": "Ijebu East"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_10",
+   "name": "Ijebu North"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_8",
+   "name": "Ijebu North-East"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_11",
+   "name": "Ijebu-Ode"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_12",
+   "name": "Ikenne"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_13",
+   "name": "Imeko-Afon"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_14",
+   "name": "Ipokia"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_15",
+   "name": "Obafemi-Owode"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_16",
+   "name": "Odeda"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_17",
+   "name": "Odogbolu"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_18",
+   "name": "Ogun Waterside"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_19",
+   "name": "Remo North"
+  },
+  {
+   "state": "Ogun",
+   "geo_id": "nga_28_20",
+   "name": "Shagamu"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_1",
+   "name": "Akoko North-East"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_2",
+   "name": "Akoko South-East"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_3",
+   "name": "Akoko South-West"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_4",
+   "name": "AkokoNorthWest"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_5",
+   "name": "Akure North"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_6",
+   "name": "Akure South"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_7",
+   "name": "Ese-Odo"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_8",
+   "name": "Idanre"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_9",
+   "name": "Ifedore"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_10",
+   "name": "Ilaje"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_11",
+   "name": "IleOluji/Okeigbo"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_12",
+   "name": "Irele"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_13",
+   "name": "Odigbo"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_14",
+   "name": "Okitipupa"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_15",
+   "name": "Ondo East"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_16",
+   "name": "Ondo West"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_17",
+   "name": "Ose"
+  },
+  {
+   "state": "Ondo",
+   "geo_id": "nga_29_18",
+   "name": "Owo"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_1",
+   "name": "Atakumosa East"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_2",
+   "name": "Atakumosa West"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_3",
+   "name": "Ayedaade"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_4",
+   "name": "Ayedire"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_5",
+   "name": "Boluwaduro"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_6",
+   "name": "Boripe"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_7",
+   "name": "Ede North"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_8",
+   "name": "Ede South"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_9",
+   "name": "Egbedore"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_10",
+   "name": "Ejigbo"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_11",
+   "name": "Ife East"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_12",
+   "name": "Ife North"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_13",
+   "name": "Ife South"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_14",
+   "name": "IfeCentral"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_15",
+   "name": "Ifedayo"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_16",
+   "name": "Ifelodun"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_17",
+   "name": "Ila"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_18",
+   "name": "Ilesha East"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_19",
+   "name": "Ilesha West"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_20",
+   "name": "Irepodun"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_21",
+   "name": "Irewole"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_22",
+   "name": "Isokan"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_23",
+   "name": "Iwo"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_24",
+   "name": "Obokun"
+  },
+  {
+   "state": "Osun",
+   "geo_id": null,
+   "name": "Odo Otin"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_26",
+   "name": "Ola-Oluwa"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_27",
+   "name": "Olorunda"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_28",
+   "name": "Oriade"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_29",
+   "name": "Orolu"
+  },
+  {
+   "state": "Osun",
+   "geo_id": "nga_30_30",
+   "name": "Osogbo"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_1",
+   "name": "Afijio"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_2",
+   "name": "Akinyele"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_3",
+   "name": "Atiba"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_4",
+   "name": "Atisbo"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_5",
+   "name": "Egbeda"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_6",
+   "name": "Ibadan North"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_7",
+   "name": "Ibadan North East"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_8",
+   "name": "Ibadan North West"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_9",
+   "name": "Ibadan South East"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_10",
+   "name": "Ibadan South West"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_11",
+   "name": "Ibarapa Central"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_12",
+   "name": "Ibarapa East"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_13",
+   "name": "Ibarapa North"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_14",
+   "name": "Ido"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_15",
+   "name": "Irepo"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_16",
+   "name": "Iseyin"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_17",
+   "name": "Itesiwaju"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_18",
+   "name": "Iwajowa"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_19",
+   "name": "Kajola"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_20",
+   "name": "Lagelu"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_21",
+   "name": "Ogbomosho North"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_22",
+   "name": "Ogbomosho South"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_23",
+   "name": "Ogo-Oluwa"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_24",
+   "name": "Olorunsogo"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_25",
+   "name": "Oluyole"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_26",
+   "name": "Ona-Ara"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_27",
+   "name": "Orelope"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_28",
+   "name": "Ori-Ire"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_29",
+   "name": "Oyo East"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_30",
+   "name": "Oyo West"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_31",
+   "name": "Saki East"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_32",
+   "name": "Saki West"
+  },
+  {
+   "state": "Oyo",
+   "geo_id": "nga_31_33",
+   "name": "Surulere"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_1",
+   "name": "Barkin Ladi"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_2",
+   "name": "Bassa"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_3",
+   "name": "Bokkos"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_4",
+   "name": "Jos East"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_5",
+   "name": "Jos North"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_6",
+   "name": "Jos South"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_7",
+   "name": "Kanam"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_8",
+   "name": "Kanke"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_9",
+   "name": "Langtang North"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_10",
+   "name": "Langtang South"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_11",
+   "name": "Mangu"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_12",
+   "name": "Mikang"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_13",
+   "name": "Pankshin"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_14",
+   "name": "Qua'anpa"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_15",
+   "name": "Riyom"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_16",
+   "name": "Shendam"
+  },
+  {
+   "state": "Plateau",
+   "geo_id": "nga_32_17",
+   "name": "Wase"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_1",
+   "name": "Abua/Odu"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_2",
+   "name": "Ahoada East"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_3",
+   "name": "Ahoada West"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_4",
+   "name": "Akukutor"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_5",
+   "name": "Andoni/Odual"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_6",
+   "name": "Asari-Toru"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_7",
+   "name": "Bonny"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_8",
+   "name": "Degema"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_9",
+   "name": "Eleme"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_10",
+   "name": "Emuoha"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_11",
+   "name": "Etche"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_12",
+   "name": "Gokana"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_13",
+   "name": "Ikwerre"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_14",
+   "name": "Khana"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_15",
+   "name": "Obio/Akpor"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_16",
+   "name": "Ogba/Egbema/Andoni"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_17",
+   "name": "Ogu/Bolo"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_18",
+   "name": "Okrika"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_19",
+   "name": "Omumma"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_20",
+   "name": "Opobo/Nkoro"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_21",
+   "name": "Oyigbo"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_22",
+   "name": "Port Harcourt"
+  },
+  {
+   "state": "Rivers",
+   "geo_id": "nga_33_23",
+   "name": "Tai"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_1",
+   "name": "Binji"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_2",
+   "name": "Bodinga"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_3",
+   "name": "Dange-Shuni"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_4",
+   "name": "Gada"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_5",
+   "name": "Goronyo"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_6",
+   "name": "Gudu"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_7",
+   "name": "Gwadabaw"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_8",
+   "name": "Illela"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_9",
+   "name": "Isa"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_10",
+   "name": "Kebbe"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_11",
+   "name": "Kware"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_12",
+   "name": "Rabah"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_13",
+   "name": "Sabon Birni"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_14",
+   "name": "Shagari"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_15",
+   "name": "Silame"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_16",
+   "name": "Sokoto North"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_17",
+   "name": "Sokoto South"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_18",
+   "name": "Tambawal"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_19",
+   "name": "Tangazar"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_20",
+   "name": "Tureta"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_21",
+   "name": "Wamakko"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_22",
+   "name": "Wurno"
+  },
+  {
+   "state": "Sokoto",
+   "geo_id": "nga_34_23",
+   "name": "Yabo"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_1",
+   "name": "Ardo-Kola"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_2",
+   "name": "Bali"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_3",
+   "name": "Donga"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_4",
+   "name": "Gashaka"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_5",
+   "name": "Gassol"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_6",
+   "name": "Ibi"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_7",
+   "name": "Jalingo"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_8",
+   "name": "Karim-Lamido"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_9",
+   "name": "Kurmi"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_10",
+   "name": "Lau"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_11",
+   "name": "Sardauna"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_12",
+   "name": "Takum"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_13",
+   "name": "Ussa"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_14",
+   "name": "Wukari"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_15",
+   "name": "Yorro"
+  },
+  {
+   "state": "Taraba",
+   "geo_id": "nga_35_16",
+   "name": "Zing"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_1",
+   "name": "Bade"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_2",
+   "name": "Borsari"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_3",
+   "name": "Damaturu"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_4",
+   "name": "Fika"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_5",
+   "name": "Fune"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_6",
+   "name": "Geidam"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_7",
+   "name": "Gujba"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_8",
+   "name": "Gulani"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_9",
+   "name": "Jakusko"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_10",
+   "name": "Karasuwa"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_11",
+   "name": "Machina"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_12",
+   "name": "Nangere"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_13",
+   "name": "Nguru"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_14",
+   "name": "Potiskum"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_15",
+   "name": "Tarmuwa"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_16",
+   "name": "Yunusari"
+  },
+  {
+   "state": "Yobe",
+   "geo_id": "nga_36_17",
+   "name": "Yusufari"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_1",
+   "name": "Anka"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_2",
+   "name": "Bakura"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_3",
+   "name": "Birnin Magaji"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_4",
+   "name": "Bukkuyum"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_5",
+   "name": "Bungudu"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_6",
+   "name": "Gummi"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_7",
+   "name": "Gusau"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_8",
+   "name": "Kaura-Namoda"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_9",
+   "name": "Maradun"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_10",
+   "name": "Maru"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_11",
+   "name": "Shinkafi"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_12",
+   "name": "Talata-Mafara"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_13",
+   "name": "Tsafe"
+  },
+  {
+   "state": "Zamfara",
+   "geo_id": "nga_37_14",
+   "name": "Zurmi"
+  }
+ ]
+}

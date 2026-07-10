@@ -81,6 +81,7 @@ from .seed import (
     seed_lga_results,
     seed_lgas,
     refresh_lga_names,
+    link_lga_references,
     seed_parties,
     seed_party_elections,
     seed_party_history,
@@ -209,6 +210,9 @@ async def lifespan(app: FastAPI):
                 wr = seed_ward_results(db)
                 if wr:
                     print(f"[startup] seeded {wr} ward results")
+                ll = link_lga_references(db)
+                if ll:
+                    print(f"[startup] linked {ll} rows to canonical LGAs")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     # Relaunch any model job that was mid-run when the process last died.
