@@ -68,7 +68,6 @@ from .seed import (
     BASE,
     dedupe_politicians,
     migrate_assessment_lgas,
-    seed_analyses,
     seed_governor_2023_results,
     seed_governors_current,
     seed_governors_history,
@@ -86,7 +85,6 @@ from .seed import (
     seed_party_elections,
     seed_party_history,
     seed_politicians,
-    seed_predictions,
     seed_problem_units,
     seed_polling_units,
     seed_senators,
@@ -122,12 +120,7 @@ async def lifespan(app: FastAPI):
     try:
         if SessionLocal is not None:
             with SessionLocal() as db:
-                added = seed_predictions(db)
-                if added:
-                    print(f"[startup] seeded {added} prediction rows")
-                analyses = seed_analyses(db)
-                if analyses:
-                    print(f"[startup] seeded {analyses} analysis rows")
+                # predictions + analyses are no longer seeded — they hold real data only.
                 parties = seed_parties(db)
                 if parties:
                     print(f"[startup] seeded {parties} parties")
