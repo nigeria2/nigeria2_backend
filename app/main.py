@@ -659,6 +659,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
             DeclaredCandidate.year == "2027", DeclaredCandidate.state.in_([state, "Nigeria"])
         ).order_by(DeclaredCandidate.election_type, DeclaredCandidate.party)
     ).all()
+    declared_2027_pids = _declared_name_pid(db, declared_2027)
     # Our model's projected winner per race (newest model prediction wins). The
     # state map is coloured from this — blank when we have no prediction yet.
     model_prediction: dict[str, dict] = {}
@@ -675,7 +676,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "ward_count": ward_count,
         "predictions": [_public_prediction_dict(p) for p in preds],
         "model_prediction": model_prediction,
-        "declared_candidates_2027": [_declared_candidate_dict(c) for c in declared_2027],
+        "declared_candidates_2027": [_declared_candidate_dict(c, declared_2027_pids) for c in declared_2027],
         "politicians": [
             d for x in pols
             if _is_heavyweight(d := politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, []), lga_names))
@@ -1163,10 +1164,53 @@ OFF_CYCLE_GOVERNOR_STATES = {"Anambra", "Edo", "Ekiti", "Ondo", "Osun", "FCT"}
 GOVERNOR_2027_STATES = [s for s in STATE_NAMES if s not in OFF_CYCLE_GOVERNOR_STATES]
 
 
-def _declared_candidate_dict(c: DeclaredCandidate) -> dict:
+def _norm_name(s: str) -> str:
+    return " ".join((s or "").lower().split())
+
+
+def _declared_name_pid(db: Session, rows: list[DeclaredCandidate]) -> dict[str, int]:
+    """normalized politician_name -> politician_id, for declared candidates that
+    have no stored id (e.g. added by name only), so the candidate names can still
+    link to a profile. When a name matches several politicians (e.g. a national
+    figure and a same-named minor candidate) the most prominent one — by most votes
+    ever pulled — wins; a name that matches only namesakes with no votes is skipped."""
+    names = {_norm_name(r.politician_name) for r in rows if r.politician_id is None and r.politician_name}
+    if not names:
+        return {}
+    cands: dict[str, list[int]] = defaultdict(list)
+    for pid, name in db.execute(select(Politician.id, Politician.name)).all():
+        n = _norm_name(name)
+        if n in names:
+            cands[n].append(pid)
+    if not cands:
+        return {}
+    all_ids = [pid for ids in cands.values() for pid in ids]
+    votes: dict[int, int] = defaultdict(int)
+    for pid, mx in db.execute(
+        select(PartyHistory.politician_id, func.max(PartyHistory.votes))
+        .where(PartyHistory.politician_id.in_(all_ids), PartyHistory.election_type != "primary")
+        .group_by(PartyHistory.politician_id)
+    ).all():
+        if pid is not None:
+            votes[pid] = mx or 0
+    out: dict[str, int] = {}
+    for n, ids in cands.items():
+        if len(ids) == 1:
+            out[n] = ids[0]
+            continue
+        best = max(ids, key=lambda i: votes.get(i, 0))
+        if votes.get(best, 0) > 0:  # don't guess between namesakes that never polled
+            out[n] = best
+    return out
+
+
+def _declared_candidate_dict(c: DeclaredCandidate, name_pid: dict[str, int] | None = None) -> dict:
+    pid = c.politician_id
+    if pid is None and name_pid:
+        pid = name_pid.get(_norm_name(c.politician_name))
     return {
         "id": c.id, "state": c.state, "election_type": c.election_type, "year": c.year,
-        "party": c.party, "politician_name": c.politician_name, "politician_id": c.politician_id,
+        "party": c.party, "politician_name": c.politician_name, "politician_id": pid,
         "running_mate": c.running_mate or None,
     }
 
@@ -1181,7 +1225,8 @@ def list_declared_candidates(
     if state:
         q = q.where(DeclaredCandidate.state == state)
     rows = db.scalars(q.order_by(DeclaredCandidate.state, DeclaredCandidate.party)).all()
-    return [_declared_candidate_dict(c) for c in rows]
+    name_pid = _declared_name_pid(db, rows)
+    return [_declared_candidate_dict(c, name_pid) for c in rows]
 
 
 @app.get("/api/declared-candidates/governor-states")
