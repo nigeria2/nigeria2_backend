@@ -523,6 +523,45 @@ def politician_to_dict(p: Politician, assessments: list, runs: list | None = Non
     return d
 
 
+# Party -> the StatePresidential column holding that ticket's by-state votes.
+_PRES_PARTY_COL = {"APC": "apc", "PDP": "pdp", "LP": "lp", "NNPP": "nnpp"}
+
+
+def _presidential_state_votes(db: Session, runs: list) -> list[dict]:
+    """A presidential candidate's by-state vote breakdown, states sorted by votes
+    (where they polled the most first). Pulled from the official StatePresidential
+    table, which only carries the four major-party tickets — everyone else (minor
+    candidates, non-presidential runs) yields no by-state rows and returns []."""
+    out: list[dict] = []
+    seen_years: set[int] = set()
+    for r in runs:
+        if r.election_type != "presidential":
+            continue
+        col = _PRES_PARTY_COL.get(r.party)
+        if col is None:
+            continue
+        try:
+            yr = int(r.year)
+        except (TypeError, ValueError):
+            continue
+        if yr in seen_years:
+            continue
+        rows = db.scalars(select(StatePresidential).where(StatePresidential.year == yr)).all()
+        if not rows:
+            continue
+        seen_years.add(yr)
+        states = sorted(
+            (
+                {"state": s.state, "votes": getattr(s, col) or 0, "total": s.total_votes or 0,
+                 "won": s.winner == r.party}
+                for s in rows
+            ),
+            key=lambda x: x["votes"], reverse=True,
+        )
+        out.append({"year": str(yr), "party": r.party, "states": states})
+    return out
+
+
 def _is_heavyweight(d: dict) -> bool:
     """Hide fringe candidates (a handful of real, known votes in the low
     single digits -- from a large ward or a joke campaign, not a real
@@ -601,6 +640,15 @@ def state_detail(state: str, db: Session = Depends(get_db)):
             "position": h.position, "politician_id": h.politician_id,
         })
     pres23 = db.scalar(select(StatePresidential).where(StatePresidential.state == state, StatePresidential.year == 2023))
+    # politician_id per party for the 2023 national presidential tickets, so the
+    # candidate names on the state page can link to their profiles.
+    pres_ids = {
+        h.party: h.politician_id
+        for h in db.scalars(select(PartyHistory).where(
+            PartyHistory.year == "2023", PartyHistory.election_type == "presidential"
+        )).all()
+        if h.politician_id
+    }
     reps = db.scalars(select(HouseMember).where(HouseMember.state == state).order_by(HouseMember.constituency)).all()
     incumbent = db.scalar(select(Governor).where(Governor.state == state))
     gov_hist = db.scalars(select(GovernorHistory).where(GovernorHistory.state == state).order_by(GovernorHistory.seq.desc())).all()
@@ -641,6 +689,7 @@ def state_detail(state: str, db: Session = Depends(get_db)):
         "presidential_2023": ({
             "APC": pres23.apc, "PDP": pres23.pdp, "LP": pres23.lp, "NNPP": pres23.nnpp,
             "others": pres23.others, "total": pres23.total_votes, "turnout": pres23.turnout, "winner": pres23.winner,
+            "politician_ids": pres_ids,
         } if pres23 else None),
         "governor": _governor_dict(incumbent) if incumbent else None,
         "governor_history": [
@@ -967,6 +1016,7 @@ def politician_detail(pid: int, db: Session = Depends(get_db)):
          "constituency": h.constituency or None}
         for h in ph
     ]
+    d["presidential_state_votes"] = _presidential_state_votes(db, ph)
     return d
 
 
