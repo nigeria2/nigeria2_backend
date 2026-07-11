@@ -1094,27 +1094,48 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
 # --- 2027 predictions (per-LGA vote projections, aggregated up to states) ---
 @app.get("/api/lga-predictions/states")
 def lga_prediction_states(election_type: str = "presidential", year: str = "2027", db: Session = Depends(get_db)):
-    """States that have any per-LGA prediction, with the projected votes per party."""
+    """States that have any per-LGA prediction. Per state we return each candidate's
+    projected votes and an 'unknown' remainder — the votes we have not predicted yet,
+    measured against the state's total 2023 turnout for this office."""
     rows = db.scalars(select(LgaPrediction).where(
         LgaPrediction.election_type == election_type, LgaPrediction.year == year
     )).all()
-    pol_party = {
-        p.id: p.party
+    pols = {
+        p.id: p
         for p in db.scalars(select(Politician).where(Politician.id.in_([r.politician_id for r in rows if r.politician_id]))).all()
     } if any(r.politician_id for r in rows) else {}
-    agg: dict[str, dict] = defaultdict(lambda: {"parties": defaultdict(int), "lga_count": 0})
+    # 2023 turnout per state — the pool we measure "unknown" against.
+    baseline = {sp.state: (sp.total_votes or 0) for sp in db.scalars(select(StatePresidential).where(StatePresidential.year == 2023)).all()}
+
+    agg: dict[str, dict] = defaultdict(lambda: {"cands": {}, "lga_count": 0})
     for r in rows:
-        party = pol_party.get(r.politician_id) or r.party  # candidate's current party
-        agg[r.state_geo]["parties"][party] += r.votes
-        agg[r.state_geo]["lga_count"] += 1
+        s = agg[r.state_geo]
+        s["lga_count"] += 1
+        pol = pols.get(r.politician_id)
+        key = ("pol", r.politician_id) if pol else ("party", r.party)
+        cand = s["cands"].setdefault(key, {
+            "politician_id": (pol.id if pol else None),
+            "politician_name": (pol.name if pol else None),
+            "photo": (pol.photo or "" if pol else ""),
+            "party": (pol.party or r.party if pol else r.party),
+            "votes": 0,
+        })
+        cand["votes"] += r.votes
+
     out = []
-    for geo_id, d in agg.items():
-        parties = dict(d["parties"])
+    for geo_id, s in agg.items():
+        cands = sorted(s["cands"].values(), key=lambda x: x["votes"], reverse=True)
+        predicted = sum(c["votes"] for c in cands)
+        state = geo.state_name(geo_id)
+        base = baseline.get(state, 0)
         out.append({
-            "geo_id": geo_id, "state": geo.state_name(geo_id),
-            "parties": parties,
-            "leading_party": (max(parties, key=parties.get) if parties else ""),
-            "total_votes": sum(parties.values()), "lga_count": d["lga_count"],
+            "geo_id": geo_id, "state": state,
+            "candidates": cands,
+            "total_votes": predicted,
+            "baseline_votes": base,
+            "unknown_votes": max(0, base - predicted),
+            "lga_count": s["lga_count"],
+            "leading_party": (cands[0]["party"] if cands else ""),
         })
     out.sort(key=lambda x: x["total_votes"], reverse=True)
     return {"election_type": election_type, "year": year, "states": out}
