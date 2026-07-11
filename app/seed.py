@@ -815,7 +815,7 @@ def seed_ward_results(db: Session) -> int:
 
 # --- ward-level estimation ---------------------------------------------------
 #
-# A ticket's projected vote in a ward is built from three sources, each a component:
+# A ticket's projected vote in a ward is built from several sources, each a component:
 #   - Candidate Popularity  : the presidential candidate's own proven vote — his 2023
 #                             result in that ward, retained with some decay.
 #   - Running-mate Popularity: the VP's proven vote — the votes he personally delivered
@@ -823,30 +823,38 @@ def seed_ward_results(db: Session) -> int:
 #                             transferred to the joint ticket at some rate. This is why
 #                             the VP is linked as a politician: we match him against what
 #                             he actually delivered last time.
+#   - Supporter Popularity  : a politician who backs the ticket without being on it (an
+#                             endorsement) — e.g. a sitting governor delivering a share of
+#                             the base his party commands in the ward. Linked as a
+#                             politician too, matched against the votes he delivered.
 #   - Party Popularity      : structural support the party organises independently of the
-#                             two names — a small share of the ward's turnout.
+#                             names — a small share of the ward's turnout.
 # The prediction's votes is the sum of its components.
 
 _2023_PARTY_COL = {"APC": "votes_apc", "LP": "votes_lp", "PDP": "votes_pdp", "NNPP": "votes_nnpp"}
 
 
-def _pol_2023_pres_party(db: Session, pol: "Politician | None") -> str | None:
-    """The party a politician ran under in the 2023 presidential election, if any."""
+def _pol_2023_party(db: Session, pol: "Politician | None") -> str | None:
+    """The party a politician commanded in 2023, preferring the presidential race, then
+    governorship, then any 2023 record. Used to find the base of votes he can deliver."""
     if pol is None:
         return None
     from .models import PartyHistory
-    return db.scalar(
-        select(PartyHistory.party).where(
+    for et in ("presidential", "governor"):
+        p = db.scalar(select(PartyHistory.party).where(
             PartyHistory.politician_id == pol.id,
-            PartyHistory.election_type == "presidential",
-            PartyHistory.year == "2023",
-        ).limit(1)
-    )
+            PartyHistory.election_type == et, PartyHistory.year == "2023").limit(1))
+        if p:
+            return p
+    return db.scalar(select(PartyHistory.party).where(
+        PartyHistory.politician_id == pol.id, PartyHistory.year == "2023").limit(1))
 
 
 def _ward_2023_votes(db: Session, ward, pol: "Politician | None") -> int:
-    """How many votes `pol` personally polled in this ward in 2023 (0 if he didn't run)."""
-    col = _2023_PARTY_COL.get(_pol_2023_pres_party(db, pol) or "")
+    """The votes the base `pol` commands in this ward — the 2023 result of the party he
+    led (0 if we can't place him). Governors have no ward-level gubernatorial figures, so
+    this proxies with the presidential vote of their party in the ward."""
+    col = _2023_PARTY_COL.get(_pol_2023_party(db, pol) or "")
     return int(getattr(ward, col, 0) or 0) if col else 0
 
 
@@ -854,29 +862,21 @@ def _ward_2023_votes(db: Session, ward, pol: "Politician | None") -> int:
 # retention   = share of the candidate's own 2023 vote he keeps.
 # vp_transfer = share of the VP's 2023 personal vote that moves to the joint ticket.
 # party_share = party structural vote as a fraction of the ward's 2023 turnout.
-_TICKETS = [
-    {"candidate": "peter obi", "running_mate": "rabiu musa kwankwaso",
-     "retention": 0.90, "vp_transfer": 0.70, "party_share": 0.04},
-    {"candidate": "bola tinubu", "running_mate": "kashim shettima",
-     "retention": 0.92, "vp_transfer": 0.70, "party_share": 0.05},
-]
+# supporters  = endorsing politicians; each delivers `transfer` of the base he commands.
+_OBI_TICKET = {"candidate": "peter obi", "running_mate": "rabiu musa kwankwaso",
+               "retention": 0.90, "vp_transfer": 0.70, "party_share": 0.04, "supporters": []}
+_TINUBU_TICKET = {"candidate": "bola tinubu", "running_mate": "kashim shettima",
+                  "retention": 0.92, "vp_transfer": 0.70, "party_share": 0.05, "supporters": []}
 
 
-def estimate_municipal_predictions(db: Session, clear: bool = False) -> int:
-    """Build reasoned 2027 per-ward predictions for the municipal LGA where Peter Obi
-    did best in 2023 (AMAC). Each ticket gets one prediction per ward, decomposed into
-    Candidate / Running-mate / Party components (see the note above). The running mate is
-    linked as a politician on his component, matched against the votes he delivered in
-    2023. With `clear=True` any existing predictions for that LGA are wiped first."""
+def estimate_lga_predictions(db: Session, lga_id: int, tickets: list[dict], clear: bool = False) -> int:
+    """Build reasoned 2027 per-ward predictions for one LGA. Each ticket gets one
+    prediction per ward, decomposed into Candidate / Running-mate / Supporter(s) / Party
+    components (see the note above); the running mate and each supporter are linked as
+    politicians and matched against the votes they delivered in 2023. With `clear=True`
+    any existing predictions for this LGA are wiped first; otherwise it is a no-op if the
+    LGA already has predictions (first-run guard)."""
     from .models import WardPrediction, PredictionComponent
-    top = db.execute(
-        select(WardResult.lga_id, func.sum(WardResult.votes_lp).label("v"))
-        .where(WardResult.lga_id.isnot(None))
-        .group_by(WardResult.lga_id).order_by(func.sum(WardResult.votes_lp).desc()).limit(1)
-    ).first()
-    if not top or not top.v:
-        return 0
-    lga_id = top.lga_id
     lga = db.get(Lga, lga_id)
 
     if clear:
@@ -884,28 +884,33 @@ def estimate_municipal_predictions(db: Session, clear: bool = False) -> int:
         if old:
             db.execute(delete(PredictionComponent).where(PredictionComponent.ward_prediction_id.in_(old)))
             db.execute(delete(WardPrediction).where(WardPrediction.id.in_(old)))
-    elif db.scalar(select(func.count()).select_from(WardPrediction)):
-        return 0  # first-run guard: don't duplicate on restart
+    elif db.scalar(select(func.count()).select_from(WardPrediction).where(WardPrediction.lga_id == lga_id)):
+        return 0
 
-    def pol(name: str):
-        return db.scalar(select(Politician).where(func.lower(Politician.name) == name))
+    def pol(name: str | None):
+        return db.scalar(select(Politician).where(func.lower(Politician.name) == name)) if name else None
 
     wards = db.scalars(select(WardResult).where(WardResult.lga_id == lga_id)).all()
     n = 0
-    for t in _TICKETS:
+    for t in tickets:
         cand = pol(t["candidate"])
         mate = pol(t["running_mate"])
         if cand is None:
             continue
+        supporters = [(s, pol(s["name"])) for s in t.get("supporters", [])]
         for w in wards:
-            cand_pop = round(_ward_2023_votes(db, w, cand) * t["retention"])
-            mate_pop = round(_ward_2023_votes(db, w, mate) * t["vp_transfer"])
-            party_pop = round((w.total_votes or 0) * t["party_share"])
             comps = [
-                ("Candidate Popularity", cand_pop, cand.id if cand else None),
-                ("Running-mate Popularity", mate_pop, mate.id if mate else None),
-                ("Party Popularity", party_pop, None),
+                ("Candidate Popularity", round(_ward_2023_votes(db, w, cand) * t["retention"]),
+                 cand.id if cand else None),
+                ("Running-mate Popularity", round(_ward_2023_votes(db, w, mate) * t["vp_transfer"]),
+                 mate.id if mate else None),
             ]
+            for s, spol in supporters:
+                if spol is None:
+                    continue
+                comps.append(("Supporter Popularity",
+                              round(_ward_2023_votes(db, w, spol) * s["transfer"]), spol.id))
+            comps.append(("Party Popularity", round((w.total_votes or 0) * t["party_share"]), None))
             total = sum(v for _r, v, _p in comps)
             wp = WardPrediction(
                 election_type="presidential", year="2027",
@@ -925,13 +930,48 @@ def estimate_municipal_predictions(db: Session, clear: bool = False) -> int:
     return n
 
 
+def _amac_lga_id(db: Session) -> int | None:
+    """The municipal LGA where Peter Obi did best in 2023 (AMAC)."""
+    top = db.execute(
+        select(WardResult.lga_id, func.sum(WardResult.votes_lp).label("v"))
+        .where(WardResult.lga_id.isnot(None))
+        .group_by(WardResult.lga_id).order_by(func.sum(WardResult.votes_lp).desc()).limit(1)
+    ).first()
+    return top.lga_id if top and top.v else None
+
+
+_IKOT_EKPENE_LGA_ID = 214
+
+
+def estimate_municipal_predictions(db: Session, clear: bool = False) -> int:
+    """AMAC (municipal): Obi/Kwankwaso vs Tinubu/Shettima, no supporters."""
+    lga_id = _amac_lga_id(db)
+    if lga_id is None:
+        return 0
+    return estimate_lga_predictions(db, lga_id, [_OBI_TICKET, _TINUBU_TICKET], clear=clear)
+
+
+def estimate_ikot_ekpene_predictions(db: Session, clear: bool = False) -> int:
+    """Ikot Ekpene (Akwa Ibom): same two tickets, but the sitting PDP governor Umo Eno
+    backs Tinubu/Shettima and delivers half of the PDP base he commands in each ward."""
+    tinubu = {**_TINUBU_TICKET,
+              "supporters": [{"name": "umo eno", "transfer": 0.50}]}
+    return estimate_lga_predictions(db, _IKOT_EKPENE_LGA_ID, [_OBI_TICKET, tinubu], clear=clear)
+
+
+def estimate_all_lga_predictions(db: Session, clear: bool = False) -> int:
+    """Run every LGA estimation we have written."""
+    return (estimate_municipal_predictions(db, clear=clear)
+            + estimate_ikot_ekpene_predictions(db, clear=clear))
+
+
 def seed_ward_predictions(db: Session) -> int:
-    """First-run seed of the reasoned per-ward predictions (see estimate_municipal_predictions)."""
-    return estimate_municipal_predictions(db, clear=False)
+    """First-run seed of the reasoned per-ward predictions (see estimate_lga_predictions)."""
+    return estimate_all_lga_predictions(db, clear=False)
 
 
 def seed_prediction_components(db: Session) -> int:
-    """Deprecated: components are now created inline by estimate_municipal_predictions."""
+    """Deprecated: components are now created inline by estimate_lga_predictions."""
     return 0
 
 

@@ -1138,14 +1138,13 @@ def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None
                 "preds": {},
             }
             order.append(key)
-        pr = byc[key]["preds"].setdefault(r.label, {"votes": 0, "importance": r.importance, "components": defaultdict(lambda: [0, 0, None])})
+        pr = byc[key]["preds"].setdefault(r.label, {"votes": 0, "importance": r.importance, "components": defaultdict(lambda: [0, 0])})
         pr["votes"] += r.votes
         pr["importance"] = r.importance
         for reason, cvotes, seq, pid in (comps or {}).get(r.id, []):
-            slot = pr["components"][reason]
-            slot[0] += cvotes
+            slot = pr["components"][(reason, pid)]  # keyed by (reason, politician) so a
+            slot[0] += cvotes                        # supporter never merges into another line
             slot[1] = seq
-            slot[2] = pid
 
     def pct(v):
         return round(v / baseline * 100, 1) if baseline else None
@@ -1159,7 +1158,7 @@ def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None
                 ({"reason": reason, "votes": cv,
                   "politician_id": pid,
                   "politician_name": (pols[pid].name if pid in pols else None)}
-                 for reason, (cv, _seq, pid) in pr["components"].items()),
+                 for (reason, pid), (cv, _seq) in pr["components"].items()),
                 key=lambda x: x["votes"], reverse=True,
             )
             plist.append({"label": label, "votes": pr["votes"], "importance": pr["importance"], "pct": pct(pr["votes"]), "components": components})
