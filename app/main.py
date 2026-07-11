@@ -43,6 +43,7 @@ from .models import (
     StatePresidential,
     User,
     Ward,
+    PredictionComponent,
     WardPrediction,
     WardResult,
 )
@@ -81,6 +82,7 @@ from .seed import (
     seed_senate_2023,
     seed_lga_results,
     seed_ward_predictions,
+    seed_prediction_components,
     seed_lgas,
     refresh_lga_names,
     link_lga_references,
@@ -212,6 +214,9 @@ async def lifespan(app: FastAPI):
                 lp = seed_ward_predictions(db)
                 if lp:
                     print(f"[startup] seeded {lp} ward prediction(s)")
+                pc = seed_prediction_components(db)
+                if pc:
+                    print(f"[startup] seeded {pc} prediction component(s)")
                 cl = clean_politician_data(db)
                 if cl:
                     print(f"[startup] cleaned {cl} politician name/party fields")
@@ -1092,10 +1097,12 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
 
 
 # --- 2027 predictions (per-WARD vote projections, aggregated up to LGAs/states) ---
-def _candidate_groups(db: Session, rows: list, baseline: int) -> list[dict]:
+def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None = None) -> list[dict]:
     """Group ward-prediction rows by candidate. A candidate may have several predictions
     (scenarios), each with an importance weight; the votes we assign the candidate is the
-    importance-weighted average of those predictions. `baseline` gives each figure a %."""
+    importance-weighted average of those predictions. Each prediction is itself the sum of
+    its components (reason -> votes); when `comps` (ward_prediction_id -> [(reason, votes,
+    seq)]) is given, those are aggregated per prediction. `baseline` gives each figure %."""
     pols = {
         p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_([r.politician_id for r in rows if r.politician_id]))).all()
     } if any(r.politician_id for r in rows) else {}
@@ -1113,9 +1120,13 @@ def _candidate_groups(db: Session, rows: list, baseline: int) -> list[dict]:
                 "preds": {},
             }
             order.append(key)
-        pr = byc[key]["preds"].setdefault(r.label, {"votes": 0, "importance": r.importance})
+        pr = byc[key]["preds"].setdefault(r.label, {"votes": 0, "importance": r.importance, "components": defaultdict(lambda: [0, 0])})
         pr["votes"] += r.votes
         pr["importance"] = r.importance
+        for reason, cvotes, seq in (comps or {}).get(r.id, []):
+            slot = pr["components"][reason]
+            slot[0] += cvotes
+            slot[1] = seq
 
     def pct(v):
         return round(v / baseline * 100, 1) if baseline else None
@@ -1125,7 +1136,11 @@ def _candidate_groups(db: Session, rows: list, baseline: int) -> list[dict]:
         c = byc[key]
         plist, num, den = [], 0, 0
         for label, pr in c["preds"].items():
-            plist.append({"label": label, "votes": pr["votes"], "importance": pr["importance"], "pct": pct(pr["votes"])})
+            components = sorted(
+                ({"reason": reason, "votes": cv} for reason, (cv, _seq) in pr["components"].items()),
+                key=lambda x: x["votes"], reverse=True,
+            )
+            plist.append({"label": label, "votes": pr["votes"], "importance": pr["importance"], "pct": pct(pr["votes"]), "components": components})
             num += pr["votes"] * pr["importance"]
             den += pr["importance"]
         wavg = round(num / den) if den else 0
@@ -1217,6 +1232,14 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
     for r in rows:
         by_ward[r.ward_code].append(r)
 
+    # the components that make up each prediction (reason -> votes)
+    comps: dict[int, list] = defaultdict(list)
+    if rows:
+        for pc in db.scalars(select(PredictionComponent).where(
+            PredictionComponent.ward_prediction_id.in_([r.id for r in rows])
+        ).order_by(PredictionComponent.seq)).all():
+            comps[pc.ward_prediction_id].append((pc.reason, pc.votes, pc.seq))
+
     reg = dict(db.execute(
         select(PollingUnit.ward_code, func.sum(PollingUnit.registered_voters))
         .where(PollingUnit.lga_id == lga_id).group_by(PollingUnit.ward_code)
@@ -1224,7 +1247,7 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
     wards = []
     for w in db.scalars(select(WardResult).where(WardResult.lga_id == lga_id).order_by(WardResult.ward)).all():
         parties = {"APC": w.votes_apc, "LP": w.votes_lp, "PDP": w.votes_pdp, "NNPP": w.votes_nnpp}
-        cands = _candidate_groups(db, by_ward.get(w.ward_code, []), w.total_votes)
+        cands = _candidate_groups(db, by_ward.get(w.ward_code, []), w.total_votes, comps)
         wards.append({
             "ward": w.ward, "ward_code": w.ward_code,
             "registered_voters": (int(reg[w.ward_code]) if reg.get(w.ward_code) else None),
@@ -1242,7 +1265,7 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
     if not baseline:
         lr = db.scalar(select(LgaResult).where(LgaResult.lga_id == lga_id))
         baseline = (lr.total_votes if lr else 0) or 0
-    cands_lga = _candidate_groups(db, rows, baseline)
+    cands_lga = _candidate_groups(db, rows, baseline, comps)
     return {
         "lga_id": lga.id, "lga_name": lga.name, "state": lga.state, "state_geo": lga.state_geo,
         "election_type": election_type, "year": year,

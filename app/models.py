@@ -578,7 +578,21 @@ class WardPrediction(Base):
     ward_code: Mapped[str] = mapped_column(String(30), default="", index=True)
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     party: Mapped[str] = mapped_column(String(20), default="")
-    votes: Mapped[int] = mapped_column(Integer, default=0)
+    votes: Mapped[int] = mapped_column(Integer, default=0)  # sum of this prediction's components
     label: Mapped[str] = mapped_column(String(80), default="")  # basis of the prediction
     importance: Mapped[int] = mapped_column(Integer, default=50)  # weight (0-100) in the average
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PredictionComponent(Base):
+    """One building block of a ward prediction: a reason and the votes it contributes
+    (e.g. Candidate Popularity = 70k). A prediction's votes is the sum of its
+    components."""
+
+    __tablename__ = "prediction_components"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ward_prediction_id: Mapped[int] = mapped_column(Integer, index=True)
+    reason: Mapped[str] = mapped_column(String(80), default="")
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+    seq: Mapped[int] = mapped_column(Integer, default=0)

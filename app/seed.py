@@ -858,6 +858,30 @@ def seed_ward_predictions(db: Session) -> int:
     return n
 
 
+def seed_prediction_components(db: Session) -> int:
+    """Break every existing ward prediction into components (Reason = Votes) that sum to
+    its total — test data so the model has real components to render. Split: candidate
+    popularity 55%, party popularity 10%, running-mate popularity the remainder."""
+    from .models import WardPrediction, PredictionComponent
+    if db.scalar(select(func.count()).select_from(PredictionComponent)):
+        return 0
+    n = 0
+    for wp in db.scalars(select(WardPrediction)).all():
+        v = wp.votes or 0
+        cand = round(v * 0.55)
+        party = round(v * 0.10)
+        mate = v - cand - party  # remainder so the components sum exactly to votes
+        for seq, (reason, votes) in enumerate([
+            ("Candidate Popularity", cand),
+            ("Party Popularity", party),
+            ("Running-mate Popularity", mate),
+        ]):
+            db.add(PredictionComponent(ward_prediction_id=wp.id, reason=reason, votes=votes, seq=seq))
+            n += 1
+    db.commit()
+    return n
+
+
 def seed_lga_predictions(db: Session) -> int:
     """Seed our first real per-LGA prediction: assign Peter Obi (LP) the votes he
     polled in the single LGA where he did best in 2023 (his strongest ground). We read
