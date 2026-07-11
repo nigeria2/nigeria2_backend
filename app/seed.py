@@ -1040,6 +1040,7 @@ def load_lga_party_results(db: Session) -> tuple[int, list[str]]:
     _aliases = {
         "adamawa": {"girei": "girie", "toungo": "teungo"},
         "ogun": {"yewanorth": "egbadonorth", "yewasouth": "egbadosouth"},
+        "delta": {"aniochanorth": "aniochan", "aniochasouth": "aniochas", "ikanortheast": "ikanorth"},
     }
     for st, amap in _aliases.items():
         idx = by_state.get(st, {})
