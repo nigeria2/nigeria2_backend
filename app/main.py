@@ -24,6 +24,7 @@ from .models import (
     InterestedUser,
     Lga,
     LgaResult,
+    LegislativeResult,
     Party,
     PartyElection,
     PartyHistory,
@@ -80,11 +81,13 @@ from .seed import (
     seed_presidential_2023,
     seed_presidential_primaries,
     seed_presidential_states,
+    seed_presidential_states_2019,
     seed_senate_2023,
     seed_lga_results,
     seed_ward_predictions,
     seed_prediction_components,
     load_lga_party_results,
+    load_legislative_results,
     seed_lgas,
     refresh_lga_names,
     link_lga_references,
@@ -216,6 +219,12 @@ async def lifespan(app: FastAPI):
                 rr, unmatched = load_lga_party_results(db)
                 if rr:
                     print(f"[startup] loaded {rr} LGA party-result rows" + (f"; unmatched LGAs: {unmatched}" if unmatched else ""))
+                p19 = seed_presidential_states_2019(db)
+                if p19:
+                    print(f"[startup] seeded {p19} 2019 presidential state results")
+                lr = load_legislative_results(db)
+                if lr:
+                    print(f"[startup] loaded {lr} legislative (2019 senate+house) result rows")
                 lp = seed_ward_predictions(db)
                 if lp:
                     print(f"[startup] seeded {lp} ward prediction(s)")
@@ -1328,26 +1337,79 @@ def _results_table(rows: list) -> dict:
     }
 
 
+def _legislative_blocks(rows: list) -> list[dict]:
+    """Group LegislativeResult rows (one office) into a list of constituencies, each
+    with its candidates ranked and the winner surfaced."""
+    by_con: dict = {}
+    for r in rows:
+        d = by_con.setdefault(r.constituency, {
+            "constituency": r.constituency, "code": r.code, "candidates": [], "total_votes": 0,
+        })
+        d["candidates"].append({
+            "candidate": r.candidate, "party": r.party, "votes": r.votes or 0,
+            "position": r.position, "elected": r.elected, "gender": r.gender,
+            "politician_id": r.politician_id,
+        })
+        d["total_votes"] += r.votes or 0
+    out = []
+    for d in by_con.values():
+        d["candidates"].sort(key=lambda c: c["position"] or 999)
+        win = next((c for c in d["candidates"] if c["elected"]), d["candidates"][0] if d["candidates"] else None)
+        d["winner"] = win
+        d["candidate_count"] = len(d["candidates"])
+        out.append(d)
+    out.sort(key=lambda d: d["constituency"])
+    return out
+
+
+def _presidential_state_summary(sp) -> dict:
+    """State-level presidential totals (used where no LGA breakdown exists, e.g. 2019)."""
+    parts = {"APC": sp.apc or 0, "PDP": sp.pdp or 0, "LP": sp.lp or 0, "NNPP": sp.nnpp or 0}
+    parts = {p: v for p, v in parts.items() if v}
+    if sp.others:
+        parts["Others"] = sp.others
+    return {"parties": parts, "winner": sp.winner, "total_votes": sp.total_votes or sum(parts.values())}
+
+
 @app.get("/api/results/{year}")
 def results_states(year: str, db: Session = Depends(get_db)):
-    """States with verified results for a year, and which races (presidential/governor)
-    we have — drives the /elections/{year}/results index."""
+    """States with verified results for a year, and which races (presidential/governor/
+    senate/house) we have — drives the /elections/{year}/results index."""
     rows = db.scalars(select(LgaPartyResult).where(LgaPartyResult.year == year)).all()
     by_state: dict[str, dict] = {}
     for r in rows:
         s = by_state.setdefault(r.state_geo, {
             "geo_id": r.state_geo, "state": r.state,
             "presidential_lgas": set(), "governor_lgas": set(),
+            "senate": set(), "house": set(), "presidential_state": False,
         })
         s[f"{r.election_type}_lgas"].add(r.lga_id or r.lga)
+    # legislative (senate/house) constituencies per state
+    for et, sgeo, st, cons in db.execute(
+        select(LegislativeResult.election_type, LegislativeResult.state_geo,
+               LegislativeResult.state, LegislativeResult.constituency)
+        .where(LegislativeResult.year == year).distinct()
+    ).all():
+        s = by_state.setdefault(sgeo, {"geo_id": sgeo, "state": st, "presidential_lgas": set(),
+                                       "governor_lgas": set(), "senate": set(), "house": set(),
+                                       "presidential_state": False})
+        s[et].add(cons)
+    # state-level presidential (e.g. 2019, where no LGA breakdown exists)
+    for sp in db.scalars(select(StatePresidential).where(StatePresidential.year == int(year))).all() if year.isdigit() else []:
+        s = by_state.setdefault(sp.state_geo, {"geo_id": sp.state_geo, "state": sp.state,
+                                               "presidential_lgas": set(), "governor_lgas": set(),
+                                               "senate": set(), "house": set(), "presidential_state": False})
+        s["presidential_state"] = True
     out = []
     for s in by_state.values():
         out.append({
             "geo_id": s["geo_id"], "state": s["state"],
-            "has_presidential": bool(s["presidential_lgas"]),
+            "has_presidential": bool(s["presidential_lgas"]) or s["presidential_state"],
             "has_governor": bool(s["governor_lgas"]),
+            "has_senate": bool(s["senate"]), "has_house": bool(s["house"]),
             "presidential_lga_count": len(s["presidential_lgas"]),
             "governor_lga_count": len(s["governor_lgas"]),
+            "senate_count": len(s["senate"]), "house_count": len(s["house"]),
         })
     out.sort(key=lambda x: x["state"])
     return {"year": year, "states": out}
@@ -1355,19 +1417,30 @@ def results_states(year: str, db: Session = Depends(get_db)):
 
 @app.get("/api/results/{year}/{geo_id}")
 def results_state(year: str, geo_id: str, db: Session = Depends(get_db)):
-    """One state's verified {year} results: separate presidential and governor tables
-    (LGA rows x party columns)."""
+    """One state's verified {year} results: presidential + governor (LGA rows x party
+    columns), plus Senate + House of Representatives per-constituency candidate lists,
+    and a state-level presidential summary where no LGA breakdown exists (e.g. 2019)."""
     state = geo.state_name(geo_id)
     rows = db.scalars(select(LgaPartyResult).where(
         LgaPartyResult.year == year, LgaPartyResult.state_geo == geo_id)).all()
-    if not rows and state is None:
+    leg = db.scalars(select(LegislativeResult).where(
+        LegislativeResult.year == year, LegislativeResult.state_geo == geo_id)).all()
+    sp = db.scalar(select(StatePresidential).where(
+        StatePresidential.state_geo == geo_id, StatePresidential.year == int(year))) if year.isdigit() else None
+    if not rows and not leg and sp is None and state is None:
         raise HTTPException(status_code=404, detail="unknown state")
     pres = [r for r in rows if r.election_type == "presidential"]
     gov = [r for r in rows if r.election_type == "governor"]
+    senate = [r for r in leg if r.election_type == "senate"]
+    house = [r for r in leg if r.election_type == "house"]
     return {
-        "year": year, "geo_id": geo_id, "state": state or (rows[0].state if rows else geo_id),
+        "year": year, "geo_id": geo_id,
+        "state": state or (rows[0].state if rows else (leg[0].state if leg else (sp.state if sp else geo_id))),
         "presidential": _results_table(pres) if pres else None,
+        "presidential_state": _presidential_state_summary(sp) if (sp and not pres) else None,
         "governor": _results_table(gov) if gov else None,
+        "senate": _legislative_blocks(senate) if senate else None,
+        "house": _legislative_blocks(house) if house else None,
     }
 
 

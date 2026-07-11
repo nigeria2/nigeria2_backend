@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LgaPartyResult, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, StatePresidential, Ward, WardResult
+from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LegislativeResult, LgaPartyResult, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, StatePresidential, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -573,6 +573,28 @@ def seed_presidential_states(db: Session) -> int:
     return n
 
 
+def seed_presidential_states_2019(db: Session) -> int:
+    """Seed the official 2019 presidential result by state (Buhari/APC vs Atiku/PDP).
+    State-level only — no verified 2019 presidential LGA/ward breakdown is held."""
+    path = _ELECTIONS_DIR / "presidential_states_2019.json"
+    if not path.exists():
+        return 0
+    if db.scalar(select(func.count()).select_from(StatePresidential).where(StatePresidential.year == 2019)):
+        return 0
+    from . import geo
+    n = 0
+    for s in json.loads(path.read_text(encoding="utf-8")).get("states", []):
+        apc, pdp = int(s.get("APC", 0)), int(s.get("PDP", 0))
+        db.add(StatePresidential(
+            state=s["state"], state_geo=geo.state_geo_id(s["state"]), year=2019,
+            apc=apc, pdp=pdp, lp=0, nnpp=0, others=0, total_votes=apc + pdp,
+            winner=("APC" if apc >= pdp else "PDP"),
+        ))
+        n += 1
+    db.commit()
+    return n
+
+
 def seed_presidential_primaries(db: Session) -> int:
     """Seed the 2022 APC/PDP presidential primary results. Each contestant is
     find-or-created (linking to their existing profile) with a 'primary' party-history
@@ -1116,6 +1138,63 @@ def load_lga_party_results(db: Session) -> tuple[int, list[str]]:
                 n += 1
     db.commit()
     return n, unmatched
+
+
+_LEGIS_2019_CSV = _DATA_DIR / "legislative_2019.csv"
+
+
+def _name_key(name: str) -> str:
+    """Match key for a person's name: uppercase alphanumerics only, spaces collapsed."""
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Z0-9 ]", "", (name or "").upper())).strip()
+
+
+def load_legislative_results(db: Session) -> int:
+    """(Re)load the verified 2019 Senate + House of Representatives per-candidate
+    results (app/data/legislative_2019.csv, from the INEC constituency sheets) into
+    legislative_results. Clears the table first. Links each candidate to a
+    politician_id where one matches — reusing the links party_history already carries
+    for the same race, then falling back to any politician of that name in the state.
+    Returns rows written."""
+    from . import geo
+    if not _LEGIS_2019_CSV.exists():
+        return 0
+
+    # names already resolved to a politician for these 2019 NA races
+    ph_by_con: dict[tuple[str, str, str], int] = {}
+    ph_by_state: dict[tuple[str, str, str], int] = {}
+    for et, name, cons, state, pid in db.execute(
+        select(PartyHistory.election_type, PartyHistory.politician_name, PartyHistory.constituency,
+               PartyHistory.state, PartyHistory.politician_id)
+        .where(PartyHistory.year == "2019", PartyHistory.election_type.in_(("house", "senate")),
+               PartyHistory.politician_id.isnot(None))
+    ).all():
+        nk = _name_key(name)
+        ph_by_con.setdefault((et, nk, _name_key(cons)), pid)
+        ph_by_state.setdefault((et, nk, (state or "").lower()), pid)
+    # any politician by name within a state (fallback link)
+    pol_by_state: dict[tuple[str, str], int] = {}
+    for pid, pname, pstate in db.execute(select(Politician.id, Politician.name, Politician.state)).all():
+        pol_by_state.setdefault((_name_key(pname), (pstate or "").lower()), pid)
+
+    db.execute(delete(LegislativeResult))
+    n = 0
+    with open(_LEGIS_2019_CSV, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            et, state, cons = r["election_type"], r["state"], r["constituency"]
+            nk = _name_key(r["candidate"])
+            pid = (ph_by_con.get((et, nk, _name_key(cons)))
+                   or ph_by_state.get((et, nk, state.lower()))
+                   or pol_by_state.get((nk, state.lower())))
+            db.add(LegislativeResult(
+                election_type=et, year=r.get("year", "2019"), state=state,
+                state_geo=geo.state_geo_id(state), constituency=cons, code=r.get("code", ""),
+                candidate=r["candidate"], gender=r.get("gender", ""), party=r.get("party", ""),
+                votes=int(r["votes"]) if str(r["votes"]).strip() else 0,
+                position=int(r["position"]) if str(r["position"]).strip() else 0,
+                elected=str(r.get("elected", "")).strip() == "1", politician_id=pid))
+            n += 1
+    db.commit()
+    return n
 
 
 def seed_lga_results(db: Session) -> int:

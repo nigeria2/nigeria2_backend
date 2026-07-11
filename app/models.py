@@ -326,6 +326,30 @@ class LgaPartyResult(Base):
     votes: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class LegislativeResult(Base):
+    """One candidate's result in one National Assembly race — tidy long form (one
+    row per election_type/year/constituency/candidate). Holds the verified 2019
+    Senate + House of Representatives results parsed from the INEC constituency
+    result sheets. Candidates are linked to a politician_id where one matches."""
+
+    __tablename__ = "legislative_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True)  # senate | house
+    year: Mapped[str] = mapped_column(String(10), default="2019", index=True)
+    state: Mapped[str] = mapped_column(String(60), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    constituency: Mapped[str] = mapped_column(String(160), index=True)  # federal constituency / senatorial district
+    code: Mapped[str] = mapped_column(String(20), default="")  # INEC code e.g. FC/003/AB, SD/002/AB
+    candidate: Mapped[str] = mapped_column(String(200), default="")
+    gender: Mapped[str] = mapped_column(String(2), default="")
+    party: Mapped[str] = mapped_column(String(20), index=True, default="")
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+    position: Mapped[int] = mapped_column(Integer, default=0)  # rank within constituency, 1 = top
+    elected: Mapped[bool] = mapped_column(Boolean, default=False)
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+
+
 class PollingUnit(Base):
     """A polling unit, with 2023 registered voters and known (cast) votes."""
 
