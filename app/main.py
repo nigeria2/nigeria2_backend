@@ -1103,9 +1103,12 @@ def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None
     importance-weighted average of those predictions. Each prediction is itself the sum of
     its components (reason -> votes); when `comps` (ward_prediction_id -> [(reason, votes,
     seq)]) is given, those are aggregated per prediction. `baseline` gives each figure %."""
+    # politicians referenced either as the candidate of a row or on a component (the VP)
+    comp_pids = {pid for lst in (comps or {}).values() for (_r, _v, _s, pid) in lst if pid}
+    all_pids = {r.politician_id for r in rows if r.politician_id} | comp_pids
     pols = {
-        p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_([r.politician_id for r in rows if r.politician_id]))).all()
-    } if any(r.politician_id for r in rows) else {}
+        p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_(all_pids))).all()
+    } if all_pids else {}
     byc: dict = {}
     order: list = []
     for r in rows:
@@ -1120,13 +1123,14 @@ def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None
                 "preds": {},
             }
             order.append(key)
-        pr = byc[key]["preds"].setdefault(r.label, {"votes": 0, "importance": r.importance, "components": defaultdict(lambda: [0, 0])})
+        pr = byc[key]["preds"].setdefault(r.label, {"votes": 0, "importance": r.importance, "components": defaultdict(lambda: [0, 0, None])})
         pr["votes"] += r.votes
         pr["importance"] = r.importance
-        for reason, cvotes, seq in (comps or {}).get(r.id, []):
+        for reason, cvotes, seq, pid in (comps or {}).get(r.id, []):
             slot = pr["components"][reason]
             slot[0] += cvotes
             slot[1] = seq
+            slot[2] = pid
 
     def pct(v):
         return round(v / baseline * 100, 1) if baseline else None
@@ -1137,7 +1141,10 @@ def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None
         plist, num, den = [], 0, 0
         for label, pr in c["preds"].items():
             components = sorted(
-                ({"reason": reason, "votes": cv} for reason, (cv, _seq) in pr["components"].items()),
+                ({"reason": reason, "votes": cv,
+                  "politician_id": pid,
+                  "politician_name": (pols[pid].name if pid in pols else None)}
+                 for reason, (cv, _seq, pid) in pr["components"].items()),
                 key=lambda x: x["votes"], reverse=True,
             )
             plist.append({"label": label, "votes": pr["votes"], "importance": pr["importance"], "pct": pct(pr["votes"]), "components": components})
@@ -1238,7 +1245,7 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
         for pc in db.scalars(select(PredictionComponent).where(
             PredictionComponent.ward_prediction_id.in_([r.id for r in rows])
         ).order_by(PredictionComponent.seq)).all():
-            comps[pc.ward_prediction_id].append((pc.reason, pc.votes, pc.seq))
+            comps[pc.ward_prediction_id].append((pc.reason, pc.votes, pc.seq, pc.politician_id))
 
     reg = dict(db.execute(
         select(PollingUnit.ward_code, func.sum(PollingUnit.registered_voters))

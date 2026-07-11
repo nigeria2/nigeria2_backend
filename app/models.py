@@ -596,3 +596,7 @@ class PredictionComponent(Base):
     reason: Mapped[str] = mapped_column(String(80), default="")
     votes: Mapped[int] = mapped_column(Integer, default=0)
     seq: Mapped[int] = mapped_column(Integer, default=0)
+    # the politician this component's support is drawn from, when any: the presidential
+    # candidate for "Candidate Popularity", the running mate for "Running-mate Popularity"
+    # (matched against the votes that VP delivered in a past election), None for party base.
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
