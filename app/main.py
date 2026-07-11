@@ -23,7 +23,6 @@ from .models import (
     HouseMember,
     InterestedUser,
     Lga,
-    LgaPrediction,
     LgaResult,
     Party,
     PartyElection,
@@ -44,6 +43,7 @@ from .models import (
     StatePresidential,
     User,
     Ward,
+    WardPrediction,
     WardResult,
 )
 from . import geo, prediction_worker
@@ -80,7 +80,7 @@ from .seed import (
     seed_presidential_states,
     seed_senate_2023,
     seed_lga_results,
-    seed_lga_predictions,
+    seed_ward_predictions,
     seed_lgas,
     refresh_lga_names,
     link_lga_references,
@@ -209,9 +209,9 @@ async def lifespan(app: FastAPI):
                 ll = link_lga_references(db)
                 if ll:
                     print(f"[startup] linked {ll} rows to canonical LGAs")
-                lp = seed_lga_predictions(db)
+                lp = seed_ward_predictions(db)
                 if lp:
-                    print(f"[startup] seeded {lp} LGA prediction(s)")
+                    print(f"[startup] seeded {lp} ward prediction(s)")
                 cl = clean_politician_data(db)
                 if cl:
                     print(f"[startup] cleaned {cl} politician name/party fields")
@@ -1091,51 +1091,71 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
     }
 
 
-# --- 2027 predictions (per-LGA vote projections, aggregated up to states) ---
+# --- 2027 predictions (per-WARD vote projections, aggregated up to LGAs/states) ---
+def _prediction_lines(db: Session, rows: list) -> list[dict]:
+    """Aggregate ward-prediction rows into one line per (candidate, label) — a candidate
+    can have several predictions (scenarios), told apart by label."""
+    pols = {
+        p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_([r.politician_id for r in rows if r.politician_id]))).all()
+    } if any(r.politician_id for r in rows) else {}
+    meta: dict[tuple, dict] = {}
+    votes: dict[tuple, int] = defaultdict(int)
+    order: list[tuple] = []
+    for r in rows:
+        key = (r.politician_id, r.label)
+        if key not in meta:
+            p = pols.get(r.politician_id)
+            meta[key] = {
+                "politician_id": r.politician_id,
+                "politician_name": (p.name if p else None),
+                "photo": (p.photo or "" if p else ""),
+                "party": (p.party if p and p.party else r.party),
+                "label": r.label,
+            }
+            order.append(key)
+        votes[key] += r.votes
+    lines = [{**meta[k], "votes": votes[k]} for k in order]
+    lines.sort(key=lambda x: x["votes"], reverse=True)
+    return lines
+
+
+def _predicted_pool(lines: list[dict]) -> int:
+    """The votes we've committed to a candidate — each candidate's *highest* prediction
+    (multiple predictions for one candidate are alternative scenarios, not additive)."""
+    best: dict = {}
+    for l in lines:
+        k = l["politician_id"] or ("party", l["party"])
+        best[k] = max(best.get(k, 0), l["votes"])
+    return sum(best.values())
+
+
 @app.get("/api/lga-predictions/states")
 def lga_prediction_states(election_type: str = "presidential", year: str = "2027", db: Session = Depends(get_db)):
-    """States that have any per-LGA prediction. Per state we return each candidate's
-    projected votes and an 'unknown' remainder — the votes we have not predicted yet,
-    measured against the state's total 2023 turnout for this office."""
-    rows = db.scalars(select(LgaPrediction).where(
-        LgaPrediction.election_type == election_type, LgaPrediction.year == year
+    """States with any prediction: the projected votes per candidate (each candidate may
+    have several predictions) and an 'unknown' remainder vs the state's 2023 turnout."""
+    rows = db.scalars(select(WardPrediction).where(
+        WardPrediction.election_type == election_type, WardPrediction.year == year
     )).all()
-    pols = {
-        p.id: p
-        for p in db.scalars(select(Politician).where(Politician.id.in_([r.politician_id for r in rows if r.politician_id]))).all()
-    } if any(r.politician_id for r in rows) else {}
-    # 2023 turnout per state — the pool we measure "unknown" against.
     baseline = {sp.state: (sp.total_votes or 0) for sp in db.scalars(select(StatePresidential).where(StatePresidential.year == 2023)).all()}
-
-    agg: dict[str, dict] = defaultdict(lambda: {"cands": {}, "lga_count": 0})
+    by_state: dict[str, list] = defaultdict(list)
+    lgas_seen: dict[str, set] = defaultdict(set)
     for r in rows:
-        s = agg[r.state_geo]
-        s["lga_count"] += 1
-        pol = pols.get(r.politician_id)
-        key = ("pol", r.politician_id) if pol else ("party", r.party)
-        cand = s["cands"].setdefault(key, {
-            "politician_id": (pol.id if pol else None),
-            "politician_name": (pol.name if pol else None),
-            "photo": (pol.photo or "" if pol else ""),
-            "party": (pol.party or r.party if pol else r.party),
-            "votes": 0,
-        })
-        cand["votes"] += r.votes
-
+        by_state[r.state_geo].append(r)
+        lgas_seen[r.state_geo].add(r.lga_id)
     out = []
-    for geo_id, s in agg.items():
-        cands = sorted(s["cands"].values(), key=lambda x: x["votes"], reverse=True)
-        predicted = sum(c["votes"] for c in cands)
+    for geo_id, srows in by_state.items():
+        lines = _prediction_lines(db, srows)
         state = geo.state_name(geo_id)
         base = baseline.get(state, 0)
+        pool = _predicted_pool(lines)
         out.append({
             "geo_id": geo_id, "state": state,
-            "candidates": cands,
-            "total_votes": predicted,
+            "predictions": lines,
+            "total_votes": pool,
             "baseline_votes": base,
-            "unknown_votes": max(0, base - predicted),
-            "lga_count": s["lga_count"],
-            "leading_party": (cands[0]["party"] if cands else ""),
+            "unknown_votes": max(0, base - pool),
+            "lga_count": len(lgas_seen[geo_id]),
+            "leading_party": (lines[0]["party"] if lines else ""),
         })
     out.sort(key=lambda x: x["total_votes"], reverse=True)
     return {"election_type": election_type, "year": year, "states": out}
@@ -1143,69 +1163,55 @@ def lga_prediction_states(election_type: str = "presidential", year: str = "2027
 
 @app.get("/api/lga-predictions/states/{geo_id}")
 def lga_prediction_state(geo_id: str, election_type: str = "presidential", year: str = "2027", db: Session = Depends(get_db)):
-    """The per-LGA predictions for one state (which LGA, party/candidate, votes)."""
+    """One state's LGAs that have predictions, each with its aggregated prediction lines."""
     state = geo.state_name(geo_id)
     if state is None:
         raise HTTPException(status_code=404, detail="unknown state geo id")
-    rows = db.scalars(select(LgaPrediction).where(
-        LgaPrediction.state_geo == geo_id, LgaPrediction.election_type == election_type, LgaPrediction.year == year
-    ).order_by(LgaPrediction.votes.desc())).all()
+    rows = db.scalars(select(WardPrediction).where(
+        WardPrediction.state_geo == geo_id, WardPrediction.election_type == election_type, WardPrediction.year == year
+    )).all()
     lga_names = _lga_names(db)
-    pol_ids = [r.politician_id for r in rows if r.politician_id]
-    pols = {p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_(pol_ids))).all()} if pol_ids else {}
-    lgas = [
-        {
-            "lga_id": r.lga_id, "lga_name": lga_names.get(r.lga_id, ""),
-            # the candidate's current party wins over the stored one
-            "party": (pols[r.politician_id].party if r.politician_id in pols and pols[r.politician_id].party else r.party),
-            "votes": r.votes,
-            "politician_id": r.politician_id,
-            "politician_name": (pols[r.politician_id].name if r.politician_id in pols else None),
-            "politician_photo": (pols[r.politician_id].photo or "" if r.politician_id in pols else ""),
-        }
-        for r in rows
-    ]
+    by_lga: dict[int, list] = defaultdict(list)
+    for r in rows:
+        by_lga[r.lga_id].append(r)
+    lgas = []
+    for lga_id, lrows in by_lga.items():
+        lines = _prediction_lines(db, lrows)
+        lgas.append({
+            "lga_id": lga_id, "lga_name": lga_names.get(lga_id, ""),
+            "predictions": lines, "total_votes": _predicted_pool(lines),
+        })
+    lgas.sort(key=lambda x: x["total_votes"], reverse=True)
     return {"geo_id": geo_id, "state": state, "election_type": election_type, "year": year, "lgas": lgas}
 
 
 @app.get("/api/lga-predictions/lga/{lga_id}")
 def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year: str = "2027", db: Session = Depends(get_db)):
-    """The prediction(s) for one LGA in one race: each candidate's projected votes, plus
-    an 'unknown' remainder measured against the LGA's 2023 turnout for the office."""
+    """One LGA: every ward with its 2023 result and each per-ward prediction, plus the
+    LGA-level aggregate (one line per candidate/prediction) and an 'unknown' remainder."""
     lga = db.get(Lga, lga_id)
     if lga is None:
         raise HTTPException(status_code=404, detail="local government not found")
-    rows = db.scalars(select(LgaPrediction).where(
-        LgaPrediction.lga_id == lga_id, LgaPrediction.election_type == election_type, LgaPrediction.year == year
-    ).order_by(LgaPrediction.votes.desc())).all()
-    pol_ids = [r.politician_id for r in rows if r.politician_id]
-    pols = {p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_(pol_ids))).all()} if pol_ids else {}
-    # a candidate's 2023 party -> the ward_results column, so we can show each
-    # candidate's per-ward projection (this prediction assigns them their 2023 votes).
-    _WCOL = {"APC": "votes_apc", "LP": "votes_lp", "PDP": "votes_pdp", "NNPP": "votes_nnpp"}
-    candidates = []
-    cols: list[str | None] = []
-    for r in rows:
+    rows = db.scalars(select(WardPrediction).where(
+        WardPrediction.lga_id == lga_id, WardPrediction.election_type == election_type, WardPrediction.year == year
+    )).all()
+    pols = {
+        p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_([r.politician_id for r in rows if r.politician_id]))).all()
+    } if any(r.politician_id for r in rows) else {}
+
+    def _pred_dict(r):
         p = pols.get(r.politician_id)
-        col = None
-        if r.politician_id:
-            ph = db.scalar(select(PartyHistory).where(
-                PartyHistory.politician_id == r.politician_id, PartyHistory.year == "2023",
-                PartyHistory.election_type == election_type,
-            ).limit(1))
-            col = _WCOL.get((ph.party if ph else "") or "")
-        cols.append(col)
-        candidates.append({
+        return {
             "politician_id": r.politician_id,
             "politician_name": (p.name if p else None),
-            "photo": (p.photo or "" if p else ""),
-            "party": (p.party or r.party if p else r.party),
-            "votes": r.votes,
-        })
-    predicted = sum(c["votes"] for c in candidates)
+            "party": (p.party if p and p.party else r.party),
+            "label": r.label, "votes": r.votes,
+        }
 
-    # per-ward 2023 result + this LGA's registered voters, with each candidate's
-    # projected votes (their 2023 votes in that ward).
+    by_ward: dict[str, list] = defaultdict(list)
+    for r in rows:
+        by_ward[r.ward_code].append(r)
+
     reg = dict(db.execute(
         select(PollingUnit.ward_code, func.sum(PollingUnit.registered_voters))
         .where(PollingUnit.lga_id == lga_id).group_by(PollingUnit.ward_code)
@@ -1213,14 +1219,17 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
     wards = []
     for w in db.scalars(select(WardResult).where(WardResult.lga_id == lga_id).order_by(WardResult.ward)).all():
         by_party = {"APC": w.votes_apc, "LP": w.votes_lp, "PDP": w.votes_pdp, "NNPP": w.votes_nnpp}
+        preds = sorted((_pred_dict(r) for r in by_ward.get(w.ward_code, [])), key=lambda x: x["votes"], reverse=True)
         wards.append({
             "ward": w.ward, "ward_code": w.ward_code,
             "registered_voters": (int(reg[w.ward_code]) if reg.get(w.ward_code) else None),
             "total_votes": w.total_votes,
             "winner": w.winner, "winner_votes": by_party.get(w.winner, 0),
-            "predicted": [(getattr(w, col) if col else None) for col in cols],
+            "predictions": preds,
         })
 
+    lines = _prediction_lines(db, rows)
+    pool = _predicted_pool(lines)
     baseline = db.scalar(select(func.coalesce(func.sum(WardResult.total_votes), 0)).where(WardResult.lga_id == lga_id)) or 0
     if not baseline:
         lr = db.scalar(select(LgaResult).where(LgaResult.lga_id == lga_id))
@@ -1228,8 +1237,8 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
     return {
         "lga_id": lga.id, "lga_name": lga.name, "state": lga.state, "state_geo": lga.state_geo,
         "election_type": election_type, "year": year,
-        "candidates": candidates, "total_votes": predicted,
-        "baseline_votes": baseline, "unknown_votes": max(0, baseline - predicted),
+        "predictions": lines, "total_votes": pool,
+        "baseline_votes": baseline, "unknown_votes": max(0, baseline - pool),
         "wards": wards,
     }
 
@@ -1581,10 +1590,10 @@ def refresh_politician_parties(db: Session) -> int:
             pol.party = party
             updated += 1
     # predictions follow the candidate's current party
-    for lp in db.scalars(select(LgaPrediction).where(LgaPrediction.politician_id.isnot(None))).all():
-        pol = db.get(Politician, lp.politician_id)
-        if pol and pol.party and lp.party != pol.party:
-            lp.party = pol.party
+    for wp in db.scalars(select(WardPrediction).where(WardPrediction.politician_id.isnot(None))).all():
+        pol = db.get(Politician, wp.politician_id)
+        if pol and pol.party and wp.party != pol.party:
+            wp.party = pol.party
     db.commit()
     return updated
 

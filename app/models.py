@@ -561,3 +561,23 @@ class LgaPrediction(Base):
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     votes: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WardPrediction(Base):
+    """A per-ward vote projection for one candidate in one race. A candidate may have
+    several predictions for the same ward (different bases/scenarios), told apart by
+    `label`. LGA- and state-level figures are aggregated up from these rows."""
+
+    __tablename__ = "ward_predictions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    election_type: Mapped[str] = mapped_column(String(30), default="presidential", index=True)
+    year: Mapped[str] = mapped_column(String(10), default="2027", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    lga_id: Mapped[int] = mapped_column(Integer, index=True)
+    ward_code: Mapped[str] = mapped_column(String(30), default="", index=True)
+    politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    party: Mapped[str] = mapped_column(String(20), default="")
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+    label: Mapped[str] = mapped_column(String(80), default="")  # basis of the prediction
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

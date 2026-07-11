@@ -813,6 +813,49 @@ def seed_ward_results(db: Session) -> int:
     return len(rows)
 
 
+def seed_ward_predictions(db: Session) -> int:
+    """Seed our first per-ward predictions for the LGA where Peter Obi did best in 2023
+    (his strongest ground). Three predictions, each a full set of per-ward rows:
+      - Peter Obi (LP in 2023) 'Based on 2023 result'  — his 2023 votes per ward
+      - Peter Obi '10% below 2023'                      — 90% of that, per ward
+      - Bola Tinubu 'Based on 2023 result'              — his 2023 (APC) votes per ward
+    A candidate can have several predictions; they are told apart by their label."""
+    from .models import WardPrediction
+    if db.scalar(select(func.count()).select_from(WardPrediction)):
+        return 0
+    top = db.execute(
+        select(WardResult.lga_id, func.sum(WardResult.votes_lp).label("v"))
+        .where(WardResult.lga_id.isnot(None))
+        .group_by(WardResult.lga_id).order_by(func.sum(WardResult.votes_lp).desc()).limit(1)
+    ).first()
+    if not top or not top.v:
+        return 0
+    lga = db.get(Lga, top.lga_id)
+    obi = db.scalar(select(Politician).where(func.lower(Politician.name) == "peter obi"))
+    tinubu = db.scalar(select(Politician).where(func.lower(Politician.name) == "bola tinubu"))
+    wards = db.scalars(select(WardResult).where(WardResult.lga_id == top.lga_id)).all()
+    n = 0
+
+    def add(pol, ward, votes, label):
+        nonlocal n
+        if pol is None or votes is None:
+            return
+        db.add(WardPrediction(
+            election_type="presidential", year="2027",
+            state_geo=(lga.state_geo if lga else None), lga_id=top.lga_id,
+            ward_code=ward.ward_code, politician_id=pol.id, party=(pol.party or ""),
+            votes=int(votes), label=label,
+        ))
+        n += 1
+
+    for w in wards:
+        add(obi, w, w.votes_lp, "Based on 2023 result")
+        add(obi, w, round((w.votes_lp or 0) * 0.9), "10% below 2023")
+        add(tinubu, w, w.votes_apc, "Based on 2023 result")
+    db.commit()
+    return n
+
+
 def seed_lga_predictions(db: Session) -> int:
     """Seed our first real per-LGA prediction: assign Peter Obi (LP) the votes he
     polled in the single LGA where he did best in 2023 (his strongest ground). We read
