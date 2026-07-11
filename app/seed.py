@@ -1023,7 +1023,10 @@ def seed_lga_predictions(db: Session) -> int:
 
 # --- verified 2023 results per LGA per party (presidential + governor) ------------
 
-_GOV_2023_CSV = pathlib.Path(__file__).resolve().parent / "data" / "gov_2023_lga.csv"
+_DATA_DIR = pathlib.Path(__file__).resolve().parent / "data"
+_GOV_2023_CSV = _DATA_DIR / "gov_2023_lga.csv"
+# per-LGA governorship declarations by election year (tidy: state,lga,party,votes)
+_GOV_CSVS = {"2023": _GOV_2023_CSV, "2019": _DATA_DIR / "gov_2019_lga.csv"}
 
 
 def _lga_key(name: str) -> str:
@@ -1041,9 +1044,10 @@ def _match_lga(name: str, state_index: dict[str, Lga]) -> Lga | None:
 
 
 def load_lga_party_results(db: Session) -> tuple[int, list[str]]:
-    """(Re)load the verified 2023 per-LGA per-party results into lga_party_results:
-      - presidential: aggregated from ward_results (APC/LP/PDP/NNPP)
-      - governor: from the collected per-LGA declarations (app/data/gov_2023_lga.csv)
+    """(Re)load the verified per-LGA per-party results into lga_party_results:
+      - presidential 2023: aggregated from ward_results (APC/LP/PDP/NNPP)
+      - governor 2023 + 2019: from the collected per-LGA declarations
+        (app/data/gov_2023_lga.csv, app/data/gov_2019_lga.csv)
     LGAs are linked to canonical lga_id. Clears the table first so it always reflects the
     current sources. Returns (rows written, unmatched 'State/LGA' names)."""
     from . import geo
@@ -1061,8 +1065,10 @@ def load_lga_party_results(db: Session) -> tuple[int, list[str]]:
         "rivers": {"emohua": "emuoha", "andoni": "andoniodual"},
         "imo": {"ihitteuboma": "ihitteubomaisinweke", "onuimo": "unuimo"},
         "abia": {"obingwa": "obomangwa"},
-        "kebbi": {"aliero": "aleiro"},
+        "kebbi": {"aliero": "aleiro", "wasagudanko": "dankowasagu"},
         "niger": {"kontagora": "kontogur"},
+        "enugu": {"agwu": "awgu"},
+        "nasarawa": {"eggon": "nassarawaegon"},
     }
     for st, amap in _aliases.items():
         idx = by_state.get(st, {})
@@ -1088,20 +1094,22 @@ def load_lga_party_results(db: Session) -> tuple[int, list[str]]:
                                   state_geo=sgeo, lga_id=lga_id, lga=name, party=party, votes=int(v or 0)))
             n += 1
 
-    # governor — from the collected per-LGA declarations
+    # governor — from the collected per-LGA declarations, per election year
     unmatched: list[str] = []
-    if _GOV_2023_CSV.exists():
-        with open(_GOV_2023_CSV, newline="") as f:
+    for year, path in _GOV_CSVS.items():
+        if not path.exists():
+            continue
+        with open(path, newline="") as f:
             for r in csv.DictReader(f):
                 state, lga, party = r["state"], r["lga"], r["party"]
                 votes = int(r["votes"]) if str(r["votes"]).strip() else 0
                 canon = _match_lga(lga, by_state.get(state.lower(), {}))
                 if canon is None:
-                    tag = f"{state}/{lga}"
+                    tag = f"{year} {state}/{lga}"
                     if tag not in unmatched:
                         unmatched.append(tag)
                 db.add(LgaPartyResult(
-                    election_type="governor", year="2023", state=state,
+                    election_type="governor", year=year, state=state,
                     state_geo=(canon.state_geo if canon else geo.state_geo_id(state)),
                     lga_id=(canon.id if canon else None),
                     lga=(canon.name if canon else lga), party=party.upper(), votes=votes))
