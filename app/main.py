@@ -1168,6 +1168,42 @@ def lga_prediction_state(geo_id: str, election_type: str = "presidential", year:
     return {"geo_id": geo_id, "state": state, "election_type": election_type, "year": year, "lgas": lgas}
 
 
+@app.get("/api/lga-predictions/lga/{lga_id}")
+def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year: str = "2027", db: Session = Depends(get_db)):
+    """The prediction(s) for one LGA in one race: each candidate's projected votes, plus
+    an 'unknown' remainder measured against the LGA's 2023 turnout for the office."""
+    lga = db.get(Lga, lga_id)
+    if lga is None:
+        raise HTTPException(status_code=404, detail="local government not found")
+    rows = db.scalars(select(LgaPrediction).where(
+        LgaPrediction.lga_id == lga_id, LgaPrediction.election_type == election_type, LgaPrediction.year == year
+    ).order_by(LgaPrediction.votes.desc())).all()
+    pol_ids = [r.politician_id for r in rows if r.politician_id]
+    pols = {p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_(pol_ids))).all()} if pol_ids else {}
+    candidates = [
+        {
+            "politician_id": r.politician_id,
+            "politician_name": (pols[r.politician_id].name if r.politician_id in pols else None),
+            "photo": (pols[r.politician_id].photo or "" if r.politician_id in pols else ""),
+            "party": (pols[r.politician_id].party if r.politician_id in pols and pols[r.politician_id].party else r.party),
+            "votes": r.votes,
+        }
+        for r in rows
+    ]
+    predicted = sum(c["votes"] for c in candidates)
+    # 2023 turnout in this LGA (ward results are the fullest source; fall back to lga_results)
+    baseline = db.scalar(select(func.coalesce(func.sum(WardResult.total_votes), 0)).where(WardResult.lga_id == lga_id)) or 0
+    if not baseline:
+        lr = db.scalar(select(LgaResult).where(LgaResult.lga_id == lga_id))
+        baseline = (lr.total_votes if lr else 0) or 0
+    return {
+        "lga_id": lga.id, "lga_name": lga.name, "state": lga.state, "state_geo": lga.state_geo,
+        "election_type": election_type, "year": year,
+        "candidates": candidates, "total_votes": predicted,
+        "baseline_votes": baseline, "unknown_votes": max(0, baseline - predicted),
+    }
+
+
 # --- politicians (public list + detail; logged-in submissions) ---
 @app.get("/api/politicians")
 def list_politicians(db: Session = Depends(get_db)):
