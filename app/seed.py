@@ -836,6 +836,8 @@ def seed_ward_predictions(db: Session) -> int:
     wards = db.scalars(select(WardResult).where(WardResult.lga_id == top.lga_id)).all()
     n = 0
 
+    _IMP = {"Based on 2023 result": 60, "10% below 2023": 40}
+
     def add(pol, ward, votes, label):
         nonlocal n
         if pol is None or votes is None:
@@ -844,7 +846,7 @@ def seed_ward_predictions(db: Session) -> int:
             election_type="presidential", year="2027",
             state_geo=(lga.state_geo if lga else None), lga_id=top.lga_id,
             ward_code=ward.ward_code, politician_id=pol.id, party=(pol.party or ""),
-            votes=int(votes), label=label,
+            votes=int(votes), label=label, importance=_IMP.get(label, 50),
         ))
         n += 1
 

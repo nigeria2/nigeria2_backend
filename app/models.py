@@ -580,4 +580,5 @@ class WardPrediction(Base):
     party: Mapped[str] = mapped_column(String(20), default="")
     votes: Mapped[int] = mapped_column(Integer, default=0)
     label: Mapped[str] = mapped_column(String(80), default="")  # basis of the prediction
+    importance: Mapped[int] = mapped_column(Integer, default=50)  # weight (0-100) in the average
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
