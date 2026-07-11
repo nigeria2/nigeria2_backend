@@ -898,7 +898,26 @@ def estimate_lga_predictions(db: Session, lga_id: int, tickets: list[dict], clea
         mate = pol(t["running_mate"])
         if cand is None:
             continue
-        supporters = [(s, pol(s["name"])) for s in t.get("supporters", [])]
+        # A supporter's deliverable base is the vote his party commands in this LGA.
+        # Where we have his REAL 2023 governorship total (lga_party_results), use it and
+        # spread it across wards by each ward's share of that party's presidential vote —
+        # so the ward pattern is preserved but the magnitude matches what he actually
+        # polled. Otherwise fall back to the presidential vote itself (scale 1.0).
+        supporters = []
+        for s in t.get("supporters", []):
+            spol = pol(s["name"])
+            if spol is None:
+                continue
+            party = _pol_2023_party(db, spol)
+            col = _2023_PARTY_COL.get(party or "")
+            if not col:
+                continue
+            pres_lga = sum(int(getattr(w, col, 0) or 0) for w in wards)
+            gov_lga = db.scalar(select(func.coalesce(func.sum(LgaPartyResult.votes), 0)).where(
+                LgaPartyResult.election_type == "governor", LgaPartyResult.year == "2023",
+                LgaPartyResult.lga_id == lga_id, LgaPartyResult.party == party)) or 0
+            scale = (gov_lga / pres_lga) if (gov_lga and pres_lga) else 1.0
+            supporters.append((s, spol, col, scale))
         for w in wards:
             comps = [
                 ("Candidate Popularity", round(_ward_2023_votes(db, w, cand) * t["retention"]),
@@ -906,11 +925,9 @@ def estimate_lga_predictions(db: Session, lga_id: int, tickets: list[dict], clea
                 ("Running-mate Popularity", round(_ward_2023_votes(db, w, mate) * t["vp_transfer"]),
                  mate.id if mate else None),
             ]
-            for s, spol in supporters:
-                if spol is None:
-                    continue
-                comps.append(("Supporter Popularity",
-                              round(_ward_2023_votes(db, w, spol) * s["transfer"]), spol.id))
+            for s, spol, col, scale in supporters:
+                base = int(getattr(w, col, 0) or 0) * scale
+                comps.append(("Supporter Popularity", round(base * s["transfer"]), spol.id))
             comps.append(("Party Popularity", round((w.total_votes or 0) * t["party_share"]), None))
             total = sum(v for _r, v, _p in comps)
             wp = WardPrediction(
