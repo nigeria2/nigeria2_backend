@@ -2,6 +2,7 @@
 import json
 import os
 import pathlib
+import re
 from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
@@ -211,6 +212,9 @@ async def lifespan(app: FastAPI):
                 lp = seed_lga_predictions(db)
                 if lp:
                     print(f"[startup] seeded {lp} LGA prediction(s)")
+                cl = clean_politician_data(db)
+                if cl:
+                    print(f"[startup] cleaned {cl} politician name/party fields")
                 cp = refresh_politician_parties(db)
                 if cp:
                     print(f"[startup] updated current party for {cp} politicians")
@@ -1387,6 +1391,60 @@ def _declared_name_pid(db: Session, rows: list[DeclaredCandidate]) -> dict[str, 
         if votes.get(best, 0) > 0:  # don't guess between namesakes that never polled
             out[n] = best
     return out
+
+
+def _clean_pol_name(name: str) -> str:
+    """Strip scrape artefacts from a politician name: footnote markers ([73]),
+    embedded 'MALE/FEMALE PARTY 16' metadata, stray standalone numbers, and a
+    leading zero mis-read for O (0GU -> OGU). Leaves normal names (incl. ALL-CAPS
+    and 'John A.' middle initials) untouched."""
+    n = re.sub(r"\[\d+\]", "", name or "")
+    m = re.search(r"\b(MALE|FEMALE)\b", n)
+    if m:
+        n = n[: m.start()]
+    n = re.sub(r"\b0(?=[A-Za-z])", "O", n)
+    n = re.sub(r"\b\d+\b", " ", n)
+    n = " ".join(n.split()).strip()
+    return n or name
+
+
+def clean_politician_data(db: Session) -> int:
+    """Idempotent tidy-up of scraped politician data: fix the handful of malformed
+    names, and normalise party values that are just a case/spelling variant of a
+    *registered* party (Accord/ACCORD -> A, Adp -> ADP). Real minor-party acronyms
+    that simply aren't in the registered list (DA, PPN, ...) are left as-is."""
+    changed = 0
+    for p in db.scalars(select(Politician)).all():
+        c = _clean_pol_name(p.name)
+        if c != p.name:
+            p.name = c
+            changed += 1
+
+    valid = {pt.acronym for pt in db.scalars(select(Party)).all()}
+    name_to_acr = {pt.name.upper(): pt.acronym for pt in db.scalars(select(Party)).all()}
+
+    def norm(pv: str) -> str:
+        if not pv:
+            return pv
+        u = pv.strip().upper()
+        if u in name_to_acr:
+            return name_to_acr[u]
+        if u in valid and pv != u:
+            return u
+        return pv
+
+    for p in db.scalars(select(Politician)).all():
+        np = norm(p.party)
+        if np != p.party:
+            p.party = np
+            changed += 1
+    for h in db.scalars(select(PartyHistory)).all():
+        np = norm(h.party)
+        if np != h.party:
+            h.party = np
+            changed += 1
+    db.commit()
+    return changed
 
 
 def refresh_politician_parties(db: Session) -> int:
