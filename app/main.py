@@ -211,6 +211,9 @@ async def lifespan(app: FastAPI):
                 lp = seed_lga_predictions(db)
                 if lp:
                     print(f"[startup] seeded {lp} LGA prediction(s)")
+                cp = refresh_politician_parties(db)
+                if cp:
+                    print(f"[startup] updated current party for {cp} politicians")
     except Exception as exc:
         print(f"[startup] seed error: {exc}")
     # Relaunch any model job that was mid-run when the process last died.
@@ -1091,9 +1094,14 @@ def lga_prediction_states(election_type: str = "presidential", year: str = "2027
     rows = db.scalars(select(LgaPrediction).where(
         LgaPrediction.election_type == election_type, LgaPrediction.year == year
     )).all()
+    pol_party = {
+        p.id: p.party
+        for p in db.scalars(select(Politician).where(Politician.id.in_([r.politician_id for r in rows if r.politician_id]))).all()
+    } if any(r.politician_id for r in rows) else {}
     agg: dict[str, dict] = defaultdict(lambda: {"parties": defaultdict(int), "lga_count": 0})
     for r in rows:
-        agg[r.state_geo]["parties"][r.party] += r.votes
+        party = pol_party.get(r.politician_id) or r.party  # candidate's current party
+        agg[r.state_geo]["parties"][party] += r.votes
         agg[r.state_geo]["lga_count"] += 1
     out = []
     for geo_id, d in agg.items():
@@ -1123,7 +1131,9 @@ def lga_prediction_state(geo_id: str, election_type: str = "presidential", year:
     lgas = [
         {
             "lga_id": r.lga_id, "lga_name": lga_names.get(r.lga_id, ""),
-            "party": r.party, "votes": r.votes,
+            # the candidate's current party wins over the stored one
+            "party": (pols[r.politician_id].party if r.politician_id in pols and pols[r.politician_id].party else r.party),
+            "votes": r.votes,
             "politician_id": r.politician_id,
             "politician_name": (pols[r.politician_id].name if r.politician_id in pols else None),
             "politician_photo": (pols[r.politician_id].photo or "" if r.politician_id in pols else ""),
@@ -1169,12 +1179,28 @@ def politician_detail(pid: int, db: Session = Depends(get_db)):
         }
         for a in assessments
     ]
-    d["party_history"] = [
+    hist = [
         {"party": h.party, "state": h.state, "year": h.year, "election_type": h.election_type,
          "votes": h.votes, "percent": h.percent, "position": h.position, "running_mate": h.running_mate or None,
-         "constituency": h.constituency or None}
+         "constituency": h.constituency or None, "declared": False}
         for h in ph
     ]
+    # declared future candidacies are the newest electoral history (they set the
+    # current party) — show them in the timeline, with no votes/result yet.
+    for dc in db.scalars(select(DeclaredCandidate).where(DeclaredCandidate.politician_id == pid)).all():
+        hist.append({
+            "party": dc.party, "state": dc.state, "year": dc.year, "election_type": dc.election_type,
+            "votes": None, "percent": None, "position": 0, "running_mate": dc.running_mate or None,
+            "constituency": None, "declared": True,
+        })
+
+    def _yr(x):
+        try:
+            return int(str(x["year"])[:4])
+        except (TypeError, ValueError):
+            return 0
+    hist.sort(key=lambda x: (_yr(x), 1 if x["declared"] else 0), reverse=True)
+    d["party_history"] = hist
     d["presidential_state_votes"] = _presidential_state_votes(db, ph)
     return d
 
@@ -1363,6 +1389,61 @@ def _declared_name_pid(db: Session, rows: list[DeclaredCandidate]) -> dict[str, 
     return out
 
 
+def refresh_politician_parties(db: Session) -> int:
+    """Keep every politician's *current* party in sync with their electoral history.
+
+    A politician's party is not a fixed attribute — it's whatever party they last stood
+    for. We take the newest entry across their completed runs (PartyHistory) and their
+    declared future candidacies (DeclaredCandidate), with a declared candidacy ranking
+    above past runs in the same/greater year. Peter Obi's 2027 NDC candidacy therefore
+    makes his current party NDC even though he ran LP in 2023.
+
+    Also (a) backfills DeclaredCandidate.politician_id by name so declared candidacies
+    are linked to their politician, and (b) updates lga_predictions.party so a
+    candidate-linked prediction always shows the candidate's current party.
+    """
+    declared = db.scalars(select(DeclaredCandidate)).all()
+    name_pid = _declared_name_pid(db, [d for d in declared if d.politician_id is None])
+    for d in declared:
+        if d.politician_id is None:
+            pid = name_pid.get(_norm_name(d.politician_name))
+            if pid:
+                d.politician_id = pid
+
+    # newest (year, rank) wins; rank: primary < general run < declared candidacy
+    best: dict[int, tuple] = {}
+
+    def consider(pid, year, rank, party):
+        if not pid or not party:
+            return
+        try:
+            y = int(str(year)[:4])
+        except (TypeError, ValueError):
+            y = 0
+        key = (y, rank)
+        if pid not in best or key > best[pid][0]:
+            best[pid] = (key, party)
+
+    for h in db.scalars(select(PartyHistory).where(PartyHistory.politician_id.isnot(None))).all():
+        consider(h.politician_id, h.year, 0 if h.election_type == "primary" else 1, h.party)
+    for d in declared:
+        consider(d.politician_id, d.year, 2, d.party)
+
+    updated = 0
+    for pid, (_key, party) in best.items():
+        pol = db.get(Politician, pid)
+        if pol and pol.party != party:
+            pol.party = party
+            updated += 1
+    # predictions follow the candidate's current party
+    for lp in db.scalars(select(LgaPrediction).where(LgaPrediction.politician_id.isnot(None))).all():
+        pol = db.get(Politician, lp.politician_id)
+        if pol and pol.party and lp.party != pol.party:
+            lp.party = pol.party
+    db.commit()
+    return updated
+
+
 def _declared_candidate_dict(c: DeclaredCandidate, name_pid: dict[str, int] | None = None) -> dict:
     pid = c.politician_id
     if pid is None and name_pid:
@@ -1410,6 +1491,9 @@ def admin_add_declared_candidate(payload: DeclaredCandidateIn, _: User = Depends
     db.add(row)
     db.commit()
     db.refresh(row)
+    # a new declared candidacy is the newest electoral history -> may change the
+    # candidate's current party (and any prediction linked to them).
+    refresh_politician_parties(db)
     return _declared_candidate_dict(row)
 
 

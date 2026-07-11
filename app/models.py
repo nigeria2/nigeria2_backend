@@ -442,6 +442,9 @@ class Politician(Base):
     state: Mapped[str] = mapped_column(String(50), index=True)
     state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(120), default="")
+    # Current party — derived from the newest electoral history (their latest run or
+    # declared candidacy) and kept in sync by refresh_politician_parties(). Not edited
+    # directly; a defection shows up as a new PartyHistory/DeclaredCandidate entry.
     party: Mapped[str] = mapped_column(String(20), default="")
     note: Mapped[str] = mapped_column(Text, default="")
     photo: Mapped[str] = mapped_column(Text, default="")  # approved official photo (data URL)
