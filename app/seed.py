@@ -4,6 +4,7 @@ Real data would be crunched from raw contributor traces upstream; this just
 gives the map something to render across weeks and election types.
 """
 import csv
+import difflib
 import gzip
 import hashlib
 import itertools
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, StatePresidential, Ward, WardResult
+from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LgaPartyResult, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, StatePresidential, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -1001,6 +1002,89 @@ def seed_lga_predictions(db: Session) -> int:
     ))
     db.commit()
     return 1
+
+
+# --- verified 2023 results per LGA per party (presidential + governor) ------------
+
+_GOV_2023_CSV = pathlib.Path(__file__).resolve().parent / "data" / "gov_2023_lga.csv"
+
+
+def _lga_key(name: str) -> str:
+    """Match key for an LGA name: lowercase, alphanumerics only ('Kaura-Namoda' == 'Kaura Namoda')."""
+    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+
+
+def _match_lga(name: str, state_index: dict[str, Lga]) -> Lga | None:
+    """Resolve an LGA name to its canonical row within one state (exact key, then close match)."""
+    m = state_index.get(_lga_key(name))
+    if m:
+        return m
+    near = difflib.get_close_matches(_lga_key(name), list(state_index), n=1, cutoff=0.85)
+    return state_index[near[0]] if near else None
+
+
+def load_lga_party_results(db: Session) -> tuple[int, list[str]]:
+    """(Re)load the verified 2023 per-LGA per-party results into lga_party_results:
+      - presidential: aggregated from ward_results (APC/LP/PDP/NNPP)
+      - governor: from the collected per-LGA declarations (app/data/gov_2023_lga.csv)
+    LGAs are linked to canonical lga_id. Clears the table first so it always reflects the
+    current sources. Returns (rows written, unmatched 'State/LGA' names)."""
+    from . import geo
+    lgas = db.scalars(select(Lga)).all()
+    lga_by_id = {l.id: l for l in lgas}
+    # per-state index of canonical LGAs, keyed by match-key
+    by_state: dict[str, dict[str, Lga]] = defaultdict(dict)
+    for l in lgas:
+        by_state[l.state.lower()][_lga_key(l.name)] = l
+    # names in our declarations that differ from the canonical table (renames/typos)
+    _aliases = {
+        "adamawa": {"girei": "girie", "toungo": "teungo"},
+        "ogun": {"yewanorth": "egbadonorth", "yewasouth": "egbadosouth"},
+    }
+    for st, amap in _aliases.items():
+        idx = by_state.get(st, {})
+        for pasted, canon in amap.items():
+            if canon in idx:
+                idx[pasted] = idx[canon]
+
+    db.execute(delete(LgaPartyResult))
+    n = 0
+
+    # presidential — aggregate the verified ward results up to LGA
+    pres = db.execute(
+        select(
+            WardResult.state, WardResult.state_geo, WardResult.lga_id,
+            func.sum(WardResult.votes_apc), func.sum(WardResult.votes_lp),
+            func.sum(WardResult.votes_pdp), func.sum(WardResult.votes_nnpp),
+        ).where(WardResult.lga_id.isnot(None)).group_by(WardResult.state, WardResult.state_geo, WardResult.lga_id)
+    ).all()
+    for state, sgeo, lga_id, apc, lp, pdp, nnpp in pres:
+        name = lga_by_id[lga_id].name if lga_id in lga_by_id else ""
+        for party, v in (("APC", apc), ("LP", lp), ("PDP", pdp), ("NNPP", nnpp)):
+            db.add(LgaPartyResult(election_type="presidential", year="2023", state=state,
+                                  state_geo=sgeo, lga_id=lga_id, lga=name, party=party, votes=int(v or 0)))
+            n += 1
+
+    # governor — from the collected per-LGA declarations
+    unmatched: list[str] = []
+    if _GOV_2023_CSV.exists():
+        with open(_GOV_2023_CSV, newline="") as f:
+            for r in csv.DictReader(f):
+                state, lga, party = r["state"], r["lga"], r["party"]
+                votes = int(r["votes"]) if str(r["votes"]).strip() else 0
+                canon = _match_lga(lga, by_state.get(state.lower(), {}))
+                if canon is None:
+                    tag = f"{state}/{lga}"
+                    if tag not in unmatched:
+                        unmatched.append(tag)
+                db.add(LgaPartyResult(
+                    election_type="governor", year="2023", state=state,
+                    state_geo=(canon.state_geo if canon else geo.state_geo_id(state)),
+                    lga_id=(canon.id if canon else None),
+                    lga=(canon.name if canon else lga), party=party.upper(), votes=votes))
+                n += 1
+    db.commit()
+    return n, unmatched
 
 
 def seed_lga_results(db: Session) -> int:

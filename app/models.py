@@ -305,6 +305,25 @@ class LgaResult(Base):
     scores: Mapped[str] = mapped_column(Text, default="{}")  # JSON per-party shares
     total_votes: Mapped[int] = mapped_column(Integer, default=0)
     year: Mapped[str] = mapped_column(String(10), default="2023")
+
+
+class LgaPartyResult(Base):
+    """One party's votes in one LGA in one election — tidy long form (one row per
+    election_type/year/lga/party). Holds the verified 2023 results we display at
+    /elections/2023/results: presidential (from ward_results) and governorship (from the
+    per-LGA declarations we collected). LGAs are linked by canonical lga_id."""
+
+    __tablename__ = "lga_party_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True)  # presidential | governor
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state: Mapped[str] = mapped_column(String(60), index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    lga_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    lga: Mapped[str] = mapped_column(String(120))
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

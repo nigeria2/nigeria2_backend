@@ -46,6 +46,7 @@ from .models import (
     PredictionComponent,
     WardPrediction,
     WardResult,
+    LgaPartyResult,
 )
 from . import geo, prediction_worker
 from .history_ingest import PARTY_NAMES, seed_election_history
@@ -83,6 +84,7 @@ from .seed import (
     seed_lga_results,
     seed_ward_predictions,
     seed_prediction_components,
+    load_lga_party_results,
     seed_lgas,
     refresh_lga_names,
     link_lga_references,
@@ -211,6 +213,9 @@ async def lifespan(app: FastAPI):
                 ll = link_lga_references(db)
                 if ll:
                     print(f"[startup] linked {ll} rows to canonical LGAs")
+                rr, unmatched = load_lga_party_results(db)
+                if rr:
+                    print(f"[startup] loaded {rr} LGA party-result rows" + (f"; unmatched LGAs: {unmatched}" if unmatched else ""))
                 lp = seed_ward_predictions(db)
                 if lp:
                     print(f"[startup] seeded {lp} ward prediction(s)")
@@ -1295,6 +1300,74 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
         "candidates": cands_lga, "total_votes": sum(c["votes"] for c in cands_lga),
         "baseline_votes": baseline, "swing_votes": _swing(baseline, cands_lga),
         "wards": wards,
+    }
+
+
+# --- verified election results per LGA (presidential + governor) ---
+
+def _results_table(rows: list) -> dict:
+    """Shape a set of LgaPartyResult rows (one election) into a table: ordered party
+    columns (by total votes), a row per LGA with each party's votes, and the winner."""
+    ptot: dict[str, int] = defaultdict(int)
+    by_lga: dict = {}
+    for r in rows:
+        ptot[r.party] += r.votes or 0
+        key = (r.lga_id, r.lga)
+        d = by_lga.setdefault(key, {"lga_id": r.lga_id, "lga": r.lga, "parties": {}, "total": 0})
+        d["parties"][r.party] = (d["parties"].get(r.party, 0) + (r.votes or 0))
+        d["total"] += r.votes or 0
+    parties = [p for p, _ in sorted(ptot.items(), key=lambda x: x[1], reverse=True)]
+    lgas = sorted(by_lga.values(), key=lambda x: x["lga"])
+    return {
+        "parties": parties,
+        "party_totals": {p: ptot[p] for p in parties},
+        "winner": parties[0] if parties else "",
+        "total_votes": sum(ptot.values()),
+        "lga_count": len(lgas),
+        "lgas": lgas,
+    }
+
+
+@app.get("/api/results/{year}")
+def results_states(year: str, db: Session = Depends(get_db)):
+    """States with verified results for a year, and which races (presidential/governor)
+    we have — drives the /elections/{year}/results index."""
+    rows = db.scalars(select(LgaPartyResult).where(LgaPartyResult.year == year)).all()
+    by_state: dict[str, dict] = {}
+    for r in rows:
+        s = by_state.setdefault(r.state_geo, {
+            "geo_id": r.state_geo, "state": r.state,
+            "presidential_lgas": set(), "governor_lgas": set(),
+        })
+        s[f"{r.election_type}_lgas"].add(r.lga_id or r.lga)
+    out = []
+    for s in by_state.values():
+        out.append({
+            "geo_id": s["geo_id"], "state": s["state"],
+            "has_presidential": bool(s["presidential_lgas"]),
+            "has_governor": bool(s["governor_lgas"]),
+            "presidential_lga_count": len(s["presidential_lgas"]),
+            "governor_lga_count": len(s["governor_lgas"]),
+        })
+    out.sort(key=lambda x: x["state"])
+    return {"year": year, "states": out}
+
+
+@app.get("/api/results/{year}/{geo_id}")
+def results_state(year: str, geo_id: str, db: Session = Depends(get_db)):
+    """One state's verified {year} results: separate presidential and governor tables
+    (LGA rows x party columns)."""
+    state = geo.state_name(geo_id)
+    rows = db.scalars(select(LgaPartyResult).where(
+        LgaPartyResult.year == year, LgaPartyResult.state_geo == geo_id)).all()
+    if not rows and state is None:
+        raise HTTPException(status_code=404, detail="unknown state")
+    pres = [r for r in rows if r.election_type == "presidential"]
+    gov = [r for r in rows if r.election_type == "governor"]
+    return {
+        "year": year, "geo_id": geo_id, "state": state or (rows[0].state if rows else geo_id),
+        "presidential": _results_table(pres) if pres else None,
+        "governor": _results_table(gov) if gov else None,
     }
 
 
