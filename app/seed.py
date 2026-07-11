@@ -910,7 +910,8 @@ def estimate_municipal_predictions(db: Session, clear: bool = False) -> int:
             wp = WardPrediction(
                 election_type="presidential", year="2027",
                 state_geo=(lga.state_geo if lga else None), lga_id=lga_id,
-                ward_code=w.ward_code, politician_id=cand.id, party=(cand.party or ""),
+                ward_code=w.ward_code, politician_id=cand.id,
+                running_mate_id=(mate.id if mate else None), party=(cand.party or ""),
                 votes=total, label="Base projection", importance=60,
             )
             db.add(wp)

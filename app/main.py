@@ -1097,27 +1097,42 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
 
 
 # --- 2027 predictions (per-WARD vote projections, aggregated up to LGAs/states) ---
+def _surname(name: str | None) -> str:
+    """Last word of a name — 'Rabiu Musa Kwankwaso' -> 'Kwankwaso'."""
+    return (name or "").split()[-1] if (name or "").strip() else ""
+
+
 def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None = None) -> list[dict]:
-    """Group ward-prediction rows by candidate. A candidate may have several predictions
-    (scenarios), each with an importance weight; the votes we assign the candidate is the
-    importance-weighted average of those predictions. Each prediction is itself the sum of
-    its components (reason -> votes); when `comps` (ward_prediction_id -> [(reason, votes,
-    seq)]) is given, those are aggregated per prediction. `baseline` gives each figure %."""
-    # politicians referenced either as the candidate of a row or on a component (the VP)
+    """Group ward-prediction rows by joint ticket (president + running mate). A ticket may
+    have several predictions (scenarios), each with an importance weight; the votes we
+    assign it is the importance-weighted average of those predictions. Each prediction is
+    itself the sum of its components (reason -> votes); when `comps` (ward_prediction_id ->
+    [(reason, votes, seq, politician_id)]) is given, those are aggregated per prediction.
+    `baseline` gives each figure a %."""
+    # politicians referenced as the president, the running mate, or on a component
     comp_pids = {pid for lst in (comps or {}).values() for (_r, _v, _s, pid) in lst if pid}
-    all_pids = {r.politician_id for r in rows if r.politician_id} | comp_pids
+    all_pids = ({r.politician_id for r in rows if r.politician_id}
+                | {r.running_mate_id for r in rows if r.running_mate_id}
+                | comp_pids)
     pols = {
         p.id: p for p in db.scalars(select(Politician).where(Politician.id.in_(all_pids))).all()
     } if all_pids else {}
     byc: dict = {}
     order: list = []
     for r in rows:
-        key = r.politician_id if r.politician_id else ("party", r.party)
+        # the ticket identity: president + running mate (fall back to party if no president)
+        key = (r.politician_id, r.running_mate_id) if r.politician_id else ("party", r.party)
         if key not in byc:
             p = pols.get(r.politician_id)
+            mate = pols.get(r.running_mate_id)
+            ticket = (f"{_surname(p.name)}/{_surname(mate.name)}"
+                      if p and mate else (p.name if p else r.party))
             byc[key] = {
                 "politician_id": r.politician_id,
                 "politician_name": (p.name if p else None),
+                "running_mate_id": r.running_mate_id,
+                "running_mate_name": (mate.name if mate else None),
+                "ticket_name": ticket,
                 "photo": (p.photo or "" if p else ""),
                 "party": (p.party if p and p.party else r.party),
                 "preds": {},
@@ -1153,7 +1168,9 @@ def _candidate_groups(db: Session, rows: list, baseline: int, comps: dict | None
         wavg = round(num / den) if den else 0
         plist.sort(key=lambda x: x["votes"], reverse=True)
         out.append({
-            "politician_id": c["politician_id"], "politician_name": c["politician_name"], "photo": c["photo"],
+            "politician_id": c["politician_id"], "politician_name": c["politician_name"],
+            "running_mate_id": c["running_mate_id"], "running_mate_name": c["running_mate_name"],
+            "ticket_name": c["ticket_name"], "photo": c["photo"],
             "party": c["party"], "votes": wavg, "pct": pct(wavg), "predictions": plist,
         })
     out.sort(key=lambda x: x["votes"], reverse=True)

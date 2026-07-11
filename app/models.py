@@ -576,7 +576,10 @@ class WardPrediction(Base):
     state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
     lga_id: Mapped[int] = mapped_column(Integer, index=True)
     ward_code: Mapped[str] = mapped_column(String(30), default="", index=True)
+    # a prediction is for a joint ticket: the presidential candidate (politician_id) and
+    # his running mate / VP (running_mate_id). Grouped and displayed as "Obi/Kwankwaso".
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    running_mate_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     party: Mapped[str] = mapped_column(String(20), default="")
     votes: Mapped[int] = mapped_column(Integer, default=0)  # sum of this prediction's components
     label: Mapped[str] = mapped_column(String(80), default="")  # basis of the prediction
