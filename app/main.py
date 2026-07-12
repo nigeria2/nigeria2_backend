@@ -25,6 +25,7 @@ from .models import (
     Lga,
     LgaResult,
     LegislativeResult,
+    ElectionSheet,
     Party,
     PartyElection,
     PartyHistory,
@@ -88,6 +89,7 @@ from .seed import (
     seed_prediction_components,
     load_lga_party_results,
     load_legislative_results,
+    load_election_sheets,
     seed_lgas,
     refresh_lga_names,
     link_lga_references,
@@ -225,6 +227,9 @@ async def lifespan(app: FastAPI):
                 lr = load_legislative_results(db)
                 if lr:
                     print(f"[startup] loaded {lr} legislative (2019 senate+house) result rows")
+                es = load_election_sheets(db)
+                if es:
+                    print(f"[startup] loaded {es} election-sheet links")
                 lp = seed_ward_predictions(db)
                 if lp:
                     print(f"[startup] seeded {lp} ward prediction(s)")
@@ -997,6 +1002,13 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
             "winner": wr.winner, "runner_up": wr.runner_up, "total_votes": wr.total_votes,
             "scores": {"APC": wr.votes_apc, "LP": wr.votes_lp, "PDP": wr.votes_pdp, "NNPP": wr.votes_nnpp},
         }
+    # IReV result sheets for these polling units, grouped by pu_code (one per race we hold)
+    sheets_by_pu: dict[str, list] = defaultdict(list)
+    for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code.in_([p.pu_code for p in rows]))).all():
+        sheets_by_pu[s.pu_code].append({
+            "election_type": s.election_type, "year": s.year,
+            "sheet_url": s.sheet_url or "", "status": s.sheet_status, "has_json": bool(s.json),
+        })
     return {
         "state": first.state,
         "lga": first.lga,
@@ -1007,8 +1019,28 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
             {
                 "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
                 "known_votes": p.known_votes, "winner": p.winner, "runner_up": p.runner_up, "scores": _pu_scores(p),
+                "sheets": sorted(sheets_by_pu.get(p.pu_code, []), key=lambda x: x["election_type"]),
             }
             for p in rows
+        ],
+    }
+
+
+@app.get("/api/polling-units/{pu_code:path}/sheets")
+def pu_sheets(pu_code: str, db: Session = Depends(get_db)):
+    """All result sheets we hold for one polling unit (one per race), including the INEC
+    sheet URL and our verbatim EC8A transcription JSON where available."""
+    rows = db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
+                      .order_by(ElectionSheet.election_type)).all()
+    return {
+        "pu_code": pu_code,
+        "sheets": [
+            {
+                "election_type": s.election_type, "year": s.year, "state": s.state,
+                "sheet_url": s.sheet_url or "", "status": s.sheet_status,
+                "transcription": (json.loads(s.json) if s.json else None),
+            }
+            for s in rows
         ],
     }
 

@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .data_2023 import PAST_ELECTION_2023
 from .lga_2023 import LGA_RESULTS_2023
-from .models import Analysis, Governor, GovernorHistory, HouseMember, Lga, LegislativeResult, LgaPartyResult, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, StatePresidential, Ward, WardResult
+from .models import Analysis, ElectionSheet, Governor, GovernorHistory, HouseMember, Lga, LegislativeResult, LgaPartyResult, LgaResult, Party, PartyElection, PartyHistory, PollingUnit, Politician, PoliticianAssessment, PoliticianPhoto, Prediction, ProblemUnit, Senator, State, StatePrediction, StatePresidential, Ward, WardResult
 from .senators_data import SENATORS
 from .state_data import STATE_DATA
 
@@ -1193,6 +1193,37 @@ def load_legislative_results(db: Session) -> int:
                 position=int(r["position"]) if str(r["position"]).strip() else 0,
                 elected=str(r.get("elected", "")).strip() == "1", politician_id=pid))
             n += 1
+    db.commit()
+    return n
+
+
+_SHEETS_DIR = _DATA_DIR / "sheets"
+
+
+def load_election_sheets(db: Session) -> int:
+    """(Re)load election_sheets from the bundled per-(state,type) CSVs in app/data/sheets/
+    (built by data/build_election_sheets_bundle.py from the IReV download manifests). Each
+    row links a polling unit (pu_code) to its INEC sheet URL, our download status, and our
+    EC8A transcription JSON where we have one. Clears + reloads so it always reflects the
+    current bundle. Returns rows written."""
+    from . import geo
+    if not _SHEETS_DIR.exists():
+        return 0
+    db.execute(delete(ElectionSheet))
+    geo_cache: dict[str, str | None] = {}
+    n = 0
+    for path in sorted(_SHEETS_DIR.glob("*.csv")):
+        with open(path, newline="", encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                st = r.get("state", "")
+                if st not in geo_cache:
+                    geo_cache[st] = geo.state_geo_id(st) if st else None
+                db.add(ElectionSheet(
+                    election_type=r["election_type"], year=r.get("year", "2023"), state=st,
+                    state_geo=geo_cache[st], pu_code=r["pu_code"],
+                    sheet_url=r.get("sheet_url", ""), sheet_status=r.get("sheet_status", ""),
+                    json=(r.get("json") or None)))
+                n += 1
     db.commit()
     return n
 

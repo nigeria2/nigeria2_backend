@@ -350,6 +350,26 @@ class LegislativeResult(Base):
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
+class ElectionSheet(Base):
+    """Link from a polling unit to its INEC IReV result sheet and our transcription.
+    One row per (pu_code, election_type, year). `sheet_url` points at INEC's own server
+    (we do not re-host the scan); `sheet_status` is our download outcome; `json` holds the
+    verbatim EC8A transcription (JSON text) where we have produced one. Joined to a
+    polling unit by matching pu_code (same INEC state/lga/ward/pu code)."""
+
+    __tablename__ = "election_sheets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True)  # presidential|governorship|senatorial
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state: Mapped[str] = mapped_column(String(60), default="")
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    pu_code: Mapped[str] = mapped_column(String(40), index=True)  # INEC code, e.g. 03/01/01/001
+    sheet_url: Mapped[str] = mapped_column(Text, default="")      # INEC IReV sheet (their server)
+    sheet_status: Mapped[str] = mapped_column(String(20), default="")  # saved | no_sheet | dead
+    json: Mapped[str | None] = mapped_column(Text, nullable=True)  # our EC8A transcription, JSON text
+
+
 class PollingUnit(Base):
     """A polling unit, with 2023 registered voters and known (cast) votes."""
 
