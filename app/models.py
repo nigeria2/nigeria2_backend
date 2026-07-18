@@ -758,6 +758,107 @@ class EvidenceParty(Base):
     votes_words: Mapped[str] = mapped_column(String(120), default="")   # votes in words, verbatim
 
 
+# --- Per-level evidence (ward / lga / state) ------------------------------------------
+# Every geo level's score is a MERGE of its evidence, mirroring the polling-unit `evidence`
+# table. Evidence at a level has two origins:
+#   kind='rollup'  — computed by summing the level below (child results are evidence here)
+#   kind=<source>  — an independent figure recorded directly at this level from another
+#                    source (inec_declared | collation | 2023_transcription | ...).
+LEVEL_EVIDENCE_KINDS = ("rollup", "inec_declared", "collation", "2023_transcription")
+
+
+class WardEvidence(Base):
+    """A piece of evidence for a ward's result (rollup from PUs, or an independent source)."""
+
+    __tablename__ = "ward_evidence"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ward_code: Mapped[str] = mapped_column(String(30), index=True, default="")
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(30), index=True, default="rollup")
+    source: Mapped[str] = mapped_column(String(120), default="")
+    method: Mapped[str] = mapped_column(String(60), default="")
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rejected_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WardEvidenceParty(Base):
+    __tablename__ = "ward_evidence_parties"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ward_evidence_id: Mapped[int] = mapped_column(Integer, index=True)
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_words: Mapped[str] = mapped_column(String(120), default="")
+
+
+class LgaEvidence(Base):
+    """A piece of evidence for an LGA's result (rollup from wards, or an independent source)."""
+
+    __tablename__ = "lga_evidence"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lga_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    kind: Mapped[str] = mapped_column(String(30), index=True, default="rollup")
+    source: Mapped[str] = mapped_column(String(120), default="")
+    method: Mapped[str] = mapped_column(String(60), default="")
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rejected_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LgaEvidenceParty(Base):
+    __tablename__ = "lga_evidence_parties"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lga_evidence_id: Mapped[int] = mapped_column(Integer, index=True)
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_words: Mapped[str] = mapped_column(String(120), default="")
+
+
+class StateEvidence(Base):
+    """A piece of evidence for a state's result (rollup from LGAs, or an independent source)."""
+
+    __tablename__ = "state_evidence"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)  # the geo key
+    kind: Mapped[str] = mapped_column(String(30), index=True, default="rollup")
+    source: Mapped[str] = mapped_column(String(120), default="")
+    method: Mapped[str] = mapped_column(String(60), default="")
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rejected_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StateEvidenceParty(Base):
+    __tablename__ = "state_evidence_parties"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state_evidence_id: Mapped[int] = mapped_column(Integer, index=True)
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    votes_words: Mapped[str] = mapped_column(String(120), default="")
+
+
 class PuResult(Base):
     """The MERGED result for one polling unit in one election — combined from the evidence
     (today: a copy of the single entry; a real merge routine can recompute it later). There

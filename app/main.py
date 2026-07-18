@@ -47,6 +47,12 @@ from .models import (
     WardPrediction,
     Evidence,
     EvidenceParty,
+    WardEvidence,
+    WardEvidenceParty,
+    LgaEvidence,
+    LgaEvidenceParty,
+    StateEvidence,
+    StateEvidenceParty,
     PuResult,
     PuResultParty,
     WardResultV,
@@ -1134,6 +1140,8 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
         "ward_code": code,
         "result": result,
         "polling_units": [pu_dict(p) for p in rows],
+        # every piece of evidence for THIS ward's score: rollup-from-PUs + any independent source
+        "evidence": _level_evidence(db, WardEvidence, WardEvidenceParty, "ward_evidence_id", "ward_code", code),
     }
 
 
@@ -1185,6 +1193,43 @@ def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
     ]
     entries.sort(key=lambda x: (x["election_type"], _EVIDENCE_KIND_ORDER.get(x["kind"], 9), x["id"]))
     return entries
+
+
+# order for level (ward/lga/state) evidence: independent sources first, rollup last
+_LEVEL_KIND_ORDER = {"inec_declared": 0, "collation": 1, "2023_transcription": 2, "rollup": 9}
+
+
+def _level_evidence(db: Session, model, party_model, fk_attr, geo_attr, geo_val,
+                    election_type: str = "presidential", year: str = "2023") -> list[dict]:
+    """Every piece of evidence for one geo level (ward/lga/state) in one election — its
+    roll-up from the level below (kind='rollup') plus any independent-source rows. Each is
+    a guess; the level's shown score is a merge of them."""
+    rows = db.scalars(select(model).where(
+        getattr(model, geo_attr) == geo_val, model.election_type == election_type,
+        model.year == year)).all()
+    if not rows:
+        return []
+    parties_by: dict[int, list] = defaultdict(list)
+    for pp in db.scalars(select(party_model).where(
+            getattr(party_model, fk_attr).in_([r.id for r in rows]))).all():
+        parties_by[getattr(pp, fk_attr)].append(
+            {"party": pp.party, "votes": pp.votes})
+    out = [
+        {
+            "id": r.id, "election_type": r.election_type, "year": r.year,
+            "kind": r.kind, "source": r.source, "method": r.method,
+            "total_votes": r.total_votes,
+            "poll_summary": {
+                "registered_voters": r.registered_voters, "accredited_voters": r.accredited_voters,
+                "valid_votes": r.valid_votes,
+            },
+            "party_results": sorted(parties_by.get(r.id, []),
+                                    key=lambda x: (x["votes"] is None, -(x["votes"] or 0))),
+        }
+        for r in rows
+    ]
+    out.sort(key=lambda x: (_LEVEL_KIND_ORDER.get(x["kind"], 5), x["id"]))
+    return out
 
 
 @app.get("/api/polling-units/{pu_code:path}/sheets")
@@ -1376,6 +1421,8 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
         "pu_count": sum(w["pu_count"] for w in wards),
         "registered_voters": sum((w["registered_voters"] or 0) for w in wards),
         "strongholds": strongholds[:12], "problem_units": problems,
+        # every piece of evidence for THIS LGA's score: rollup-from-wards + any independent source
+        "evidence": _level_evidence(db, LgaEvidence, LgaEvidenceParty, "lga_evidence_id", "lga_id", lga_id),
     }
 
 
@@ -1811,6 +1858,8 @@ def results_state(year: str, geo_id: str, db: Session = Depends(get_db)):
         "governor": _lga_results_table(gov_rows, lv_parties) if gov_rows else None,
         "senate": _legislative_blocks(senate) if senate else None,
         "house": _legislative_blocks(house) if house else None,
+        # every piece of evidence for THIS state's score: rollup-from-LGAs + any independent source
+        "evidence": _level_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "state_geo", geo_id, year=year),
     }
 
 

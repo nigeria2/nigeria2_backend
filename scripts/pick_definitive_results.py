@@ -39,6 +39,9 @@ from sqlalchemy.orm import Session  # noqa: E402
 from app.db import SessionLocal  # noqa: E402
 from app.models import (  # noqa: E402
     Evidence, EvidenceParty,
+    WardEvidence, WardEvidenceParty,
+    LgaEvidence, LgaEvidenceParty,
+    StateEvidence, StateEvidenceParty,
     PuResult, PuResultParty,
     WardResultV, WardResultParty,
     LgaResultV, LgaResultParty,
@@ -299,6 +302,15 @@ def _clear_official(db: Session, model, party_model, fk_attr, state_geo=None) ->
     db.execute(delete(model).where(model.id.in_(idq)))
 
 
+def _clear_evidence(db: Session, model, party_model, fk_attr, kind, state_geo=None) -> None:
+    """Wipe prior evidence of one kind (+ children) for this scope, via subquery."""
+    idq = select(model.id).where(model.kind == kind)
+    if state_geo is not None:
+        idq = idq.where(model.state_geo == state_geo)
+    db.execute(delete(party_model).where(getattr(party_model, fk_attr).in_(idq)))
+    db.execute(delete(model).where(model.id.in_(idq)))
+
+
 def import_from_archive(commit: bool, state_geo=None) -> None:
     """Read the *_archive tables (+ polling_units.votes_*) and load them into the unified
     pu_results / *_result_v tables as source='official'. This is how we populate the new
@@ -385,50 +397,115 @@ def import_from_archive(commit: bool, state_geo=None) -> None:
             ])
             db.flush()
 
-        # 2) ward_results_archive -> ward_result_v
-        _clear_official(db, WardResultV, WardResultParty, "ward_result_id", state_geo)
-        for w in db.scalars(_sfilter(select(WardResult), WardResult)).all():
-            r = WardResultV(ward_code=w.ward_code, ward=w.ward, lga_id=w.lga_id,
-                            election_type="presidential", year="2023", state_geo=w.state_geo,
-                            winner=w.winner, runner_up=w.runner_up, total_votes=w.total_votes,
-                            source="official")
-            db.add(r); db.flush()
-            for party, votes in (("APC", w.votes_apc), ("LP", w.votes_lp), ("PDP", w.votes_pdp), ("NNPP", w.votes_nnpp)):
-                db.add(WardResultParty(ward_result_id=r.id, party=party, votes=votes or 0))
-
-        # 3) lga_party_results_archive -> lga_result_v (presidential + governor)
-        _clear_official(db, LgaResultV, LgaResultParty, "lga_result_id", state_geo)
-        groups: dict = {}
-        for x in db.scalars(_sfilter(select(LgaPartyResult), LgaPartyResult)).all():
-            groups.setdefault((x.election_type, x.year, x.state_geo, x.lga_id, x.lga), []).append((x.party, x.votes or 0))
-        for (et, year, sgeo, lga_id, lga), parties in groups.items():
-            winner, runner = _winner_runner(parties)
-            r = LgaResultV(lga_id=lga_id, lga=lga, election_type=et, year=year, state_geo=sgeo,
-                           winner=winner, runner_up=runner, total_votes=sum(v for _, v in parties),
-                           source="official")
-            db.add(r); db.flush()
-            for party, votes in parties:
-                db.add(LgaResultParty(lga_result_id=r.id, party=party, votes=votes))
-
-        # 4) state_presidential_archive -> state_result_v
-        _clear_official(db, StateResultV, StateResultParty, "state_result_id", state_geo)
-        for s in db.scalars(_sfilter(select(StatePresidential), StatePresidential)).all():
-            parts = [("APC", s.apc or 0), ("PDP", s.pdp or 0), ("LP", s.lp or 0),
-                     ("NNPP", s.nnpp or 0), ("Others", s.others or 0)]
-            winner = s.winner or _winner_runner(parts)[0]
-            _, runner = _winner_runner(parts)
-            r = StateResultV(state=s.state, state_geo=s.state_geo, election_type="presidential",
-                             year=str(s.year), winner=winner, runner_up=runner,
-                             total_votes=s.total_votes or sum(v for _, v in parts), source="official")
-            db.add(r); db.flush()
-            for party, votes in parts:
-                if votes:
-                    db.add(StateResultParty(state_result_id=r.id, party=party, votes=votes))
+        # 2-4) Roll up bottom-up. At each level we write a 'rollup' EVIDENCE row (the sum of
+        # the level below is evidence for this level's score) plus the merged *_result_v.
+        # Independent-source evidence (INEC-declared, etc.) is loaded separately when we
+        # have it; today each level has just its rollup evidence, so result = that rollup.
+        lga_names = {l.id: l.name for l in db.scalars(select(Lga)).all()}
+        _rollup_ward(db, state_geo)
+        _rollup_lga(db, state_geo, lga_names)
+        _rollup_state(db, state_geo)
 
         db.commit()
-        print(f"Imported: {pu_written} pu_results, ward/lga/state results from archive (source='official'). Committed.")
+        print(f"Imported: {pu_written} pu_results + INEC-sheet evidence; ward/lga/state rolled up "
+              f"(rollup evidence + merged results). Committed.")
     finally:
         db.close()
+
+
+def _agg_below(db, child_result, child_party, child_fk, group_cols, state_geo):
+    """Sum a child *_result_v level per parent group + party. Returns
+    {group_key_tuple: {party: votes}} where group_key_tuple = values of `group_cols`."""
+    q = select(*group_cols, child_party.party, func_sum(child_party.votes)).join(
+        child_party, getattr(child_party, child_fk) == child_result.id
+    ).where(child_result.election_type == "presidential", child_result.year == "2023")
+    if state_geo is not None:
+        q = q.where(child_result.state_geo == state_geo)
+    q = q.group_by(*group_cols, child_party.party)
+    out: dict = {}
+    for row in db.execute(q).all():
+        *keys, party, votes = row
+        out.setdefault(tuple(keys), {})[party] = int(votes or 0)
+    return out
+
+
+def func_sum(col):
+    return _sa_func.sum(col)
+
+
+def _rollup_ward(db, state_geo):
+    """ward_evidence(rollup) + ward_result_v, summed from pu_results."""
+    _clear_official(db, WardResultV, WardResultParty, "ward_result_id", state_geo)
+    _clear_evidence(db, WardEvidence, WardEvidenceParty, "ward_evidence_id", "rollup", state_geo)
+    agg = _agg_below(db, PuResult, PuResultParty, "pu_result_id",
+                     (PuResult.ward_code, PuResult.state_geo, PuResult.lga_id), state_geo)
+    for (ward_code, sgeo, lga_id), parties in agg.items():
+        if not ward_code:
+            continue
+        winner, runner = _winner_runner(parties)
+        total = sum(parties.values())
+        ev = WardEvidence(ward_code=ward_code, election_type="presidential", year="2023",
+                          state_geo=sgeo, kind="rollup", source="polling units",
+                          method="sum-of-pu", total_votes=total)
+        db.add(ev); db.flush()
+        for p, v in parties.items():
+            db.add(WardEvidenceParty(ward_evidence_id=ev.id, party=p, votes=v))
+        r = WardResultV(ward_code=ward_code, lga_id=lga_id, election_type="presidential",
+                        year="2023", state_geo=sgeo, winner=winner, runner_up=runner,
+                        total_votes=total, source="official")
+        db.add(r); db.flush()
+        for p, v in parties.items():
+            db.add(WardResultParty(ward_result_id=r.id, party=p, votes=v))
+
+
+def _rollup_lga(db, state_geo, lga_names):
+    """lga_evidence(rollup) + lga_result_v, summed from ward_result_v."""
+    _clear_official(db, LgaResultV, LgaResultParty, "lga_result_id", state_geo)
+    _clear_evidence(db, LgaEvidence, LgaEvidenceParty, "lga_evidence_id", "rollup", state_geo)
+    agg = _agg_below(db, WardResultV, WardResultParty, "ward_result_id",
+                     (WardResultV.lga_id, WardResultV.state_geo), state_geo)
+    for (lga_id, sgeo), parties in agg.items():
+        if lga_id is None:
+            continue
+        winner, runner = _winner_runner(parties)
+        total = sum(parties.values())
+        ev = LgaEvidence(lga_id=lga_id, election_type="presidential", year="2023",
+                         state_geo=sgeo, kind="rollup", source="wards", method="sum-of-wards",
+                         total_votes=total)
+        db.add(ev); db.flush()
+        for p, v in parties.items():
+            db.add(LgaEvidenceParty(lga_evidence_id=ev.id, party=p, votes=v))
+        r = LgaResultV(lga_id=lga_id, lga=lga_names.get(lga_id, ""), election_type="presidential",
+                       year="2023", state_geo=sgeo, winner=winner, runner_up=runner,
+                       total_votes=total, source="official")
+        db.add(r); db.flush()
+        for p, v in parties.items():
+            db.add(LgaResultParty(lga_result_id=r.id, party=p, votes=v))
+
+
+def _rollup_state(db, state_geo):
+    """state_evidence(rollup) + state_result_v, summed from lga_result_v."""
+    _clear_official(db, StateResultV, StateResultParty, "state_result_id", state_geo)
+    _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "rollup", state_geo)
+    agg = _agg_below(db, LgaResultV, LgaResultParty, "lga_result_id",
+                     (LgaResultV.state_geo,), state_geo)
+    from app import geo as _geo
+    for (sgeo,), parties in agg.items():
+        if sgeo is None:
+            continue
+        winner, runner = _winner_runner(parties)
+        total = sum(parties.values())
+        ev = StateEvidence(election_type="presidential", year="2023", state_geo=sgeo,
+                           kind="rollup", source="LGAs", method="sum-of-lgas", total_votes=total)
+        db.add(ev); db.flush()
+        for p, v in parties.items():
+            db.add(StateEvidenceParty(state_evidence_id=ev.id, party=p, votes=v))
+        r = StateResultV(state=_geo.state_name(sgeo) or "", state_geo=sgeo,
+                         election_type="presidential", year="2023", winner=winner,
+                         runner_up=runner, total_votes=total, source="official")
+        db.add(r); db.flush()
+        for p, v in parties.items():
+            db.add(StateResultParty(state_result_id=r.id, party=p, votes=v))
 
 
 def main() -> None:
