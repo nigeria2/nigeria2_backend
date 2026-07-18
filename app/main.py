@@ -479,6 +479,44 @@ def public_party(acronym: str, db: Session = Depends(get_db)):
     return JSONResponse(_party_to_dict(p, _active_2019_acronyms(db)), headers=_PUBLIC_CORS)
 
 
+@app.get("/api/v1/states")
+def public_states(db: Session = Depends(get_db)):
+    """Public directory of Nigeria's 36 states + FCT with the canonical `geo_id`
+    every other endpoint keys off. Always look a state up by `geo_id`, never by
+    name (spellings vary: Nasarawa/Nassarawa, FCT/Abuja, Cross River/Cross Rivers)."""
+    states = [
+        {"geo_id": gid, "name": name}
+        for gid, name in sorted(geo.GEO_TO_NAME.items())
+        if gid != geo.NATIONAL_GEO_ID
+    ]
+    states.sort(key=lambda s: s["name"])
+    return JSONResponse({"count": len(states), "states": states}, headers=_PUBLIC_CORS)
+
+
+@app.get("/api/v1/results/{year}")
+def public_results_year(year: str, db: Session = Depends(get_db)):
+    """Public: every state we hold {year} results for, which races (presidential /
+    governor / senate / house) are available per state, each state's per-office
+    party totals + winner, and a national summary. Use a state's `geo_id` with
+    `/api/v1/results/{year}/{geo_id}` to drill into the LGA breakdown."""
+    data = results_states(year, db)
+    return JSONResponse(data, headers=_PUBLIC_CORS)
+
+
+@app.get("/api/v1/results/{year}/{geo_id}")
+def public_results_state(year: str, geo_id: str, db: Session = Depends(get_db)):
+    """Public: one state's {year} results. Presidential + governor are returned as
+    an LGA-by-party table (or a state-level summary where no LGA breakdown exists,
+    e.g. 2019 presidential); Senate + House of Reps as per-constituency candidate
+    lists. `evidence` lists every figure behind the state's score (roll-ups from
+    the LGAs plus any independent source) — each is a guess, not a definitive count."""
+    try:
+        data = results_state(year, geo_id, db)
+    except HTTPException as e:
+        return JSONResponse({"detail": e.detail}, status_code=e.status_code, headers=_PUBLIC_CORS)
+    return JSONResponse(data, headers=_PUBLIC_CORS)
+
+
 @app.get("/api/parties/elections")
 def parties_by_election(db: Session = Depends(get_db)):
     """Which party acronyms are relevant for each election type."""
