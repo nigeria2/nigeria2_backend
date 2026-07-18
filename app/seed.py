@@ -1159,18 +1159,20 @@ def load_legislative_results(db: Session) -> int:
     if not _LEGIS_2019_CSV.exists():
         return 0
 
-    # names already resolved to a politician for these 2019 NA races
-    ph_by_con: dict[tuple[str, str, str], int] = {}
-    ph_by_state: dict[tuple[str, str, str], int] = {}
-    for et, name, cons, state, pid in db.execute(
-        select(PartyHistory.election_type, PartyHistory.politician_name, PartyHistory.constituency,
-               PartyHistory.state, PartyHistory.politician_id)
-        .where(PartyHistory.year == "2019", PartyHistory.election_type.in_(("house", "senate")),
+    # names already resolved to a politician for these NA races (2019 CSV + the
+    # 2023 senate seeded into party_history by seed_senate_2023) — keyed by
+    # (year, election_type, ...) so a 2019 and 2023 same-name race don't collide
+    ph_by_con: dict[tuple[str, str, str, str], int] = {}
+    ph_by_state: dict[tuple[str, str, str, str], int] = {}
+    for yr, et, name, cons, state, pid in db.execute(
+        select(PartyHistory.year, PartyHistory.election_type, PartyHistory.politician_name,
+               PartyHistory.constituency, PartyHistory.state, PartyHistory.politician_id)
+        .where(PartyHistory.election_type.in_(("house", "senate")),
                PartyHistory.politician_id.isnot(None))
     ).all():
         nk = _name_key(name)
-        ph_by_con.setdefault((et, nk, _name_key(cons)), pid)
-        ph_by_state.setdefault((et, nk, (state or "").lower()), pid)
+        ph_by_con.setdefault((yr, et, nk, _name_key(cons)), pid)
+        ph_by_state.setdefault((yr, et, nk, (state or "").lower()), pid)
     # any politician by name within a state (fallback link)
     pol_by_state: dict[tuple[str, str], int] = {}
     for pid, pname, pstate in db.execute(select(Politician.id, Politician.name, Politician.state)).all():
@@ -1181,18 +1183,41 @@ def load_legislative_results(db: Session) -> int:
     with open(_LEGIS_2019_CSV, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             et, state, cons = r["election_type"], r["state"], r["constituency"]
+            yr = r.get("year", "2019")
             nk = _name_key(r["candidate"])
-            pid = (ph_by_con.get((et, nk, _name_key(cons)))
-                   or ph_by_state.get((et, nk, state.lower()))
+            pid = (ph_by_con.get((yr, et, nk, _name_key(cons)))
+                   or ph_by_state.get((yr, et, nk, state.lower()))
                    or pol_by_state.get((nk, state.lower())))
             db.add(LegislativeResult(
-                election_type=et, year=r.get("year", "2019"), state=state,
+                election_type=et, year=yr, state=state,
                 state_geo=geo.state_geo_id(state), constituency=cons, code=r.get("code", ""),
                 candidate=r["candidate"], gender=r.get("gender", ""), party=r.get("party", ""),
                 votes=int(r["votes"]) if str(r["votes"]).strip() else 0,
                 position=int(r["position"]) if str(r["position"]).strip() else 0,
                 elected=str(r.get("elected", "")).strip() == "1", politician_id=pid))
             n += 1
+
+    # 2023 Senate — mined from Wikipedia (elections/senate_2023.json), one row per
+    # candidate with votes/position. No INEC code (constituency is the senatorial
+    # district); winner = position 1 (or an explicit "won" flag).
+    senate_json = _ELECTIONS_DIR / "senate_2023.json"
+    if senate_json.exists():
+        for elec in json.loads(senate_json.read_text(encoding="utf-8")):
+            state = elec.get("state", "")
+            district = elec.get("district", "")
+            for c in elec.get("candidates", []):
+                nk = _name_key(c.get("name", ""))
+                pos = c.get("position") or 0
+                pid = (ph_by_con.get(("2023", "senate", nk, _name_key(district)))
+                       or ph_by_state.get(("2023", "senate", nk, state.lower()))
+                       or pol_by_state.get((nk, state.lower())))
+                db.add(LegislativeResult(
+                    election_type="senate", year="2023", state=state,
+                    state_geo=geo.state_geo_id(state), constituency=district, code="",
+                    candidate=c.get("name", ""), gender=c.get("gender", ""), party=c.get("party", ""),
+                    votes=int(c.get("votes") or 0), position=int(pos),
+                    elected=bool(c.get("won")) or pos == 1, politician_id=pid))
+                n += 1
     db.commit()
     return n
 
