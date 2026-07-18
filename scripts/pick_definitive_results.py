@@ -594,80 +594,112 @@ def _result_exists(db, model, geo_attr, geo_val, et, year) -> bool:
 
 def push_archive_evidence(db) -> dict:
     counts = {"ward": 0, "lga": 0, "state": 0, "results_written": 0}
+    lga_names = {l.id: l.name for l in db.scalars(select(Lga)).all()}
+
+    # generic bulk writer: evidence rows keyed by a geo tuple, each with [(party,votes)].
+    # Writes the evidence + (where no rollup result exists for that geo/office/year) the
+    # merged *_result_v. All via bulk_insert_mappings — ~15k rows over a remote DB needs it.
+    def _bulk_level(ev_model, ev_party, ev_fk, res_model, res_party, res_fk, geo_field,
+                    items, extra_res):
+        # items: list of dict(geo=<val>, state_geo, election_type, year, total, parties=[(p,v)])
+        if not items:
+            return 0, 0
+        db.bulk_insert_mappings(ev_model, [
+            {geo_field: it["geo"], "election_type": it["election_type"], "year": it["year"],
+             "state_geo": it["state_geo"], "kind": "declared", "source": _UNKNOWN,
+             "method": "archive", "total_votes": it["total"]}
+            for it in items
+        ])
+        db.flush()
+        # map (geo, election_type, year) -> evidence id for the declared rows we just wrote
+        ev_ids = {}
+        for eid, g, et, yr in db.execute(select(
+                ev_model.id, getattr(ev_model, geo_field), ev_model.election_type, ev_model.year)
+                .where(ev_model.kind == "declared", ev_model.source == _UNKNOWN)).all():
+            ev_ids[(g, et, yr)] = eid
+        db.bulk_insert_mappings(ev_party, [
+            {ev_fk: ev_ids[(it["geo"], it["election_type"], it["year"])], "party": p, "votes": v}
+            for it in items for (p, v) in it["parties"]
+            if (it["geo"], it["election_type"], it["year"]) in ev_ids
+        ])
+        db.flush()
+        # which (geo, office, year) already have an official (rollup) result — skip those
+        have = set(db.execute(select(
+            getattr(res_model, geo_field), res_model.election_type, res_model.year)
+            .where(res_model.source == "official")).all())
+        to_write = [it for it in items if (it["geo"], it["election_type"], it["year"]) not in have]
+        if to_write:
+            db.bulk_insert_mappings(res_model, [
+                {geo_field: it["geo"], "election_type": it["election_type"], "year": it["year"],
+                 "state_geo": it["state_geo"], "source": "official",
+                 "winner": _winner_runner(it["parties"])[0],
+                 "runner_up": _winner_runner(it["parties"])[1],
+                 "total_votes": it["total"], **extra_res(it)}
+                for it in to_write
+            ])
+            db.flush()
+            res_ids = {}
+            for rid, g, et, yr in db.execute(select(
+                    res_model.id, getattr(res_model, geo_field), res_model.election_type, res_model.year)
+                    .where(res_model.source == "official")).all():
+                res_ids[(g, et, yr)] = rid
+            db.bulk_insert_mappings(res_party, [
+                {res_fk: res_ids[(it["geo"], it["election_type"], it["year"])], "party": p, "votes": v}
+                for it in to_write for (p, v) in it["parties"]
+                if (it["geo"], it["election_type"], it["year"]) in res_ids
+            ])
+            db.flush()
+        return len(items), len(to_write)
 
     # -- ward_results_archive -> ward_evidence (2023 presidential) --------------
     _clear_evidence(db, WardEvidence, WardEvidenceParty, "ward_evidence_id", "declared", None)
+    ward_meta = {}
+    ward_items = []
     for w in db.scalars(select(WardResult)).all():
         parts = [("APC", w.votes_apc or 0), ("LP", w.votes_lp or 0),
                  ("PDP", w.votes_pdp or 0), ("NNPP", w.votes_nnpp or 0)]
-        total = w.total_votes or sum(v for _, v in parts)
-        ev = WardEvidence(ward_code=w.ward_code, election_type="presidential", year="2023",
-                          state_geo=w.state_geo, kind="declared", source=_UNKNOWN,
-                          method="archive", total_votes=total)
-        db.add(ev); db.flush()
-        for p, v in parts:
-            db.add(WardEvidenceParty(ward_evidence_id=ev.id, party=p, votes=v))
-        counts["ward"] += 1
-        if not _result_exists(db, WardResultV, "ward_code", w.ward_code, "presidential", "2023"):
-            winner, runner = _winner_runner(parts)
-            r = WardResultV(ward_code=w.ward_code, ward=w.ward, lga_id=w.lga_id,
-                            election_type="presidential", year="2023", state_geo=w.state_geo,
-                            winner=winner, runner_up=runner, total_votes=total, source="official")
-            db.add(r); db.flush()
-            for p, v in parts:
-                db.add(WardResultParty(ward_result_id=r.id, party=p, votes=v))
-            counts["results_written"] += 1
+        ward_meta[w.ward_code] = (w.ward, w.lga_id)
+        ward_items.append({"geo": w.ward_code, "state_geo": w.state_geo,
+                           "election_type": "presidential", "year": "2023",
+                           "total": w.total_votes or sum(v for _, v in parts), "parties": parts})
+    c, rw = _bulk_level(WardEvidence, WardEvidenceParty, "ward_evidence_id",
+                        WardResultV, WardResultParty, "ward_result_id", "ward_code", ward_items,
+                        lambda it: {"ward": ward_meta.get(it["geo"], ("", None))[0],
+                                    "lga_id": ward_meta.get(it["geo"], ("", None))[1]})
+    counts["ward"], counts["results_written"] = c, counts["results_written"] + rw
 
     # -- lga_party_results_archive -> lga_evidence (2023 pres+gov, 2019 gov) -----
     _clear_evidence(db, LgaEvidence, LgaEvidenceParty, "lga_evidence_id", "declared", None)
-    lga_names = {l.id: l.name for l in db.scalars(select(Lga)).all()}
     groups: dict = {}
     for x in db.scalars(select(LgaPartyResult)).all():
-        groups.setdefault((x.election_type, str(x.year), x.state_geo, x.lga_id), []).append((x.party, x.votes or 0))
-    for (et, year, sgeo, lga_id), parties in groups.items():
-        if lga_id is None:
+        if x.lga_id is None:
             continue
-        total = sum(v for _, v in parties)
-        winner, runner = _winner_runner(parties)
-        ev = LgaEvidence(lga_id=lga_id, election_type=et, year=year, state_geo=sgeo,
-                         kind="declared", source=_UNKNOWN, method="archive", total_votes=total)
-        db.add(ev); db.flush()
-        for p, v in parties:
-            db.add(LgaEvidenceParty(lga_evidence_id=ev.id, party=p, votes=v))
-        counts["lga"] += 1
-        if not _result_exists(db, LgaResultV, "lga_id", lga_id, et, year):
-            r = LgaResultV(lga_id=lga_id, lga=lga_names.get(lga_id, ""), election_type=et,
-                           year=year, state_geo=sgeo, winner=winner, runner_up=runner,
-                           total_votes=total, source="official")
-            db.add(r); db.flush()
-            for p, v in parties:
-                db.add(LgaResultParty(lga_result_id=r.id, party=p, votes=v))
-            counts["results_written"] += 1
+        groups.setdefault((x.lga_id, x.election_type, str(x.year), x.state_geo), []).append((x.party, x.votes or 0))
+    lga_items = [{"geo": lga_id, "state_geo": sgeo, "election_type": et, "year": year,
+                  "total": sum(v for _, v in parties), "parties": parties}
+                 for (lga_id, et, year, sgeo), parties in groups.items()]
+    c, rw = _bulk_level(LgaEvidence, LgaEvidenceParty, "lga_evidence_id",
+                        LgaResultV, LgaResultParty, "lga_result_id", "lga_id", lga_items,
+                        lambda it: {"lga": lga_names.get(it["geo"], "")})
+    counts["lga"], counts["results_written"] = c, counts["results_written"] + rw
 
     # -- state_presidential_archive -> state_evidence (2019 + 2023) -------------
     _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "declared", None)
     _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "inec_declared", None)
+    state_name = {}
+    state_items = []
     for s in db.scalars(select(StatePresidential)).all():
-        yr = str(s.year)
         parts = [("APC", s.apc or 0), ("PDP", s.pdp or 0), ("LP", s.lp or 0),
                  ("NNPP", s.nnpp or 0), ("Others", s.others or 0)]
         parts = [(p, v) for p, v in parts if v]
-        total = s.total_votes or sum(v for _, v in parts)
-        winner = s.winner or _winner_runner(parts)[0]
-        _, runner = _winner_runner(parts)
-        ev = StateEvidence(election_type="presidential", year=yr, state_geo=s.state_geo,
-                           kind="declared", source=_UNKNOWN, method="archive", total_votes=total)
-        db.add(ev); db.flush()
-        for p, v in parts:
-            db.add(StateEvidenceParty(state_evidence_id=ev.id, party=p, votes=v))
-        counts["state"] += 1
-        if not _result_exists(db, StateResultV, "state_geo", s.state_geo, "presidential", yr):
-            r = StateResultV(state=s.state, state_geo=s.state_geo, election_type="presidential",
-                             year=yr, winner=winner, runner_up=runner, total_votes=total, source="official")
-            db.add(r); db.flush()
-            for p, v in parts:
-                db.add(StateResultParty(state_result_id=r.id, party=p, votes=v))
-            counts["results_written"] += 1
+        state_name[s.state_geo] = s.state
+        state_items.append({"geo": s.state_geo, "state_geo": s.state_geo,
+                            "election_type": "presidential", "year": str(s.year),
+                            "total": s.total_votes or sum(v for _, v in parts), "parties": parts})
+    c, rw = _bulk_level(StateEvidence, StateEvidenceParty, "state_evidence_id",
+                        StateResultV, StateResultParty, "state_result_id", "state_geo", state_items,
+                        lambda it: {"state": state_name.get(it["geo"], "")})
+    counts["state"], counts["results_written"] = c, counts["results_written"] + rw
     return counts
 
 
