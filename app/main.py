@@ -1200,13 +1200,17 @@ _LEVEL_KIND_ORDER = {"inec_declared": 0, "declared": 0, "collation": 1, "2023_tr
 
 
 def _level_evidence(db: Session, model, party_model, fk_attr, geo_attr, geo_val,
-                    election_type: str = "presidential", year: str = "2023") -> list[dict]:
-    """Every piece of evidence for one geo level (ward/lga/state) in one election — its
-    roll-up from the level below (kind='rollup') plus any independent-source rows. Each is
-    a guess; the level's shown score is a merge of them."""
-    rows = db.scalars(select(model).where(
-        getattr(model, geo_attr) == geo_val, model.election_type == election_type,
-        model.year == year)).all()
+                    election_type: str | None = None, year: str | None = None) -> list[dict]:
+    """Every piece of evidence for one geo level (ward/lga/state) — its roll-up from the
+    level below (kind='rollup') plus any independent-source rows, across ALL offices and
+    years by default (pass election_type/year to filter). Each is a guess; the level's
+    shown score is a merge of them."""
+    q = select(model).where(getattr(model, geo_attr) == geo_val)
+    if election_type is not None:
+        q = q.where(model.election_type == election_type)
+    if year is not None:
+        q = q.where(model.year == year)
+    rows = db.scalars(q).all()
     if not rows:
         return []
     parties_by: dict[int, list] = defaultdict(list)
@@ -1228,7 +1232,11 @@ def _level_evidence(db: Session, model, party_model, fk_attr, geo_attr, geo_val,
         }
         for r in rows
     ]
-    out.sort(key=lambda x: (_LEVEL_KIND_ORDER.get(x["kind"], 5), x["id"]))
+    # newest year first, then office (pres, gov, senate, house), then kind, then id
+    _et_order = {"presidential": 0, "governor": 1, "senate": 2, "house": 3}
+    out.sort(key=lambda x: (-int(x["year"]) if str(x["year"]).isdigit() else 0,
+                            _et_order.get(x["election_type"], 5),
+                            _LEVEL_KIND_ORDER.get(x["kind"], 5), x["id"]))
     return out
 
 
