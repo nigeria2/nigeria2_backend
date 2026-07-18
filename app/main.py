@@ -389,30 +389,70 @@ def predictions_trend(db: Session = Depends(get_db)):
 
 
 # --- political parties (public) ---
-@app.get("/api/parties")
-def list_parties(db: Session = Depends(get_db)):
-    rows = db.scalars(select(Party).order_by(Party.name)).all()
+def _party_to_dict(p: Party, active_2019: set[str]) -> dict:
+    return {
+        "acronym": p.acronym,
+        "name": p.name,
+        "chairman": p.chairman,
+        "secretary": p.secretary,
+        "treasurer": p.treasurer,
+        "financial_secretary": p.financial_secretary,
+        "legal_adviser": p.legal_adviser,
+        "address": p.address,
+        "active": p.acronym.strip().upper() in active_2019,
+    }
+
+
+def _active_2019_acronyms(db: Session) -> set[str]:
     # "Active" = fielded at least one candidate in the 2019 general elections
     # (governor/presidential/senate/house) -- our most complete single-year
     # dataset, so the most reliable signal for "still contests elections".
-    active_2019 = {
+    return {
         (a or "").strip().upper()
         for a in db.scalars(select(PartyHistory.party).where(PartyHistory.year == "2019").distinct()).all()
     }
-    return [
-        {
-            "acronym": p.acronym,
-            "name": p.name,
-            "chairman": p.chairman,
-            "secretary": p.secretary,
-            "treasurer": p.treasurer,
-            "financial_secretary": p.financial_secretary,
-            "legal_adviser": p.legal_adviser,
-            "address": p.address,
-            "active": p.acronym.strip().upper() in active_2019,
-        }
-        for p in rows
-    ]
+
+
+@app.get("/api/parties")
+def list_parties(db: Session = Depends(get_db)):
+    rows = db.scalars(select(Party).order_by(Party.name)).all()
+    active_2019 = _active_2019_acronyms(db)
+    return [_party_to_dict(p, active_2019) for p in rows]
+
+
+# --- Public API (v1) -------------------------------------------------------
+# A stable, documented, CORS-open surface any third party may call. Unlike the
+# app endpoints above (locked to nigeria2.com with credentials), these return
+# `Access-Control-Allow-Origin: *` and require no auth. See /api on the site.
+_PUBLIC_CORS = {"Access-Control-Allow-Origin": "*"}
+
+
+@app.get("/api/v1/parties")
+def public_list_parties(
+    active: bool | None = None,
+    db: Session = Depends(get_db),
+):
+    """Public list of Nigerian political parties (acronym, full name, national
+    officers, address, and whether the party was active in the 2019 general
+    election). Optional `active=true|false` filters by activity."""
+    active_2019 = _active_2019_acronyms(db)
+    rows = db.scalars(select(Party).order_by(Party.name)).all()
+    items = [_party_to_dict(p, active_2019) for p in rows]
+    if active is not None:
+        items = [p for p in items if p["active"] is active]
+    return JSONResponse(
+        {"count": len(items), "parties": items},
+        headers=_PUBLIC_CORS,
+    )
+
+
+@app.get("/api/v1/parties/{acronym}")
+def public_party(acronym: str, db: Session = Depends(get_db)):
+    """Public lookup of a single party by its acronym (case-insensitive), e.g. `APC`."""
+    p = db.scalar(select(Party).where(func.upper(Party.acronym) == acronym.strip().upper()))
+    if p is None:
+        return JSONResponse({"detail": "party not found"}, status_code=404, headers=_PUBLIC_CORS)
+    return JSONResponse(_party_to_dict(p, _active_2019_acronyms(db)), headers=_PUBLIC_CORS)
 
 
 @app.get("/api/parties/elections")
@@ -1026,10 +1066,26 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
     }
 
 
+def _sheet_recordings(raw: str | None) -> list[dict]:
+    """A single stored transcription may hold one EC8A recording (an object) or several
+    recordings of the same sheet produced by different transcription methods (a list).
+    Normalise both into a flat list of recordings so the UI can show one entry each."""
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (ValueError, TypeError):
+        return []
+    recs = data if isinstance(data, list) else [data]
+    return [r for r in recs if isinstance(r, dict)]
+
+
 @app.get("/api/polling-units/{pu_code:path}/sheets")
 def pu_sheets(pu_code: str, db: Session = Depends(get_db)):
     """All result sheets we hold for one polling unit (one per race), including the INEC
-    sheet URL and our verbatim EC8A transcription JSON where available."""
+    sheet URL and our verbatim EC8A transcription(s). A sheet can carry more than one
+    recording — the same result sheet transcribed by different methods — so
+    `recordings` is always a list (one entry per recording)."""
     rows = db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
                       .order_by(ElectionSheet.election_type)).all()
     return {
@@ -1038,7 +1094,9 @@ def pu_sheets(pu_code: str, db: Session = Depends(get_db)):
             {
                 "election_type": s.election_type, "year": s.year, "state": s.state,
                 "sheet_url": s.sheet_url or "", "status": s.sheet_status,
-                "transcription": (json.loads(s.json) if s.json else None),
+                "recordings": _sheet_recordings(s.json),
+                # kept for backwards compatibility (first recording, or null)
+                "transcription": (_sheet_recordings(s.json)[:1] or [None])[0],
             }
             for s in rows
         ],
@@ -1108,6 +1166,11 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
             "registered_voters": int(reg) if reg else None,
             "winner": (wr[code].winner if code in wr else ""),
             "runner_up": (wr[code].runner_up if code in wr else ""),
+            # 2023 presidential votes per major party (verified ward aggregate)
+            "scores": ({"APC": wr[code].votes_apc, "LP": wr[code].votes_lp,
+                        "PDP": wr[code].votes_pdp, "NNPP": wr[code].votes_nnpp}
+                       if code in wr else {}),
+            "total_votes": (wr[code].total_votes if code in wr else None),
         }
         for ward, code, cnt, reg in ward_rows
     ]
