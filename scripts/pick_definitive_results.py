@@ -38,7 +38,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
 from app.models import (  # noqa: E402
-    SheetTranscription, TranscriptionParty,
+    Evidence, EvidenceParty,
     PuResult, PuResultParty,
     WardResultV, WardResultParty,
     LgaResultV, LgaResultParty,
@@ -62,15 +62,18 @@ class Decision:
     registered_voters: int | None = None
     accredited_voters: int | None = None
     parties: dict[str, int] = field(default_factory=dict)   # party -> votes (may be empty)
-    chosen_transcription_id: int | None = None
+    chosen_evidence_id: int | None = None
     method: str = "placeholder"
 
 
 @dataclass
-class Submission:
-    """One transcription flattened for the algorithm's convenience."""
+class EvidenceRow:
+    """One piece of evidence flattened for the algorithm's convenience."""
     id: int
+    kind: str                         # inec | llm | human | crowd
     source: str
+    submitted_by: str
+    submitted_by_id: int | None
     method: str
     created_at: object
     registered_voters: int | None
@@ -79,20 +82,25 @@ class Submission:
     parties: dict[str, int]          # party -> votes (blank figures dropped)
 
 
-def choose(subs: list[Submission]) -> Decision | None:
-    """Choose the definitive result for ONE polling unit / election from its
-    submissions. Return None to leave the PU without a definitive result.
+def choose(evs: list[EvidenceRow]) -> Decision | None:
+    """Choose the definitive result for ONE polling unit / election by weighing its
+    EVIDENCE. Return None to leave the PU without a definitive result.
 
-    ⚠️  PLACEHOLDER POLICY — REPLACE WITH THE REAL ALGORITHM.
-    Current stub: pick the most recent submission that has any party figures;
-    if none has figures, pick the most recent submission for its summary only.
+    ⚠️  PLACEHOLDER POLICY — REPLACE WITH THE REAL ALGORITHM (which should weigh evidence
+    by kind and by the submitting user's trust). Current stub: prefer INEC evidence with
+    party figures; else the most recent evidence with figures; else the most recent for a
+    summary only.
     """
-    if not subs:
+    if not evs:
         return None
-    with_parties = [s for s in subs if s.parties]
-    pick = (max(with_parties, key=lambda s: (s.created_at is not None, s.created_at))
-            if with_parties else
-            max(subs, key=lambda s: (s.created_at is not None, s.created_at)))
+    with_parties = [e for e in evs if e.parties]
+    inec_with = [e for e in with_parties if e.kind == "inec"]
+    if inec_with:
+        pick = inec_with[0]
+    elif with_parties:
+        pick = max(with_parties, key=lambda e: (e.created_at is not None, e.created_at))
+    else:
+        pick = max(evs, key=lambda e: (e.created_at is not None, e.created_at))
     ranked = sorted(pick.parties.items(), key=lambda kv: kv[1], reverse=True)
     winner = ranked[0][0] if ranked else ""
     runner = ranked[1][0] if len(ranked) > 1 else ""
@@ -101,29 +109,30 @@ def choose(subs: list[Submission]) -> Decision | None:
         winner=winner, runner_up=runner, total_votes=total,
         valid_votes=pick.valid_votes, registered_voters=pick.registered_voters,
         accredited_voters=pick.accredited_voters, parties=dict(pick.parties),
-        chosen_transcription_id=pick.id, method="stub:most-recent-with-figures",
+        chosen_evidence_id=pick.id, method=f"stub:prefer-inec ({pick.kind})",
     )
 # --------------------------------------------------------------------------- #
 
 
-def _load_submissions(db: Session, year: str, election: str | None):
-    """{(pu_code, election_type): [Submission, ...]} for the given year."""
-    q = select(SheetTranscription).where(SheetTranscription.year == year)
+def _load_evidence(db: Session, year: str, election: str | None):
+    """{(pu_code, election_type): [EvidenceRow, ...]} for the given year."""
+    q = select(Evidence).where(Evidence.year == year)
     if election:
-        q = q.where(SheetTranscription.election_type == election)
-    trs = db.scalars(q).all()
-    parties_by_tr: dict[int, dict[str, int]] = defaultdict(dict)
-    if trs:
-        for tp in db.scalars(select(TranscriptionParty).where(
-                TranscriptionParty.transcription_id.in_([t.id for t in trs]))).all():
-            if tp.votes is not None:
-                parties_by_tr[tp.transcription_id][tp.party] = tp.votes
-    out: dict[tuple[str, str], list[Submission]] = defaultdict(list)
-    for t in trs:
-        out[(t.pu_code, t.election_type)].append(Submission(
-            id=t.id, source=t.source, method=t.method, created_at=t.created_at,
-            registered_voters=t.registered_voters, accredited_voters=t.accredited_voters,
-            valid_votes=t.valid_votes, parties=parties_by_tr.get(t.id, {}),
+        q = q.where(Evidence.election_type == election)
+    evs = db.scalars(q).all()
+    parties_by_ev: dict[int, dict[str, int]] = defaultdict(dict)
+    if evs:
+        for ep in db.scalars(select(EvidenceParty).where(
+                EvidenceParty.evidence_id.in_([e.id for e in evs]))).all():
+            if ep.votes is not None:
+                parties_by_ev[ep.evidence_id][ep.party] = ep.votes
+    out: dict[tuple[str, str], list[EvidenceRow]] = defaultdict(list)
+    for e in evs:
+        out[(e.pu_code, e.election_type)].append(EvidenceRow(
+            id=e.id, kind=e.kind, source=e.source, submitted_by=e.submitted_by,
+            submitted_by_id=e.submitted_by_id, method=e.method, created_at=e.created_at,
+            registered_voters=e.registered_voters, accredited_voters=e.accredited_voters,
+            valid_votes=e.valid_votes, parties=parties_by_ev.get(e.id, {}),
         ))
     return out
 
@@ -149,21 +158,21 @@ def run(year: str, election: str | None, commit: bool) -> None:
         print("DATABASE_URL not set — aborting.")
         return
     try:
-        subs = _load_submissions(db, year, election)
+        evidence = _load_evidence(db, year, election)
         geo = _pu_geo(db)
-        if not subs:
-            print(f"No transcriptions found for year={year}"
+        if not evidence:
+            print(f"No evidence found for year={year}"
                   f"{'/' + election if election else ''}. Nothing to do.")
             return
 
-        # 1) choose a definitive per (pu, election)
+        # 1) choose a definitive per (pu, election) by weighing the evidence
         decisions: dict[tuple[str, str], Decision] = {}
-        for key, slist in subs.items():
-            d = choose(slist)
+        for key, elist in evidence.items():
+            d = choose(elist)
             if d is not None:
                 decisions[key] = d
         print(f"Polling units with a chosen definitive: {len(decisions)} "
-              f"(from {len(subs)} pu×election groups)")
+              f"(from {len(evidence)} pu×election groups)")
 
         # accumulate rollups: {(geo_key, election_type): {party: votes}}
         ward_acc: dict = defaultdict(lambda: defaultdict(int))
@@ -193,7 +202,7 @@ def run(year: str, election: str | None, commit: bool) -> None:
             # show a small sample and stop
             for key, d in list(decisions.items())[:5]:
                 print(f"  PU {key[0]} [{key[1]}] -> winner={d.winner} total={d.total_votes} "
-                      f"parties={d.parties} (from transcription {d.chosen_transcription_id})")
+                      f"parties={d.parties} (from evidence {d.chosen_evidence_id})")
             print("\nDRY RUN — no writes. Re-run with --commit to persist.")
             return
 
@@ -230,7 +239,7 @@ def _replace_pu_results(db, year, election, decisions, geo):
             ward_code=ward_code, winner=d.winner, runner_up=d.runner_up,
             total_votes=d.total_votes, valid_votes=d.valid_votes,
             registered_voters=d.registered_voters, accredited_voters=d.accredited_voters,
-            source="rolled_up", chosen_transcription_id=d.chosen_transcription_id, method=d.method,
+            source="rolled_up", chosen_evidence_id=d.chosen_evidence_id, method=d.method,
         )
         db.add(r); db.flush()
         for party, votes in d.parties.items():
@@ -319,10 +328,20 @@ def import_from_archive(commit: bool, state_geo=None) -> None:
             print("\nDRY RUN — no writes. Re-run with --commit to import into the unified tables.")
             return
 
-        # 1) polling_units.votes_* -> pu_results (presidential 2023). Bulk for speed
-        # (there are ~177k polling units nationwide).
+        # 1) polling_units.votes_* -> an INEC EVIDENCE row per unit, then derive a
+        # pu_result pointing at it. Every result therefore has >=1 evidence row.
+        # Bulk for speed (~177k units nationwide).
         _clear_official(db, PuResult, PuResultParty, "pu_result_id", state_geo)
-        pu_rows, pu_party_src = [], []  # parent mappings; (pu_code, [(party, votes)])
+        # clear prior INEC evidence for this scope so re-runs don't duplicate
+        eq = select(Evidence.id).where(Evidence.kind == "inec")
+        if state_geo is not None:
+            eq = eq.where(Evidence.state_geo == state_geo)
+        ev_ids = [i for (i,) in db.execute(eq).all()]
+        if ev_ids:
+            db.execute(delete(EvidenceParty).where(EvidenceParty.evidence_id.in_(ev_ids)))
+            db.execute(delete(Evidence).where(Evidence.id.in_(ev_ids)))
+
+        units = []  # (pu_code, state_geo, lga_id, ward_code, winner, runner, total, reg, [(party,votes)])
         for p in db.scalars(_sfilter(select(PollingUnit), PollingUnit)).all():
             parties = [(k, v) for k, v in (("APC", p.votes_apc), ("LP", p.votes_lp),
                                            ("PDP", p.votes_pdp), ("NNPP", p.votes_nnpp)) if v is not None]
@@ -331,22 +350,40 @@ def import_from_archive(commit: bool, state_geo=None) -> None:
             winner = p.winner or _winner_runner(parties)[0]
             runner = p.runner_up or _winner_runner(parties)[1]
             total = p.known_votes if p.known_votes is not None else sum(v for _, v in parties)
-            pu_rows.append({"pu_code": p.pu_code, "election_type": "presidential", "year": "2023",
-                            "state_geo": p.state_geo, "lga_id": p.lga_id, "ward_code": p.ward_code,
-                            "winner": winner, "runner_up": runner, "total_votes": total,
-                            "registered_voters": p.registered_voters, "source": "official", "method": "inec"})
-            pu_party_src.append((p.pu_code, parties))
-        pu_written = len(pu_rows)
-        if pu_rows:
-            db.bulk_insert_mappings(PuResult, pu_rows)
+            units.append((p.pu_code, p.state_geo, p.lga_id, p.ward_code, winner, runner,
+                          total, p.registered_voters, parties))
+        pu_written = len(units)
+        if units:
+            # 1a) INEC evidence rows
+            db.bulk_insert_mappings(Evidence, [
+                {"pu_code": u[0], "election_type": "presidential", "year": "2023",
+                 "state_geo": u[1], "kind": "inec", "source": "INEC IReV",
+                 "method": "inec-declared", "submitted_by": "INEC", "valid_votes": u[6]}
+                for u in units
+            ])
+            db.flush()
+            ev_by_code = dict(db.execute(
+                select(Evidence.pu_code, Evidence.id).where(Evidence.kind == "inec")).all())
+            db.bulk_insert_mappings(EvidenceParty, [
+                {"evidence_id": ev_by_code[u[0]], "party": party, "votes": votes}
+                for u in units for party, votes in u[8] if u[0] in ev_by_code
+            ])
+            # 1b) derived pu_results, each pointing at its INEC evidence
+            db.bulk_insert_mappings(PuResult, [
+                {"pu_code": u[0], "election_type": "presidential", "year": "2023",
+                 "state_geo": u[1], "lga_id": u[2], "ward_code": u[3], "winner": u[4],
+                 "runner_up": u[5], "total_votes": u[6], "registered_voters": u[7],
+                 "source": "official", "method": "inec",
+                 "chosen_evidence_id": ev_by_code.get(u[0])}
+                for u in units
+            ])
             db.flush()
             id_by_code = dict(db.execute(
                 select(PuResult.pu_code, PuResult.id).where(PuResult.source == "official")).all())
-            party_rows = [
-                {"pu_result_id": id_by_code[code], "party": party, "votes": votes or 0}
-                for code, parties in pu_party_src for party, votes in parties if code in id_by_code
-            ]
-            db.bulk_insert_mappings(PuResultParty, party_rows)
+            db.bulk_insert_mappings(PuResultParty, [
+                {"pu_result_id": id_by_code[u[0]], "party": party, "votes": votes or 0}
+                for u in units for party, votes in u[8] if u[0] in id_by_code
+            ])
             db.flush()
 
         # 2) ward_results_archive -> ward_result_v

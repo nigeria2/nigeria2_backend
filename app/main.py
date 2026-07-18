@@ -45,8 +45,8 @@ from .models import (
     Ward,
     PredictionComponent,
     WardPrediction,
-    SheetTranscription,
-    TranscriptionParty,
+    Evidence,
+    EvidenceParty,
     PuResult,
     PuResultParty,
     WardResultV,
@@ -1151,48 +1151,41 @@ def _sheet_recordings(raw: str | None) -> list[dict]:
     return [r for r in recs if isinstance(r, dict)]
 
 
-def _transcription_entries(db: Session, pu_code: str) -> list[dict]:
-    """Every transcription (submission) we hold for a polling unit, from the unified
-    sheet_transcriptions (+ transcription_parties). One entry per recording — different
-    methods/sources of the same sheet are separate entries. Falls back to the legacy
-    ElectionSheet.json recordings when no unified rows exist yet (before the picker/
-    ingest fills them)."""
-    trs = db.scalars(select(SheetTranscription).where(SheetTranscription.pu_code == pu_code)
-                     .order_by(SheetTranscription.election_type, SheetTranscription.created_at)).all()
-    if trs:
-        parties_by_tr: dict[int, list] = defaultdict(list)
-        for tp in db.scalars(select(TranscriptionParty).where(
-                TranscriptionParty.transcription_id.in_([t.id for t in trs]))).all():
-            parties_by_tr[tp.transcription_id].append(
-                {"party": tp.party, "votes": tp.votes, "votes_words": tp.votes_words})
-        return [
-            {
-                "id": t.id, "election_type": t.election_type, "year": t.year,
-                "source": t.source, "method": t.method, "submitted_by": t.submitted_by,
-                "poll_summary": {
-                    "registered_voters": t.registered_voters, "accredited_voters": t.accredited_voters,
-                    "valid_votes": t.valid_votes, "rejected_votes": t.rejected_votes,
-                    "total_used_ballots": t.total_used_ballots,
-                },
-                "party_results": sorted(parties_by_tr.get(t.id, []),
-                                        key=lambda x: (x["votes"] is None, -(x["votes"] or 0))),
-            }
-            for t in trs
-        ]
-    # legacy fallback: recordings embedded in ElectionSheet.json
-    out: list[dict] = []
-    for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
-                        .order_by(ElectionSheet.election_type)).all():
-        for i, rec in enumerate(_sheet_recordings(s.json)):
-            out.append({
-                "id": None, "election_type": s.election_type, "year": s.year,
-                "source": "ec8a-json", "method": (rec.get("method") or ""), "submitted_by": "",
-                "poll_summary": rec.get("poll_summary") or {},
-                "party_results": rec.get("party_results") or [],
-                "source_image": rec.get("source_image"),
-                "legacy_index": i,
-            })
-    return out
+# the order evidence kinds should be presented in (INEC first, then transcriptions)
+_EVIDENCE_KIND_ORDER = {"inec": 0, "human": 1, "llm": 2, "crowd": 3}
+
+
+def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
+    """Every piece of EVIDENCE we hold for a polling unit, from the unified evidence
+    (+ evidence_parties) tables. Each entry has a kind (inec | llm | human | crowd), its
+    source (where it came from) and who submitted it (for weighting). The INEC figure is
+    the first piece of evidence, so any unit with a result has >=1 entry."""
+    ev = db.scalars(select(Evidence).where(Evidence.pu_code == pu_code)).all()
+    if not ev:
+        return []
+    parties_by_ev: dict[int, list] = defaultdict(list)
+    for ep in db.scalars(select(EvidenceParty).where(
+            EvidenceParty.evidence_id.in_([e.id for e in ev]))).all():
+        parties_by_ev[ep.evidence_id].append(
+            {"party": ep.party, "votes": ep.votes, "votes_words": ep.votes_words})
+    entries = [
+        {
+            "id": e.id, "election_type": e.election_type, "year": e.year,
+            "kind": e.kind, "source": e.source, "method": e.method,
+            "submitted_by": e.submitted_by, "submitted_by_id": e.submitted_by_id,
+            "created_at": (e.created_at.isoformat() if e.created_at else None),
+            "poll_summary": {
+                "registered_voters": e.registered_voters, "accredited_voters": e.accredited_voters,
+                "valid_votes": e.valid_votes, "rejected_votes": e.rejected_votes,
+                "total_used_ballots": e.total_used_ballots,
+            },
+            "party_results": sorted(parties_by_ev.get(e.id, []),
+                                    key=lambda x: (x["votes"] is None, -(x["votes"] or 0))),
+        }
+        for e in ev
+    ]
+    entries.sort(key=lambda x: (x["election_type"], _EVIDENCE_KIND_ORDER.get(x["kind"], 9), x["id"]))
+    return entries
 
 
 @app.get("/api/polling-units/{pu_code:path}/sheets")
@@ -1238,7 +1231,7 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
             "runner_up": r.runner_up, "total_votes": r.total_votes, "valid_votes": r.valid_votes,
             "registered_voters": r.registered_voters, "accredited_voters": r.accredited_voters,
             "source": r.source, "method": r.method,
-            "chosen_transcription_id": r.chosen_transcription_id,
+            "chosen_evidence_id": r.chosen_evidence_id,
             "parties": dict(sorted(pr_parties.get(r.id, {}).items(), key=lambda x: -(x[1] or 0))),
         }
         for r in presults
@@ -1268,7 +1261,7 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
         "accredited_voters": (pruni.accredited_voters if (pruni and pruni.accredited_voters) else None),
         "definitive": definitive,          # one per election_type, with party breakdown
         "sheets": sheets,                  # INEC IReV links
-        "transcriptions": _transcription_entries(db, pu_code),  # ALL alternative entries
+        "evidence": _evidence_entries(db, pu_code),  # every piece of evidence (INEC first)
     }
 
 

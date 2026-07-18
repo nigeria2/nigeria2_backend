@@ -680,9 +680,14 @@ class PredictionComponent(Base):
 # child table — so the model is party-agnostic (full ballot, any office via
 # `election_type`) and every level shares the same shape and serializer.
 #
-#   election_sheet ──< sheet_transcription ──< transcription_party   (submissions)
-#   pu_result ──< pu_result_party                                    (definitive PU)
+#   election_sheet ──< evidence ──< evidence_party                   (pieces of evidence)
+#   pu_result ──< pu_result_party                                    (derived definitive PU)
 #   ward_result / lga_result / state_result  (+ *_party)             (per-level result)
+#
+# EVIDENCE: every recorded number for a unit is a piece of evidence. The INEC-reported
+# figure is the FIRST piece of evidence (kind='inec'); LLM- and human-transcribed sheets
+# are further evidence. pu_result is DERIVED from weighing the evidence and points at the
+# chosen row. So any unit with a result always has >=1 evidence row.
 #
 # CRITICAL: the ward/lga/state result tables are FIRST-CLASS and directly
 # writable — not caches derived only from pu_result. Data often arrives top-down
@@ -700,14 +705,24 @@ RESULT_SOURCES = ("declared", "rolled_up", "official")
 ELECTION_TYPES = ("presidential", "governor", "senate", "house")
 
 
-class SheetTranscription(Base):
-    """One transcription (submission) of an INEC EC8A result sheet. A single sheet
-    (ElectionSheet) can have many of these — the same scan transcribed by different
-    people/methods/sources. Party votes live in the child `transcription_party`
-    rows; the poll-summary fields are captured here. `raw` keeps the verbatim
-    original payload for audit."""
+# Recognised kinds of evidence (the type of a recorded figure).
+EVIDENCE_KINDS = ("inec", "llm", "human", "crowd")
 
-    __tablename__ = "sheet_transcriptions"
+
+class Evidence(Base):
+    """One PIECE OF EVIDENCE for a polling unit's result in one election. Every recorded
+    number is evidence: the INEC-reported figure (kind='inec'), an LLM transcription of the
+    scanned sheet (kind='llm'), a human transcription (kind='human'), etc. Party votes live
+    in the child `evidence_party` rows; the poll-summary fields are captured here.
+
+    Provenance (so multiple evidence points are distinguishable and weightable):
+      kind           — the type of evidence (inec | llm | human | crowd)
+      source         — where it came from: 'INEC IReV', an LLM model name, a sheet id/url…
+      submitted_by   — human-readable label of who added it
+      submitted_by_id— the users.id who added it (for weighting), when known
+    `raw` keeps the verbatim original payload for audit."""
+
+    __tablename__ = "evidence"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     sheet_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # FK election_sheets.id
@@ -715,10 +730,12 @@ class SheetTranscription(Base):
     election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
     year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
     state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
-    source: Mapped[str] = mapped_column(String(30), default="")   # ec8a-json | crowd | ocr | ...
+    kind: Mapped[str] = mapped_column(String(20), index=True, default="inec")  # see EVIDENCE_KINDS
+    source: Mapped[str] = mapped_column(String(120), index=True, default="")   # where it came from
     method: Mapped[str] = mapped_column(String(60), default="")   # free text describing how
-    submitted_by: Mapped[str] = mapped_column(String(120), default="")  # user id/label, optional
-    # poll summary (all nullable — a transcription may omit some fields)
+    submitted_by: Mapped[str] = mapped_column(String(120), index=True, default="")  # who added it (label)
+    submitted_by_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # users.id
+    # poll summary (all nullable — a piece of evidence may omit some fields)
     registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -728,24 +745,23 @@ class SheetTranscription(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
-class TranscriptionParty(Base):
-    """One party's recorded votes within a single transcription (long form)."""
+class EvidenceParty(Base):
+    """One party's recorded votes within a single piece of evidence (long form)."""
 
-    __tablename__ = "transcription_parties"
+    __tablename__ = "evidence_parties"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    transcription_id: Mapped[int] = mapped_column(Integer, index=True)  # FK sheet_transcriptions.id
+    evidence_id: Mapped[int] = mapped_column(Integer, index=True)  # FK evidence.id
     party: Mapped[str] = mapped_column(String(20), index=True)
     votes: Mapped[int | None] = mapped_column(Integer, nullable=True)   # figure (may be blank on sheet)
     votes_words: Mapped[str] = mapped_column(String(120), default="")   # votes in words, verbatim
 
 
 class PuResult(Base):
-    """The DEFINITIVE result for one polling unit in one election — the single
-    source of truth the picker script writes. `chosen_transcription_id` links back
-    to the exact transcription this figure came from (provenance). Party-by-party
-    votes are in `pu_result_party` when known (may be absent for a summary-only
-    result)."""
+    """The DEFINITIVE result for one polling unit in one election — DERIVED by weighing
+    the evidence. `chosen_evidence_id` links back to the piece of evidence this figure was
+    taken from (provenance). Party-by-party votes are in `pu_result_party` when known (may
+    be absent for a summary-only result)."""
 
     __tablename__ = "pu_results"
 
@@ -763,7 +779,7 @@ class PuResult(Base):
     registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
-    chosen_transcription_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    chosen_evidence_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # FK evidence.id
     method: Mapped[str] = mapped_column(String(60), default="")  # how the definitive was chosen
     decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
