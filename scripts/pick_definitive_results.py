@@ -575,6 +575,124 @@ def _load_state_declared(db, state_geo) -> int:
     return n
 
 
+# --------------------------------------------------------------------------- #
+# Push the ARCHIVE tables straight in as evidence (source unknown)
+# --------------------------------------------------------------------------- #
+# The *_archive tables (renamed from the old result tables) hold already-aggregated
+# figures. We record each as its own piece of evidence (kind='declared', source='unknown')
+# at its level, COEXISTING with any roll-up evidence. Where a rollup already produced the
+# level's *_result_v, we leave that result as the merge basis; where none exists (governor
+# races, non-drilled presidential), the archive figure becomes the result.
+_UNKNOWN = "unknown"
+
+
+def _result_exists(db, model, geo_attr, geo_val, et, year) -> bool:
+    return db.scalar(select(model.id).where(
+        getattr(model, geo_attr) == geo_val, model.election_type == et, model.year == year,
+        model.source == "official").limit(1)) is not None
+
+
+def push_archive_evidence(db) -> dict:
+    counts = {"ward": 0, "lga": 0, "state": 0, "results_written": 0}
+
+    # -- ward_results_archive -> ward_evidence (2023 presidential) --------------
+    _clear_evidence(db, WardEvidence, WardEvidenceParty, "ward_evidence_id", "declared", None)
+    for w in db.scalars(select(WardResult)).all():
+        parts = [("APC", w.votes_apc or 0), ("LP", w.votes_lp or 0),
+                 ("PDP", w.votes_pdp or 0), ("NNPP", w.votes_nnpp or 0)]
+        total = w.total_votes or sum(v for _, v in parts)
+        ev = WardEvidence(ward_code=w.ward_code, election_type="presidential", year="2023",
+                          state_geo=w.state_geo, kind="declared", source=_UNKNOWN,
+                          method="archive", total_votes=total)
+        db.add(ev); db.flush()
+        for p, v in parts:
+            db.add(WardEvidenceParty(ward_evidence_id=ev.id, party=p, votes=v))
+        counts["ward"] += 1
+        if not _result_exists(db, WardResultV, "ward_code", w.ward_code, "presidential", "2023"):
+            winner, runner = _winner_runner(parts)
+            r = WardResultV(ward_code=w.ward_code, ward=w.ward, lga_id=w.lga_id,
+                            election_type="presidential", year="2023", state_geo=w.state_geo,
+                            winner=winner, runner_up=runner, total_votes=total, source="official")
+            db.add(r); db.flush()
+            for p, v in parts:
+                db.add(WardResultParty(ward_result_id=r.id, party=p, votes=v))
+            counts["results_written"] += 1
+
+    # -- lga_party_results_archive -> lga_evidence (2023 pres+gov, 2019 gov) -----
+    _clear_evidence(db, LgaEvidence, LgaEvidenceParty, "lga_evidence_id", "declared", None)
+    lga_names = {l.id: l.name for l in db.scalars(select(Lga)).all()}
+    groups: dict = {}
+    for x in db.scalars(select(LgaPartyResult)).all():
+        groups.setdefault((x.election_type, str(x.year), x.state_geo, x.lga_id), []).append((x.party, x.votes or 0))
+    for (et, year, sgeo, lga_id), parties in groups.items():
+        if lga_id is None:
+            continue
+        total = sum(v for _, v in parties)
+        winner, runner = _winner_runner(parties)
+        ev = LgaEvidence(lga_id=lga_id, election_type=et, year=year, state_geo=sgeo,
+                         kind="declared", source=_UNKNOWN, method="archive", total_votes=total)
+        db.add(ev); db.flush()
+        for p, v in parties:
+            db.add(LgaEvidenceParty(lga_evidence_id=ev.id, party=p, votes=v))
+        counts["lga"] += 1
+        if not _result_exists(db, LgaResultV, "lga_id", lga_id, et, year):
+            r = LgaResultV(lga_id=lga_id, lga=lga_names.get(lga_id, ""), election_type=et,
+                           year=year, state_geo=sgeo, winner=winner, runner_up=runner,
+                           total_votes=total, source="official")
+            db.add(r); db.flush()
+            for p, v in parties:
+                db.add(LgaResultParty(lga_result_id=r.id, party=p, votes=v))
+            counts["results_written"] += 1
+
+    # -- state_presidential_archive -> state_evidence (2019 + 2023) -------------
+    _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "declared", None)
+    _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "inec_declared", None)
+    for s in db.scalars(select(StatePresidential)).all():
+        yr = str(s.year)
+        parts = [("APC", s.apc or 0), ("PDP", s.pdp or 0), ("LP", s.lp or 0),
+                 ("NNPP", s.nnpp or 0), ("Others", s.others or 0)]
+        parts = [(p, v) for p, v in parts if v]
+        total = s.total_votes or sum(v for _, v in parts)
+        winner = s.winner or _winner_runner(parts)[0]
+        _, runner = _winner_runner(parts)
+        ev = StateEvidence(election_type="presidential", year=yr, state_geo=s.state_geo,
+                           kind="declared", source=_UNKNOWN, method="archive", total_votes=total)
+        db.add(ev); db.flush()
+        for p, v in parts:
+            db.add(StateEvidenceParty(state_evidence_id=ev.id, party=p, votes=v))
+        counts["state"] += 1
+        if not _result_exists(db, StateResultV, "state_geo", s.state_geo, "presidential", yr):
+            r = StateResultV(state=s.state, state_geo=s.state_geo, election_type="presidential",
+                             year=yr, winner=winner, runner_up=runner, total_votes=total, source="official")
+            db.add(r); db.flush()
+            for p, v in parts:
+                db.add(StateResultParty(state_result_id=r.id, party=p, votes=v))
+            counts["results_written"] += 1
+    return counts
+
+
+def run_push_archive_evidence(commit: bool) -> None:
+    db = SessionLocal() if SessionLocal else None
+    if db is None:
+        print("DATABASE_URL not set — aborting."); return
+    try:
+        n_w = db.scalar(select(func_count()).select_from(WardResult))
+        n_l = db.scalar(select(func_count()).select_from(LgaPartyResult))
+        n_s = db.scalar(select(func_count()).select_from(StatePresidential))
+        print(f"Archive rows to push as evidence: ward_results={n_w}, "
+              f"lga_party_results={n_l}, state_presidential={n_s}")
+        if not commit:
+            print("\nDRY RUN — no writes. Re-run with --commit."); return
+        counts = push_archive_evidence(db)
+        db.commit()
+        print(f"Pushed archive evidence (kind='declared', source='unknown'): "
+              f"{counts['ward']} ward, {counts['lga']} LGA (pres+gov, 2019+2023), "
+              f"{counts['state']} state; {counts['results_written']} results written where "
+              f"no rollup existed. Committed.")
+    finally:
+        db.close()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--year", default="2023", help="election year to process (default 2023)")
@@ -589,10 +707,16 @@ def main() -> None:
     ap.add_argument("--state-only", action="store_true",
                     help="with --from-archive: load ONLY the state-level-only archive "
                          "(2019 + non-drilled 2023 state totals); skips the heavy PU rollup")
+    ap.add_argument("--push-archive-evidence", action="store_true",
+                    help="push EVERY *_archive table straight in as evidence (kind='declared', "
+                         "source='unknown') at its level (ward/lga/state; 2023 pres+gov, 2019 gov, "
+                         "2019+2023 state), coexisting with any roll-up evidence")
     ap.add_argument("--commit", action="store_true",
                     help="actually write (default is a dry run that writes nothing)")
     args = ap.parse_args()
-    if getattr(args, "from_archive", False):
+    if getattr(args, "push_archive_evidence", False):
+        run_push_archive_evidence(args.commit)
+    elif getattr(args, "from_archive", False):
         import_from_archive(args.commit, state_geo=args.state, state_only=getattr(args, "state_only", False))
     else:
         run(args.year, args.election, args.commit)
