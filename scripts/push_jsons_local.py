@@ -97,13 +97,16 @@ def state_lookup(raw, state_geo):
 _NUM = re.compile(r"-?\d+")
 
 
-# Postgres 32-bit signed integer bounds. Transcriptions occasionally carry an OCR-mangled
-# figure with too many digits (e.g. "65785113956" registered voters) — that overflows the
-# `integer` column and aborts a whole COPY. Such a value is unreliable noise, so drop it (None).
-_INT_MIN, _INT_MAX = -2147483648, 2147483647
+# Sane per-polling-unit ceilings. Transcriptions occasionally carry an OCR-mangled figure
+# with too many digits (e.g. a party with "1610126415" votes, or "65785113956" registered)
+# — one such value destroys every downstream sum. A real PU has at most ~1,500 voters, so a
+# single party can't exceed a few thousand; poll-summary counts stay in the low thousands.
+# Anything above these ceilings is noise → drop it (None). (Also guards the int4 column.)
+_PARTY_VOTE_CAP = 5000       # one party's votes at a single PU
+_POLL_SUMMARY_CAP = 20000    # registered / accredited / valid / etc. at a single PU
 
 
-def _int(v):
+def _int(v, cap=None):
     if v is None:
         return None
     s = str(v).strip().replace(",", "")
@@ -111,7 +114,7 @@ def _int(v):
     if not m:
         return None
     n = int(m.group())
-    if n < _INT_MIN or n > _INT_MAX:
+    if n < 0 or (cap is not None and n > cap):
         return None
     return n
 
@@ -132,16 +135,16 @@ def parse_file(path: pathlib.Path):
         party = (pr.get("party") or "").strip().upper()
         if not party:
             continue
-        parties.append((party, _int(pr.get("votes_figures"))))
+        parties.append((party, _int(pr.get("votes_figures"), cap=_PARTY_VOTE_CAP)))
     ps = d.get("poll_summary", {}) or {}
     poll = {
-        "registered_voters": _int(ps.get("1_registered_voters")),
-        "accredited_voters": _int(ps.get("2_accredited_voters")),
-        "valid_votes": _int(ps.get("7_total_valid_votes")),
-        "rejected_votes": _int(ps.get("6_rejected_ballots")),
-        "total_used_ballots": _int(ps.get("8_total_used_ballot_papers")),
+        "registered_voters": _int(ps.get("1_registered_voters"), cap=_POLL_SUMMARY_CAP),
+        "accredited_voters": _int(ps.get("2_accredited_voters"), cap=_POLL_SUMMARY_CAP),
+        "valid_votes": _int(ps.get("7_total_valid_votes"), cap=_POLL_SUMMARY_CAP),
+        "rejected_votes": _int(ps.get("6_rejected_ballots"), cap=_POLL_SUMMARY_CAP),
+        "total_used_ballots": _int(ps.get("8_total_used_ballot_papers"), cap=_POLL_SUMMARY_CAP),
     }
-    dt = _int((d.get("declared_total_valid_votes") or {}).get("figures"))
+    dt = _int((d.get("declared_total_valid_votes") or {}).get("figures"), cap=_POLL_SUMMARY_CAP)
     vv = poll["valid_votes"] if poll["valid_votes"] is not None else dt
     return parties, poll, vv
 

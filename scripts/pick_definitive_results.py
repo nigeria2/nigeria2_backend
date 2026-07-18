@@ -955,10 +955,11 @@ def build_results(commit: bool, state_geo=None, year="2023") -> None:
                 if eid in chosen_ids and votes is not None:
                     party_by_ev[eid][party] = votes
 
-            # ---- clear prior qwen-preferred pu_results for this (office, scope) ----
+            # ---- clear ALL prior pu_results for this (office, year, scope) ----
+            # not just method='qwen-preferred': older imports (e.g. method='single-source'
+            # from the archive) must be replaced too, or a PU ends up with two results.
             pr_idq = select(PuResult.id).where(
-                PuResult.election_type == et, PuResult.year == year,
-                PuResult.method == _RESULT_METHOD)
+                PuResult.election_type == et, PuResult.year == year)
             if state_geo is not None:
                 pr_idq = pr_idq.where(PuResult.state_geo == state_geo)
             db.execute(delete(PuResultParty).where(PuResultParty.pu_result_id.in_(pr_idq)))
