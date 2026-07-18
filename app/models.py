@@ -705,8 +705,9 @@ RESULT_SOURCES = ("declared", "rolled_up", "official")
 ELECTION_TYPES = ("presidential", "governor", "senate", "house")
 
 
-# Recognised kinds of evidence (the type of a recorded figure).
-EVIDENCE_KINDS = ("inec", "llm", "human", "crowd")
+# Recognised kinds of evidence (the type of a recorded figure). Every piece is a GUESS —
+# there is no "definitive" and no single "chosen" evidence; the unit result is a MERGE.
+EVIDENCE_KINDS = ("2023_transcription", "inec", "llm", "human", "crowd")
 
 
 class Evidence(Base):
@@ -758,10 +759,11 @@ class EvidenceParty(Base):
 
 
 class PuResult(Base):
-    """The DEFINITIVE result for one polling unit in one election — DERIVED by weighing
-    the evidence. `chosen_evidence_id` links back to the piece of evidence this figure was
-    taken from (provenance). Party-by-party votes are in `pu_result_party` when known (may
-    be absent for a summary-only result)."""
+    """The MERGED result for one polling unit in one election — combined from the evidence
+    (today: a copy of the single entry; a real merge routine can recompute it later). There
+    is NO single "chosen" evidence and NO "definitive": every piece of evidence is a guess.
+    `method` records how it was merged. Party-by-party votes are in `pu_result_party` when
+    known. Accredited voters live on the evidence entry, not here (entries can differ)."""
 
     __tablename__ = "pu_results"
 
@@ -777,10 +779,8 @@ class PuResult(Base):
     total_votes: Mapped[int] = mapped_column(Integer, default=0)
     valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
-    chosen_evidence_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # FK evidence.id
-    method: Mapped[str] = mapped_column(String(60), default="")  # how the definitive was chosen
+    method: Mapped[str] = mapped_column(String(60), default="")  # how the result was merged
     decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

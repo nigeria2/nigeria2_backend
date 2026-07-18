@@ -1151,15 +1151,15 @@ def _sheet_recordings(raw: str | None) -> list[dict]:
     return [r for r in recs if isinstance(r, dict)]
 
 
-# the order evidence kinds should be presented in (INEC first, then transcriptions)
-_EVIDENCE_KIND_ORDER = {"inec": 0, "human": 1, "llm": 2, "crowd": 3}
+# the order evidence kinds should be presented in
+_EVIDENCE_KIND_ORDER = {"2023_transcription": 0, "inec": 1, "human": 2, "llm": 3, "crowd": 4}
 
 
 def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
-    """Every piece of EVIDENCE we hold for a polling unit, from the unified evidence
-    (+ evidence_parties) tables. Each entry has a kind (inec | llm | human | crowd), its
-    source (where it came from) and who submitted it (for weighting). The INEC figure is
-    the first piece of evidence, so any unit with a result has >=1 entry."""
+    """Every piece of EVIDENCE we hold for a polling unit, from the evidence
+    (+ evidence_parties) tables. Each is a GUESS with a kind and a source; accredited
+    voters (which can differ between entries) live here. No submitter is claimed and none
+    is "chosen" — the unit result is a merge of the evidence."""
     ev = db.scalars(select(Evidence).where(Evidence.pu_code == pu_code)).all()
     if not ev:
         return []
@@ -1172,7 +1172,6 @@ def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
         {
             "id": e.id, "election_type": e.election_type, "year": e.year,
             "kind": e.kind, "source": e.source, "method": e.method,
-            "submitted_by": e.submitted_by, "submitted_by_id": e.submitted_by_id,
             "created_at": (e.created_at.isoformat() if e.created_at else None),
             "poll_summary": {
                 "registered_voters": e.registered_voters, "accredited_voters": e.accredited_voters,
@@ -1225,29 +1224,26 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
         for pp in db.scalars(select(PuResultParty).where(
                 PuResultParty.pu_result_id.in_([r.id for r in presults]))).all():
             pr_parties[pp.pu_result_id][pp.party] = pp.votes
-    definitive = [
+    # the unit's result per election — a MERGE of the evidence (no single "chosen" row).
+    result = [
         {
             "election_type": r.election_type, "year": r.year, "winner": r.winner,
             "runner_up": r.runner_up, "total_votes": r.total_votes, "valid_votes": r.valid_votes,
-            "registered_voters": r.registered_voters, "accredited_voters": r.accredited_voters,
+            "registered_voters": r.registered_voters,
             "source": r.source, "method": r.method,
-            "chosen_evidence_id": r.chosen_evidence_id,
             "parties": dict(sorted(pr_parties.get(r.id, {}).items(), key=lambda x: -(x[1] or 0))),
         }
         for r in presults
     ]
-    # INEC sheet links (one per race)
+    # ALL result sheets we hold for this unit, INCLUDING broken/dead URLs (status shown).
     sheets = [
         {"election_type": s.election_type, "year": s.year, "sheet_url": s.sheet_url or "",
          "status": s.sheet_status}
         for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
                             .order_by(ElectionSheet.election_type)).all()
     ]
-    if pu is None and not definitive and not sheets:
+    if pu is None and not result and not sheets:
         raise HTTPException(status_code=404, detail="polling unit not found")
-    # accredited voters: only held for flagged problem units (BVAS accreditation on the
-    # anomaly record). None for regular units — we don't have PU-wide accreditation data.
-    pruni = db.scalar(select(ProblemUnit).where(ProblemUnit.pu_code == pu_code))
     return {
         "pu_code": pu_code,
         "pu_name": pu.pu_name if pu else "",
@@ -1258,10 +1254,9 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
         "state": pu.state if pu else "",
         "state_geo": pu.state_geo if pu else None,
         "registered_voters": pu.registered_voters if pu else None,
-        "accredited_voters": (pruni.accredited_voters if (pruni and pruni.accredited_voters) else None),
-        "definitive": definitive,          # one per election_type, with party breakdown
-        "sheets": sheets,                  # INEC IReV links
-        "evidence": _evidence_entries(db, pu_code),  # every piece of evidence (INEC first)
+        "result": result,                  # merged result per election, with party breakdown
+        "sheets": sheets,                  # all result sheets, including broken URLs
+        "evidence": _evidence_entries(db, pu_code),  # every piece of evidence (a guess each)
     }
 
 

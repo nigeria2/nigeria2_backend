@@ -221,13 +221,11 @@ def run(year: str, election: str | None, commit: bool) -> None:
 def _del_rolled(db: Session, model, party_model, fk_attr, year, election):
     """Delete rolled_up rows (+ their party children) for this year/election so the
     script is re-runnable. Never touches source in ('declared','official')."""
-    q = select(model.id).where(model.year == year, model.source == "rolled_up")
+    idq = select(model.id).where(model.year == year, model.source == "rolled_up")
     if election:
-        q = q.where(model.election_type == election)
-    ids = [i for (i,) in db.execute(q).all()]
-    if ids:
-        db.execute(delete(party_model).where(getattr(party_model, fk_attr).in_(ids)))
-        db.execute(delete(model).where(model.id.in_(ids)))
+        idq = idq.where(model.election_type == election)
+    db.execute(delete(party_model).where(getattr(party_model, fk_attr).in_(idq)))
+    db.execute(delete(model).where(model.id.in_(idq)))
 
 
 def _replace_pu_results(db, year, election, decisions, geo):
@@ -238,8 +236,8 @@ def _replace_pu_results(db, year, election, decisions, geo):
             pu_code=pu_code, election_type=et, year=year, state_geo=sgeo, lga_id=lga_id,
             ward_code=ward_code, winner=d.winner, runner_up=d.runner_up,
             total_votes=d.total_votes, valid_votes=d.valid_votes,
-            registered_voters=d.registered_voters, accredited_voters=d.accredited_voters,
-            source="rolled_up", chosen_evidence_id=d.chosen_evidence_id, method=d.method,
+            registered_voters=d.registered_voters,
+            source="rolled_up", method=d.method,
         )
         db.add(r); db.flush()
         for party, votes in d.parties.items():
@@ -291,14 +289,14 @@ def _replace_state(db, year, election, state_acc):
 # --------------------------------------------------------------------------- #
 def _clear_official(db: Session, model, party_model, fk_attr, state_geo=None) -> None:
     """Wipe prior source='official' rows (+ children) so the import is re-runnable.
-    When state_geo is given, only that state's rows are removed (other states kept)."""
-    q = select(model.id).where(model.source == "official")
+    When state_geo is given, only that state's rows are removed (other states kept).
+    Uses a correlated subquery (NOT a Python id list) — an id list can blow past the
+    driver's bind-parameter limit for 100k+ rows and silently fail to clear."""
+    idq = select(model.id).where(model.source == "official")
     if state_geo is not None:
-        q = q.where(model.state_geo == state_geo)
-    ids = [i for (i,) in db.execute(q).all()]
-    if ids:
-        db.execute(delete(party_model).where(getattr(party_model, fk_attr).in_(ids)))
-        db.execute(delete(model).where(model.id.in_(ids)))
+        idq = idq.where(model.state_geo == state_geo)
+    db.execute(delete(party_model).where(getattr(party_model, fk_attr).in_(idq)))
+    db.execute(delete(model).where(model.id.in_(idq)))
 
 
 def import_from_archive(commit: bool, state_geo=None) -> None:
@@ -332,14 +330,13 @@ def import_from_archive(commit: bool, state_geo=None) -> None:
         # pu_result pointing at it. Every result therefore has >=1 evidence row.
         # Bulk for speed (~177k units nationwide).
         _clear_official(db, PuResult, PuResultParty, "pu_result_id", state_geo)
-        # clear prior INEC evidence for this scope so re-runs don't duplicate
-        eq = select(Evidence.id).where(Evidence.kind == "inec")
+        # clear prior 2023_transcription evidence for this scope so re-runs don't duplicate.
+        # Subquery, not an id list (a 100k+ IN list blows the driver's parameter limit).
+        eq = select(Evidence.id).where(Evidence.kind == "2023_transcription")
         if state_geo is not None:
             eq = eq.where(Evidence.state_geo == state_geo)
-        ev_ids = [i for (i,) in db.execute(eq).all()]
-        if ev_ids:
-            db.execute(delete(EvidenceParty).where(EvidenceParty.evidence_id.in_(ev_ids)))
-            db.execute(delete(Evidence).where(Evidence.id.in_(ev_ids)))
+        db.execute(delete(EvidenceParty).where(EvidenceParty.evidence_id.in_(eq)))
+        db.execute(delete(Evidence).where(Evidence.id.in_(eq)))
 
         units = []  # (pu_code, state_geo, lga_id, ward_code, winner, runner, total, reg, [(party,votes)])
         for p in db.scalars(_sfilter(select(PollingUnit), PollingUnit)).all():
@@ -354,27 +351,29 @@ def import_from_archive(commit: bool, state_geo=None) -> None:
                           total, p.registered_voters, parties))
         pu_written = len(units)
         if units:
-            # 1a) INEC evidence rows
+            # 1a) one piece of evidence per unit (kind='2023_transcription'). Every entry is
+            # a GUESS — no submitted_by (we are never sure who produced it), no "chosen".
             db.bulk_insert_mappings(Evidence, [
                 {"pu_code": u[0], "election_type": "presidential", "year": "2023",
-                 "state_geo": u[1], "kind": "inec", "source": "INEC IReV",
-                 "method": "inec-declared", "submitted_by": "INEC", "valid_votes": u[6]}
+                 "state_geo": u[1], "kind": "2023_transcription", "source": "2023_transcription",
+                 "method": "crosscheck", "valid_votes": u[6]}
                 for u in units
             ])
             db.flush()
             ev_by_code = dict(db.execute(
-                select(Evidence.pu_code, Evidence.id).where(Evidence.kind == "inec")).all())
+                select(Evidence.pu_code, Evidence.id)
+                .where(Evidence.kind == "2023_transcription")).all())
             db.bulk_insert_mappings(EvidenceParty, [
                 {"evidence_id": ev_by_code[u[0]], "party": party, "votes": votes}
                 for u in units for party, votes in u[8] if u[0] in ev_by_code
             ])
-            # 1b) derived pu_results, each pointing at its INEC evidence
+            # 1b) the unit result = a MERGE of the evidence. Today there is one entry, so the
+            # merge is a copy of it. No chosen_evidence_id; method records that.
             db.bulk_insert_mappings(PuResult, [
                 {"pu_code": u[0], "election_type": "presidential", "year": "2023",
                  "state_geo": u[1], "lga_id": u[2], "ward_code": u[3], "winner": u[4],
                  "runner_up": u[5], "total_votes": u[6], "registered_voters": u[7],
-                 "source": "official", "method": "inec",
-                 "chosen_evidence_id": ev_by_code.get(u[0])}
+                 "source": "official", "method": "single-source"}
                 for u in units
             ])
             db.flush()
