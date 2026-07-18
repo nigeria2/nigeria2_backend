@@ -725,6 +725,168 @@ def run_push_archive_evidence(commit: bool) -> None:
         db.close()
 
 
+# --------------------------------------------------------------------------- #
+# Roll the LLM polling-unit evidence up into per-level LLM evidence.
+# --------------------------------------------------------------------------- #
+def _clear_level_llm(db, model, party_model, fk_attr, state_geo, et, year, source):
+    """Wipe prior LLM level-evidence for this exact (state, office, year, source) so a
+    re-run REPLACES rather than duplicates. Correlated subquery, not an id-list (a big
+    IN-list blows psycopg's parameter limit)."""
+    idq = select(model.id).where(model.kind == "llm", model.election_type == et,
+                                 model.year == year, model.source == source)
+    if state_geo is not None:
+        idq = idq.where(model.state_geo == state_geo)
+    db.execute(delete(party_model).where(getattr(party_model, fk_attr).in_(idq)))
+    db.execute(delete(model).where(model.id.in_(idq)))
+
+
+def rollup_llm(commit: bool, state_geo=None, year="2023") -> None:
+    """Roll the polling-unit LLM evidence (evidence.kind='llm', loaded by
+    push_jsons_local.py) up into ward/lga/state LLM evidence — a distinct evidence
+    stream that coexists with the archive 'rollup'/'declared' evidence (they cross-check,
+    they do not replace each other). Runs for every office present (presidential | governor
+    | senate). IDEMPOTENT: each level clears prior kind='llm' evidence for the exact
+    (state, office, year, source) before writing, so running it repeatedly never re-adds
+    the same evidence. Dry-run unless --commit."""
+    db = SessionLocal() if SessionLocal else None
+    if db is None:
+        print("DATABASE_URL not set — aborting.")
+        return
+    try:
+        # pu_code -> (ward_code, lga_id) for the scope (also gives us the ward/lga geometry
+        # the PU evidence rows don't carry directly).
+        puq = select(PollingUnit.pu_code, PollingUnit.ward_code, PollingUnit.lga_id,
+                     PollingUnit.state_geo)
+        if state_geo is not None:
+            puq = puq.where(PollingUnit.state_geo == state_geo)
+        pu_map = {pc: (wc, lid, sg) for pc, wc, lid, sg in db.execute(puq).all()}
+        # ward_code -> (lga_id, state_geo), built once (avoids an O(N) scan per ward)
+        ward_geom: dict = {}
+        for (wc, lid, sg) in pu_map.values():
+            if wc:
+                ward_geom.setdefault(wc, (lid, sg))
+
+        # offices present in the LLM PU evidence for this scope
+        oq = select(Evidence.election_type).where(Evidence.kind == "llm", Evidence.year == year)
+        if state_geo is not None:
+            oq = oq.where(Evidence.state_geo == state_geo)
+        offices = sorted({r[0] for r in db.execute(oq.distinct()).all()})
+        src = f"LLM ({LLM_MODEL})"
+
+        totals = {"ward": 0, "lga": 0, "state": 0}
+        if not offices:
+            print(f"No kind='llm' PU evidence found for year={year}"
+                  + (f" state={state_geo}" if state_geo else "") + " — nothing to roll up.")
+            if not commit:
+                print("DRY RUN — no writes.")
+            return
+        print(f"LLM evidence offices to roll up: {offices}"
+              + (f"  (state {state_geo})" if state_geo else "  (ALL states)"))
+        if not commit:
+            print("DRY RUN — no writes. Re-run with --commit.")
+            return
+
+        for et in offices:
+            counts = {"ward": 0, "lga": 0, "state": 0}
+            # --- 1) PU -> WARD ---
+            _clear_level_llm(db, WardEvidence, WardEvidenceParty, "ward_evidence_id",
+                             state_geo, et, year, src)
+            ward_agg: dict = {}   # (ward_code, sgeo) -> {party: votes}
+            ev_q = select(Evidence.id, Evidence.pu_code).where(
+                Evidence.kind == "llm", Evidence.election_type == et, Evidence.year == year)
+            if state_geo is not None:
+                ev_q = ev_q.where(Evidence.state_geo == state_geo)
+            ev_rows = db.execute(ev_q).all()
+            ev_ids = [r[0] for r in ev_rows]
+            code_by_id = {r[0]: r[1] for r in ev_rows}
+            # sum party votes per evidence, then attribute to its ward
+            for eid, party, votes in db.execute(
+                select(EvidenceParty.evidence_id, EvidenceParty.party,
+                       _sa_func.sum(EvidenceParty.votes))
+                .where(EvidenceParty.evidence_id.in_(_chunk_ids(ev_ids)))
+                .group_by(EvidenceParty.evidence_id, EvidenceParty.party)
+            ).all() if ev_ids else []:
+                pc = code_by_id.get(eid)
+                info = pu_map.get(pc) if pc else None
+                if not info:
+                    continue
+                wc, _lid, sg = info
+                if not wc:
+                    continue
+                ward_agg.setdefault((wc, sg), {})
+                ward_agg[(wc, sg)][party] = ward_agg[(wc, sg)].get(party, 0) + int(votes or 0)
+            # write ward evidence
+            for (wc, sg), parties in ward_agg.items():
+                total = sum(parties.values())
+                ev = WardEvidence(ward_code=wc, election_type=et, year=year, state_geo=sg,
+                                  kind="llm", source=src, method="sum-of-pu (llm)",
+                                  total_votes=total)
+                db.add(ev); db.flush()
+                for p, v in parties.items():
+                    db.add(WardEvidenceParty(ward_evidence_id=ev.id, party=p, votes=v))
+                counts["ward"] += 1
+
+            # --- 2) WARD -> LGA (sum the llm ward evidence we just wrote) ---
+            _clear_level_llm(db, LgaEvidence, LgaEvidenceParty, "lga_evidence_id",
+                             state_geo, et, year, src)
+            lga_agg: dict = {}   # (lga_id, sgeo) -> {party: votes}
+            for (wc, sg), parties in ward_agg.items():
+                lga_id = (ward_geom.get(wc) or (None, None))[0]
+                if lga_id is None:
+                    continue
+                lga_agg.setdefault((lga_id, sg), {})
+                for p, v in parties.items():
+                    lga_agg[(lga_id, sg)][p] = lga_agg[(lga_id, sg)].get(p, 0) + v
+            lga_names = {l.id: l.name for l in db.scalars(select(Lga)).all()}
+            for (lga_id, sg), parties in lga_agg.items():
+                total = sum(parties.values())
+                ev = LgaEvidence(lga_id=lga_id, election_type=et, year=year, state_geo=sg,
+                                 kind="llm", source=src, method="sum-of-wards (llm)",
+                                 total_votes=total)
+                db.add(ev); db.flush()
+                for p, v in parties.items():
+                    db.add(LgaEvidenceParty(lga_evidence_id=ev.id, party=p, votes=v))
+                counts["lga"] += 1
+
+            # --- 3) LGA -> STATE ---
+            _clear_level_llm(db, StateEvidence, StateEvidenceParty, "state_evidence_id",
+                             state_geo, et, year, src)
+            state_agg: dict = {}  # sgeo -> {party: votes}
+            for (lga_id, sg), parties in lga_agg.items():
+                state_agg.setdefault(sg, {})
+                for p, v in parties.items():
+                    state_agg[sg][p] = state_agg[sg].get(p, 0) + v
+            for sg, parties in state_agg.items():
+                total = sum(parties.values())
+                ev = StateEvidence(election_type=et, year=year, state_geo=sg, kind="llm",
+                                   source=src, method="sum-of-lgas (llm)", total_votes=total)
+                db.add(ev); db.flush()
+                for p, v in parties.items():
+                    db.add(StateEvidenceParty(state_evidence_id=ev.id, party=p, votes=v))
+                counts["state"] += 1
+
+            db.commit()
+            for k in totals:
+                totals[k] += counts[k]
+            print(f"  {et}: +{counts['ward']} ward, +{counts['lga']} lga, "
+                  f"+{counts['state']} state llm-evidence")
+
+        print(f"LLM rollup done. ward={totals['ward']} lga={totals['lga']} "
+              f"state={totals['state']} evidence rows (kind='llm', source='{src}'). Committed.")
+    finally:
+        db.close()
+
+
+LLM_MODEL = "qwen3.5-9b"
+
+
+def _chunk_ids(ids):
+    """Return the id list as-is; callers keep the IN-list small enough (per-state scope is
+    ~a few thousand PU evidence ids, well under the driver's parameter limit). Kept as a
+    hook in case a nationwide (no-state) run needs chunking later."""
+    return ids
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--year", default="2023", help="election year to process (default 2023)")
@@ -743,10 +905,16 @@ def main() -> None:
                     help="push EVERY *_archive table straight in as evidence (kind='declared', "
                          "source='unknown') at its level (ward/lga/state; 2023 pres+gov, 2019 gov, "
                          "2019+2023 state), coexisting with any roll-up evidence")
+    ap.add_argument("--rollup-llm", action="store_true",
+                    help="roll the polling-unit LLM evidence (evidence.kind='llm', from "
+                         "push_jsons_local.py) up into ward/lga/state LLM evidence, all offices. "
+                         "Idempotent — re-running replaces, never duplicates. Use --state to scope.")
     ap.add_argument("--commit", action="store_true",
                     help="actually write (default is a dry run that writes nothing)")
     args = ap.parse_args()
-    if getattr(args, "push_archive_evidence", False):
+    if getattr(args, "rollup_llm", False):
+        rollup_llm(args.commit, state_geo=args.state, year=args.year)
+    elif getattr(args, "push_archive_evidence", False):
         run_push_archive_evidence(args.commit)
     elif getattr(args, "from_archive", False):
         import_from_archive(args.commit, state_geo=args.state, state_only=getattr(args, "state_only", False))
