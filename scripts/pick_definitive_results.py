@@ -792,21 +792,19 @@ def rollup_llm(commit: bool, state_geo=None, year="2023") -> None:
             _clear_level_llm(db, WardEvidence, WardEvidenceParty, "ward_evidence_id",
                              state_geo, et, year, src)
             ward_agg: dict = {}   # (ward_code, sgeo) -> {party: votes}
-            ev_q = select(Evidence.id, Evidence.pu_code).where(
-                Evidence.kind == "llm", Evidence.election_type == et, Evidence.year == year)
-            if state_geo is not None:
-                ev_q = ev_q.where(Evidence.state_geo == state_geo)
-            ev_rows = db.execute(ev_q).all()
-            ev_ids = [r[0] for r in ev_rows]
-            code_by_id = {r[0]: r[1] for r in ev_rows}
-            # sum party votes per evidence, then attribute to its ward
-            for eid, party, votes in db.execute(
-                select(EvidenceParty.evidence_id, EvidenceParty.party,
+            # Sum each PU's party votes server-side via a JOIN (grouped by pu_code + party) —
+            # NO id-list, so it never hits psycopg's 65535-parameter limit even nationwide.
+            pu_sum_q = (
+                select(Evidence.pu_code, EvidenceParty.party,
                        _sa_func.sum(EvidenceParty.votes))
-                .where(EvidenceParty.evidence_id.in_(_chunk_ids(ev_ids)))
-                .group_by(EvidenceParty.evidence_id, EvidenceParty.party)
-            ).all() if ev_ids else []:
-                pc = code_by_id.get(eid)
+                .join(EvidenceParty, EvidenceParty.evidence_id == Evidence.id)
+                .where(Evidence.kind == "llm", Evidence.election_type == et,
+                       Evidence.year == year)
+                .group_by(Evidence.pu_code, EvidenceParty.party)
+            )
+            if state_geo is not None:
+                pu_sum_q = pu_sum_q.where(Evidence.state_geo == state_geo)
+            for pc, party, votes in db.execute(pu_sum_q).all():
                 info = pu_map.get(pc) if pc else None
                 if not info:
                     continue
@@ -877,6 +875,203 @@ def rollup_llm(commit: bool, state_geo=None, year="2023") -> None:
         db.close()
 
 
+# --------------------------------------------------------------------------- #
+# Build the MERGED results (pu_results + ward/lga/state_result_v) from evidence,
+# preferring our qwen LLM evidence, falling back to the next-best evidence.
+# --------------------------------------------------------------------------- #
+# Which evidence wins when a polling unit has more than one. qwen LLM first (Mark:
+# "we prefer our qwen evidence"), then other transcriptions, then declared aggregates.
+_KIND_PRIORITY = {"llm": 0, "2023_transcription": 1, "inec": 2, "human": 3, "crowd": 4, "declared": 5}
+_RESULT_METHOD = "qwen-preferred"
+
+
+def build_results(commit: bool, state_geo=None, year="2023") -> None:
+    """Generate the merged RESULT at every level from the evidence, preferring qwen LLM.
+
+    Per (polling unit, office) we pick ONE evidence row — qwen LLM if present, else the
+    next-best by kind priority — and copy it into pu_results (+ parties). Then we roll the
+    PU results up into ward/lga/state_result_v by summing. Offices: presidential, governor,
+    senate (whatever the evidence covers). source='official', method='qwen-preferred'.
+
+    Idempotent: clears the method='qwen-preferred' pu_results and, per (office, state) that
+    we regenerate, the *_result_v rows, before rewriting — so re-runs never duplicate. All
+    aggregation is JOIN-based server-side (no id-lists → never hits the 65535 param limit).
+    Dry-run unless --commit."""
+    db = SessionLocal() if SessionLocal else None
+    if db is None:
+        print("DATABASE_URL not set — aborting.")
+        return
+    try:
+        geo_map = _pu_geo(db)  # pu_code -> (state_geo, lga_id, ward_code)
+        lga_names = {l.id: l.name for l in db.scalars(select(Lga)).all()}
+        from app import geo as _geo
+
+        # offices present in the evidence for this scope
+        oq = select(Evidence.election_type).where(Evidence.year == year)
+        if state_geo is not None:
+            oq = oq.where(Evidence.state_geo == state_geo)
+        offices = sorted({r[0] for r in db.execute(oq.distinct()).all()})
+        if not offices:
+            print(f"No evidence for year={year}"
+                  + (f" state={state_geo}" if state_geo else "") + " — nothing to build.")
+            return
+        print(f"Building results for offices {offices}"
+              + (f" (state {state_geo})" if state_geo else " (ALL states)")
+              + ", qwen LLM preferred.")
+        if not commit:
+            print("DRY RUN — no writes. Re-run with --commit.")
+            return
+
+        tot = {"pu": 0, "ward": 0, "lga": 0, "state": 0}
+        for et in offices:
+            # ---- 1) pick ONE evidence per (pu_code, office): lowest kind-priority wins ----
+            # rank kinds server-side, then keep the best row per pu_code.
+            ev_q = (select(Evidence.pu_code, Evidence.id, Evidence.kind,
+                           Evidence.valid_votes, Evidence.registered_voters)
+                    .where(Evidence.election_type == et, Evidence.year == year))
+            if state_geo is not None:
+                ev_q = ev_q.where(Evidence.state_geo == state_geo)
+            best: dict[str, tuple] = {}     # pu_code -> (priority, ev_id, valid, reg)
+            for pc, eid, kind, valid, reg in db.execute(ev_q).all():
+                pri = _KIND_PRIORITY.get(kind, 9)
+                cur = best.get(pc)
+                # lower priority wins; tie-break on more valid_votes then higher id (newer)
+                cand = (pri, -(valid or 0), -eid)
+                if cur is None or cand < cur[0]:
+                    best[pc] = (cand, eid, valid, reg)
+            chosen_ids = {v[1] for v in best.values()}
+            if not chosen_ids:
+                continue
+
+            # party votes for the chosen evidence rows — JOIN aggregate, no id-list
+            # (we filter to chosen rows in Python; the JOIN itself is scoped by office/year)
+            party_by_ev: dict[int, dict[str, int]] = defaultdict(dict)
+            pq = (select(EvidenceParty.evidence_id, EvidenceParty.party, EvidenceParty.votes)
+                  .join(Evidence, Evidence.id == EvidenceParty.evidence_id)
+                  .where(Evidence.election_type == et, Evidence.year == year))
+            if state_geo is not None:
+                pq = pq.where(Evidence.state_geo == state_geo)
+            for eid, party, votes in db.execute(pq).all():
+                if eid in chosen_ids and votes is not None:
+                    party_by_ev[eid][party] = votes
+
+            # ---- clear prior qwen-preferred pu_results for this (office, scope) ----
+            pr_idq = select(PuResult.id).where(
+                PuResult.election_type == et, PuResult.year == year,
+                PuResult.method == _RESULT_METHOD)
+            if state_geo is not None:
+                pr_idq = pr_idq.where(PuResult.state_geo == state_geo)
+            db.execute(delete(PuResultParty).where(PuResultParty.pu_result_id.in_(pr_idq)))
+            db.execute(delete(PuResult).where(PuResult.id.in_(pr_idq)))
+
+            # ---- build pu_results rows ----
+            pu_maps, pu_party_maps = [], []
+            for pc, (_c, eid, valid, reg) in best.items():
+                info = geo_map.get(pc)
+                if not info:
+                    continue
+                sg, lga_id, ward_code = info
+                parties = party_by_ev.get(eid, {})
+                winner, runner = _winner_runner(parties)
+                total = sum(v for v in parties.values() if v) if parties else (valid or 0)
+                pu_maps.append({
+                    "pu_code": pc, "election_type": et, "year": year, "state_geo": sg,
+                    "lga_id": lga_id, "ward_code": ward_code, "winner": winner,
+                    "runner_up": runner, "total_votes": total, "valid_votes": valid,
+                    "registered_voters": reg, "source": "official", "method": _RESULT_METHOD,
+                })
+                for p, v in parties.items():
+                    pu_party_maps.append((pc, p, v))
+            if pu_maps:
+                db.bulk_insert_mappings(PuResult, pu_maps)
+                db.flush()
+                id_by_code = dict(db.execute(
+                    select(PuResult.pu_code, PuResult.id).where(
+                        PuResult.election_type == et, PuResult.year == year,
+                        PuResult.method == _RESULT_METHOD,
+                        *( [PuResult.state_geo == state_geo] if state_geo is not None else [] ))).all())
+                db.bulk_insert_mappings(PuResultParty, [
+                    {"pu_result_id": id_by_code[pc], "party": p, "votes": v or 0}
+                    for pc, p, v in pu_party_maps if pc in id_by_code])
+                db.commit()
+                tot["pu"] += len(pu_maps)
+
+            # ---- 2) roll PU results up into ward/lga/state RESULTS (per office) ----
+            tot["ward"] += _rollup_level(
+                db, et, year, state_geo, PuResult, PuResultParty, "pu_result_id",
+                (PuResult.ward_code, PuResult.state_geo, PuResult.lga_id),
+                WardResultV, WardResultParty, "ward_result_id",
+                lambda k, parties, w, r: WardResultV(
+                    ward_code=k[0], lga_id=k[2], election_type=et, year=year, state_geo=k[1],
+                    winner=w, runner_up=r, total_votes=sum(parties.values()), source="official"),
+                skip=lambda k: not k[0])
+            tot["lga"] += _rollup_level(
+                db, et, year, state_geo, WardResultV, WardResultParty, "ward_result_id",
+                (WardResultV.lga_id, WardResultV.state_geo),
+                LgaResultV, LgaResultParty, "lga_result_id",
+                lambda k, parties, w, r: LgaResultV(
+                    lga_id=k[0], lga=lga_names.get(k[0], ""), election_type=et, year=year,
+                    state_geo=k[1], winner=w, runner_up=r, total_votes=sum(parties.values()),
+                    source="official"),
+                skip=lambda k: k[0] is None)
+            tot["state"] += _rollup_level(
+                db, et, year, state_geo, LgaResultV, LgaResultParty, "lga_result_id",
+                (LgaResultV.state_geo,),
+                StateResultV, StateResultParty, "state_result_id",
+                lambda k, parties, w, r: StateResultV(
+                    state=_geo.state_name(k[0]) or "", state_geo=k[0], election_type=et,
+                    year=year, winner=w, runner_up=r, total_votes=sum(parties.values()),
+                    source="official"),
+                skip=lambda k: k[0] is None)
+            print(f"  {et}: pu={tot['pu']} ward={tot['ward']} lga={tot['lga']} state={tot['state']} (cumulative)")
+
+        print(f"Results built (qwen preferred). pu_results={tot['pu']}, "
+              f"ward={tot['ward']}, lga={tot['lga']}, state={tot['state']}. Committed.")
+    finally:
+        db.close()
+
+
+def _rollup_level(db, et, year, state_geo, child_result, child_party, child_fk, group_cols,
+                  parent_result, parent_party, parent_fk, make_row, skip) -> int:
+    """Sum a child *_result level into its parent, for one office. Clears the parent's
+    (office, scope) rows first (idempotent), aggregates via JOIN (no id-list), writes
+    parent result + party rows. Returns rows written."""
+    # clear parent rows for this (office, year, scope)
+    idq = select(parent_result.id).where(
+        parent_result.election_type == et, parent_result.year == year)
+    if state_geo is not None:
+        idq = idq.where(parent_result.state_geo == state_geo)
+    db.execute(delete(parent_party).where(getattr(parent_party, parent_fk).in_(idq)))
+    db.execute(delete(parent_result).where(parent_result.id.in_(idq)))
+
+    q = (select(*group_cols, child_party.party, _sa_func.sum(child_party.votes))
+         .join(child_party, getattr(child_party, child_fk) == child_result.id)
+         .where(child_result.election_type == et, child_result.year == year))
+    if state_geo is not None:
+        q = q.where(child_result.state_geo == state_geo)
+    q = q.group_by(*group_cols, child_party.party)
+    agg: dict = {}
+    for row in db.execute(q).all():
+        *keys, party, votes = row
+        agg.setdefault(tuple(keys), {})[party] = int(votes or 0)
+
+    n = 0
+    for k, parties in agg.items():
+        if skip(k):
+            continue
+        parties = {p: v for p, v in parties.items() if v}
+        if not parties:
+            continue
+        w, r = _winner_runner(parties)
+        row = make_row(k, parties, w, r)
+        db.add(row); db.flush()
+        for p, v in parties.items():
+            db.add(parent_party(**{parent_fk: row.id, "party": p, "votes": v}))
+        n += 1
+    db.commit()
+    return n
+
+
 LLM_MODEL = "qwen3.5-9b"
 
 
@@ -909,10 +1104,16 @@ def main() -> None:
                     help="roll the polling-unit LLM evidence (evidence.kind='llm', from "
                          "push_jsons_local.py) up into ward/lga/state LLM evidence, all offices. "
                          "Idempotent — re-running replaces, never duplicates. Use --state to scope.")
+    ap.add_argument("--build-results", action="store_true",
+                    help="build the merged RESULTS (pu_results + ward/lga/state_result_v) from "
+                         "evidence, preferring qwen LLM and falling back to the next-best evidence; "
+                         "all offices. Idempotent. Use --state to scope.")
     ap.add_argument("--commit", action="store_true",
                     help="actually write (default is a dry run that writes nothing)")
     args = ap.parse_args()
-    if getattr(args, "rollup_llm", False):
+    if getattr(args, "build_results", False):
+        build_results(args.commit, state_geo=args.state, year=args.year)
+    elif getattr(args, "rollup_llm", False):
         rollup_llm(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "push_archive_evidence", False):
         run_push_archive_evidence(args.commit)
