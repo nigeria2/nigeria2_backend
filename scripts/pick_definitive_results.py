@@ -405,10 +405,14 @@ def import_from_archive(commit: bool, state_geo=None) -> None:
         _rollup_ward(db, state_geo)
         _rollup_lga(db, state_geo, lga_names)
         _rollup_state(db, state_geo)
+        # State-level-only archive data (e.g. 2019 presidential): no level below to roll up,
+        # so load it directly as INDEPENDENT state evidence + the state result. This is the
+        # top-down case — data that arrives at the state level from another source.
+        n_direct = _load_state_declared(db, state_geo)
 
         db.commit()
-        print(f"Imported: {pu_written} pu_results + INEC-sheet evidence; ward/lga/state rolled up "
-              f"(rollup evidence + merged results). Committed.")
+        print(f"Imported: {pu_written} pu_results + INEC-sheet evidence; ward/lga/state rolled up; "
+              f"{n_direct} state-level results loaded directly (declared). Committed.")
     finally:
         db.close()
 
@@ -506,6 +510,50 @@ def _rollup_state(db, state_geo):
         db.add(r); db.flush()
         for p, v in parties.items():
             db.add(StateResultParty(state_result_id=r.id, party=p, votes=v))
+
+
+def _load_state_declared(db, state_geo) -> int:
+    """Load state-level-only archive results (state_presidential_archive) directly, for any
+    year — this is the top-down case (e.g. 2019 presidential) where there is no level below
+    to roll up. Written as INDEPENDENT state evidence (kind='inec_declared') + state_result_v,
+    but ONLY for a (state, year) that has no rolled-up result already (so 2023 rollups win)."""
+    _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "inec_declared", state_geo)
+    # (state, year) pairs that already have a rolled-up state result — don't clobber those
+    rolled = {(sgeo, yr) for (sgeo, yr) in db.execute(
+        select(StateResultV.state_geo, StateResultV.year).where(StateResultV.source == "official")).all()}
+    n = 0
+    q = select(StatePresidential)
+    if state_geo is not None:
+        q = q.where(StatePresidential.state_geo == state_geo)
+    for s in db.scalars(q).all():
+        yr = str(s.year)
+        if (s.state_geo, yr) in rolled:
+            continue  # a rollup exists for this state/year; leave it
+        parts = [("APC", s.apc or 0), ("PDP", s.pdp or 0), ("LP", s.lp or 0),
+                 ("NNPP", s.nnpp or 0), ("Others", s.others or 0)]
+        parts = [(p, v) for p, v in parts if v]
+        winner = s.winner or _winner_runner(parts)[0]
+        _, runner = _winner_runner(parts)
+        total = s.total_votes or sum(v for _, v in parts)
+        # remove any prior official state result for this exact state/year first
+        idq = select(StateResultV.id).where(
+            StateResultV.state_geo == s.state_geo, StateResultV.year == yr,
+            StateResultV.election_type == "presidential", StateResultV.source == "official")
+        db.execute(delete(StateResultParty).where(StateResultParty.state_result_id.in_(idq)))
+        db.execute(delete(StateResultV).where(StateResultV.id.in_(idq)))
+        ev = StateEvidence(election_type="presidential", year=yr, state_geo=s.state_geo,
+                           kind="inec_declared", source="INEC declared", method="state-declared",
+                           total_votes=total)
+        db.add(ev); db.flush()
+        for p, v in parts:
+            db.add(StateEvidenceParty(state_evidence_id=ev.id, party=p, votes=v))
+        r = StateResultV(state=s.state, state_geo=s.state_geo, election_type="presidential",
+                         year=yr, winner=winner, runner_up=runner, total_votes=total, source="official")
+        db.add(r); db.flush()
+        for p, v in parts:
+            db.add(StateResultParty(state_result_id=r.id, party=p, votes=v))
+        n += 1
+    return n
 
 
 def main() -> None:
