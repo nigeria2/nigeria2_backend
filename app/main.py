@@ -517,6 +517,83 @@ def public_results_state(year: str, geo_id: str, db: Session = Depends(get_db)):
     return JSONResponse(data, headers=_PUBLIC_CORS)
 
 
+# --- Public results API, path-mirrored to the website (CORS-open, no key) -------------
+# These mirror the results pages 1:1 so a URL you can browse on nigeria2.com has a data
+# twin on api.nigeria2.com. Each level returns roughly what that page shows.
+#   /elections/{year}/{state}                         -> a state's results
+#   /elections/{year}/{state}/{lga}                   -> one LGA's results
+#   /elections/{year}/{state}/{lga}/{ward}            -> a ward's polling units
+#   /elections/{year}/{state}/{lga}/{ward}/{pu}       -> one polling unit (result + evidence)
+# Slugs match the website: state = "akwa-ibom", lga = "162-abak" (leading number is the
+# lga_id), ward = "03-01-01" (ward_code with / as -), pu = "001".
+def _slug_to_geo(state_slug: str) -> str | None:
+    """'akwa-ibom' -> 'nga_3' (tolerant of FCT/Nasarawa/Cross River variants via geo.py)."""
+    return geo.state_geo_id(state_slug.replace("-", " "))
+
+
+def _lga_id_from_slug(lga_slug: str) -> int | None:
+    """'162-abak' -> 162 (the website puts the lga_id first)."""
+    head = lga_slug.split("-", 1)[0]
+    return int(head) if head.isdigit() else None
+
+
+@app.get("/elections/{year}/{state}")
+def public_page_state(year: str, state: str, db: Session = Depends(get_db)):
+    """Public twin of the state results page. `state` is the website slug, e.g. akwa-ibom."""
+    geo_id = _slug_to_geo(state)
+    if geo_id is None:
+        return JSONResponse({"detail": f"unknown state '{state}'"}, status_code=404, headers=_PUBLIC_CORS)
+    try:
+        data = results_state(year, geo_id, db)
+    except HTTPException as e:
+        return JSONResponse({"detail": e.detail}, status_code=e.status_code, headers=_PUBLIC_CORS)
+    return JSONResponse(data, headers=_PUBLIC_CORS)
+
+
+@app.get("/elections/{year}/{state}/{lga}")
+def public_page_lga(year: str, state: str, lga: str, db: Session = Depends(get_db)):
+    """Public twin of the LGA results page. `lga` is the website slug, e.g. 162-abak."""
+    lga_id = _lga_id_from_slug(lga)
+    if lga_id is None:
+        return JSONResponse({"detail": f"bad lga slug '{lga}' (expected <id>-<name>)"},
+                            status_code=400, headers=_PUBLIC_CORS)
+    try:
+        data = lga_detail(lga_id, db)
+    except HTTPException as e:
+        return JSONResponse({"detail": e.detail}, status_code=e.status_code, headers=_PUBLIC_CORS)
+    return JSONResponse(data, headers=_PUBLIC_CORS)
+
+
+@app.get("/elections/{year}/{state}/{lga}/{ward}")
+def public_page_ward(year: str, state: str, lga: str, ward: str, db: Session = Depends(get_db)):
+    """Public twin of the ward page: the ward's polling units + ward-level result.
+    `ward` is the website slug, e.g. 03-01-01 (ward_code with / written as -)."""
+    data = ward_polling_units(ward, db)
+    if not data.get("polling_units") and not data.get("ward"):
+        return JSONResponse({"detail": f"no data for ward '{ward}'"}, status_code=404, headers=_PUBLIC_CORS)
+    return JSONResponse(data, headers=_PUBLIC_CORS)
+
+
+@app.get("/elections/{year}/{state}/{lga}/{ward}/{pu}")
+def public_page_pu(year: str, state: str, lga: str, ward: str, pu: str,
+                   db: Session = Depends(get_db)):
+    """Public twin of the polling-unit page: the unit's result (a merge of the evidence),
+    every piece of evidence, and the result sheets. `pu` is the unit number, e.g. 001;
+    the full INEC code is ward + '/' + pu."""
+    ward_code = ward.replace("-", "/")
+    pu_num = pu.replace("-", "/")
+    # tolerate the older style where the whole code was passed as the pu segment
+    if pu_num.startswith(ward_code + "/"):
+        pu_code = pu_num
+    else:
+        pu_code = f"{ward_code}/{pu_num}"
+    try:
+        data = polling_unit_detail(pu_code, db)
+    except HTTPException as e:
+        return JSONResponse({"detail": e.detail}, status_code=e.status_code, headers=_PUBLIC_CORS)
+    return JSONResponse(data, headers=_PUBLIC_CORS)
+
+
 @app.get("/api/parties/elections")
 def parties_by_election(db: Session = Depends(get_db)):
     """Which party acronyms are relevant for each election type."""
