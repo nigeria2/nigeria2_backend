@@ -1240,6 +1240,23 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
         }
         for r in presults
     ]
+    # Legacy fallback: until the picker fills pu_results, synthesise a presidential
+    # definitive from the polling_units.votes_* columns so the PU page shows the same
+    # numbers the ward page already shows. Only when we have no unified presidential row.
+    if pu is not None and not any(d["election_type"] == "presidential" for d in definitive):
+        legacy = {k: v for k, v in _pu_scores(pu).items() if v is not None}
+        if legacy:
+            ranked = sorted(legacy.items(), key=lambda x: x[1], reverse=True)
+            definitive.append({
+                "election_type": "presidential", "year": "2023",
+                "winner": pu.winner or (ranked[0][0] if ranked else ""),
+                "runner_up": pu.runner_up or (ranked[1][0] if len(ranked) > 1 else ""),
+                "total_votes": pu.known_votes if pu.known_votes is not None else sum(legacy.values()),
+                "valid_votes": None, "registered_voters": pu.registered_voters,
+                "accredited_voters": None, "source": "legacy", "method": "",
+                "chosen_transcription_id": None,
+                "parties": dict(ranked),
+            })
     # INEC sheet links (one per race)
     sheets = [
         {"election_type": s.election_type, "year": s.year, "sheet_url": s.sheet_url or "",
