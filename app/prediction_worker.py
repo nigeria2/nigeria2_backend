@@ -23,7 +23,7 @@ from .models import (
     ScenarioPolitician,
     ScenarioTrend,
     StatePrediction,
-    StatePresidential,
+    StateResultV,
 )
 from . import geo
 from . import prediction_engine as engine
@@ -35,7 +35,10 @@ _STEP_DELAY = 0.35  # seconds between states — keeps progress observable and y
 
 
 def _states_with_baseline(db: Session) -> list[str]:
-    return sorted({s for (s,) in db.execute(select(StatePresidential.state)).all()})
+    return sorted({s for (s,) in db.execute(
+        select(StateResultV.state).where(
+            StateResultV.year == "2023", StateResultV.election_type == "presidential")
+    ).all() if s})
 
 
 def _log_append(scenario: PredictionScenario, line: str) -> None:

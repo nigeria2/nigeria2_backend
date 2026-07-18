@@ -292,9 +292,11 @@ class GovernorHistory(Base):
 
 
 class LgaResult(Base):
-    """Verified 2023 presidential result aggregated per LGA."""
+    """ARCHIVED legacy table (renamed to lga_results_archive by migration 0046). No live
+    app code reads this — results now live in the unified LgaResultV tables. Kept only so
+    the local `pick_definitive_results.py --from-archive` script can import the old data."""
 
-    __tablename__ = "lga_results"
+    __tablename__ = "lga_results_archive"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
@@ -308,12 +310,11 @@ class LgaResult(Base):
 
 
 class LgaPartyResult(Base):
-    """One party's votes in one LGA in one election — tidy long form (one row per
-    election_type/year/lga/party). Holds the verified 2023 results we display at
-    /elections/2023/results: presidential (from ward_results) and governorship (from the
-    per-LGA declarations we collected). LGAs are linked by canonical lga_id."""
+    """ARCHIVED legacy table (renamed to lga_party_results_archive by migration 0046). No
+    live app code reads this — LGA results now live in the unified LgaResultV tables. Kept
+    only for the local `pick_definitive_results.py --from-archive` import."""
 
-    __tablename__ = "lga_party_results"
+    __tablename__ = "lga_party_results_archive"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     election_type: Mapped[str] = mapped_column(String(20), index=True)  # presidential | governor
@@ -395,9 +396,11 @@ class PollingUnit(Base):
 
 
 class WardResult(Base):
-    """Aggregated 2023 presidential result per ward (from verified polling units)."""
+    """ARCHIVED legacy table (renamed to ward_results_archive by migration 0046). No live
+    app code reads this — ward results now live in the unified WardResultV tables. Kept
+    only for the local `pick_definitive_results.py --from-archive` import."""
 
-    __tablename__ = "ward_results"
+    __tablename__ = "ward_results_archive"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)
@@ -434,9 +437,11 @@ class Senator(Base):
 
 
 class StatePresidential(Base):
-    """2023 presidential result for a state (official, by-state)."""
+    """ARCHIVED legacy table (renamed to state_presidential_archive by migration 0046). No
+    live app code reads this — state results now live in the unified StateResultV tables.
+    Kept only for the local `pick_definitive_results.py --from-archive` import."""
 
-    __tablename__ = "state_presidential"
+    __tablename__ = "state_presidential_archive"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     state: Mapped[str] = mapped_column(String(50), index=True)

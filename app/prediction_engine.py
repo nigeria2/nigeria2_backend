@@ -14,7 +14,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import PartyHistory, Politician, StatePresidential
+from .models import PartyHistory, Politician, StateResultV, StateResultParty
 
 # The party buckets the baseline is expressed in. Anything else folds into "others".
 PARTIES = ["APC", "PDP", "LP", "NNPP", "others"]
@@ -40,11 +40,20 @@ def resolve_old_party(db: Session, politician_id: int) -> str:
 
 
 def baseline_votes(db: Session, state: str) -> dict[str, int] | None:
-    """The 2023 per-party vote counts for a state, or None if we have no result."""
-    row = db.scalar(select(StatePresidential).where(StatePresidential.state == state))
+    """The 2023 per-party vote counts for a state, or None if we have no result. Reads the
+    unified state-level presidential result (StateResultV + StateResultParty)."""
+    row = db.scalar(select(StateResultV).where(
+        StateResultV.state == state, StateResultV.year == "2023",
+        StateResultV.election_type == "presidential"))
     if row is None:
         return None
-    return {"APC": row.apc, "PDP": row.pdp, "LP": row.lp, "NNPP": row.nnpp, "others": row.others}
+    parties = {pp.party: (pp.votes or 0) for pp in db.scalars(
+        select(StateResultParty).where(StateResultParty.state_result_id == row.id)).all()}
+    return {
+        "APC": parties.get("APC", 0), "PDP": parties.get("PDP", 0),
+        "LP": parties.get("LP", 0), "NNPP": parties.get("NNPP", 0),
+        "others": sum(v for p, v in parties.items() if p not in ("APC", "PDP", "LP", "NNPP")),
+    }
 
 
 def _applies(scope: str, home_state: str, state: str) -> bool:

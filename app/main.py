@@ -23,7 +23,6 @@ from .models import (
     HouseMember,
     InterestedUser,
     Lga,
-    LgaResult,
     LegislativeResult,
     ElectionSheet,
     Party,
@@ -42,13 +41,10 @@ from .models import (
     Senator,
     State,
     StatePrediction,
-    StatePresidential,
     User,
     Ward,
     PredictionComponent,
     WardPrediction,
-    WardResult,
-    LgaPartyResult,
     SheetTranscription,
     TranscriptionParty,
     PuResult,
@@ -553,12 +549,11 @@ def _public_prediction_dict(p: StatePrediction) -> dict:
     }
 
 
-def _lga_result_dict(x: LgaResult) -> dict:
-    try:
-        scores = json.loads(x.scores) if x.scores else {}
-    except Exception:
-        scores = {}
-    return {"lga": x.lga, "lga_id": x.lga_id, "leading_party": x.leading_party, "scores": scores, "total_votes": x.total_votes, "year": x.year}
+def _lga_result_dict(x, parties: dict) -> dict:
+    """Shape a unified LgaResultV row (+ its party votes) for the state page."""
+    scores = dict(sorted(parties.items(), key=lambda kv: -(kv[1] or 0)))
+    return {"lga": x.lga, "lga_id": x.lga_id, "leading_party": x.winner, "scores": scores,
+            "total_votes": x.total_votes, "year": x.year}
 
 
 def _load_list(s: str) -> list:
@@ -621,42 +616,36 @@ def politician_to_dict(p: Politician, assessments: list, runs: list | None = Non
     return d
 
 
-# Party -> the StatePresidential column holding that ticket's by-state votes.
-_PRES_PARTY_COL = {"APC": "apc", "PDP": "pdp", "LP": "lp", "NNPP": "nnpp"}
-
-
 def _presidential_state_votes(db: Session, runs: list) -> list[dict]:
-    """A presidential candidate's by-state vote breakdown, states sorted by votes
-    (where they polled the most first). Pulled from the official StatePresidential
-    table, which only carries the four major-party tickets — everyone else (minor
-    candidates, non-presidential runs) yields no by-state rows and returns []."""
+    """A presidential candidate's by-state vote breakdown, states sorted by votes (where
+    they polled the most first). Pulled from the unified state-level presidential results
+    (StateResultV + StateResultParty). A party with no by-state rows for a year yields []."""
     out: list[dict] = []
-    seen_years: set[int] = set()
+    seen_years: set[str] = set()
     for r in runs:
         if r.election_type != "presidential":
             continue
-        col = _PRES_PARTY_COL.get(r.party)
-        if col is None:
-            continue
-        try:
-            yr = int(r.year)
-        except (TypeError, ValueError):
-            continue
+        yr = str(r.year)
         if yr in seen_years:
             continue
-        rows = db.scalars(select(StatePresidential).where(StatePresidential.year == yr)).all()
-        if not rows:
+        srows = db.scalars(select(StateResultV).where(
+            StateResultV.year == yr, StateResultV.election_type == "presidential")).all()
+        if not srows:
             continue
+        votes_by_res = defaultdict(dict)
+        for pp in db.scalars(select(StateResultParty).where(
+                StateResultParty.state_result_id.in_([s.id for s in srows]))).all():
+            votes_by_res[pp.state_result_id][pp.party] = pp.votes
+        states = [
+            {"state": s.state, "votes": votes_by_res.get(s.id, {}).get(r.party, 0) or 0,
+             "total": s.total_votes or 0, "won": s.winner == r.party}
+            for s in srows
+        ]
+        if not any(x["votes"] for x in states):
+            continue  # this party didn't feature at state level that year
         seen_years.add(yr)
-        states = sorted(
-            (
-                {"state": s.state, "votes": getattr(s, col) or 0, "total": s.total_votes or 0,
-                 "won": s.winner == r.party}
-                for s in rows
-            ),
-            key=lambda x: x["votes"], reverse=True,
-        )
-        out.append({"year": str(yr), "party": r.party, "states": states})
+        states.sort(key=lambda x: x["votes"], reverse=True)
+        out.append({"year": yr, "party": r.party, "states": states})
     return out
 
 
@@ -691,7 +680,13 @@ def state_detail(geo_id: str, db: Session = Depends(get_db)):
         select(StatePrediction).where(StatePrediction.state_geo == geo_id).order_by(StatePrediction.source, StatePrediction.created_at.desc())
     ).all()
     pols = db.scalars(select(Politician).where(Politician.state_geo == geo_id).order_by(Politician.id)).all()
-    lgas = db.scalars(select(LgaResult).where(LgaResult.state_geo == geo_id).order_by(LgaResult.lga)).all()
+    lgas = db.scalars(select(LgaResultV).where(
+        LgaResultV.state_geo == geo_id, LgaResultV.election_type == "presidential").order_by(LgaResultV.lga)).all()
+    lga_result_parties: dict[int, dict] = defaultdict(dict)
+    if lgas:
+        for pp in db.scalars(select(LgaResultParty).where(
+                LgaResultParty.lga_result_id.in_([x.id for x in lgas]))).all():
+            lga_result_parties[pp.lga_result_id][pp.party] = pp.votes
     pol_assess: dict[int, list] = defaultdict(list)
     if pols:
         for a in db.scalars(select(PoliticianAssessment).where(PoliticianAssessment.politician_id.in_([p.id for p in pols]))).all():
@@ -740,7 +735,25 @@ def state_detail(geo_id: str, db: Session = Depends(get_db)):
             "name": h.politician_name, "party": h.party, "votes": h.votes or None,
             "position": h.position, "politician_id": h.politician_id,
         })
-    pres23 = db.scalar(select(StatePresidential).where(StatePresidential.state_geo == geo_id, StatePresidential.year == 2023))
+    # 2023 presidential state result (unified). Prefer state-level; else roll up the
+    # LGA-level presidential rows for this state.
+    pres23 = db.scalar(select(StateResultV).where(
+        StateResultV.state_geo == geo_id, StateResultV.year == "2023",
+        StateResultV.election_type == "presidential"))
+    pres23_parties: dict = {}
+    if pres23 is not None:
+        pres23_parties = {pp.party: pp.votes for pp in db.scalars(
+            select(StateResultParty).where(StateResultParty.state_result_id == pres23.id)).all()}
+    else:
+        lg = db.scalars(select(LgaResultV).where(
+            LgaResultV.state_geo == geo_id, LgaResultV.year == "2023",
+            LgaResultV.election_type == "presidential")).all()
+        if lg:
+            agg: dict = defaultdict(int)
+            for pp in db.scalars(select(LgaResultParty).where(
+                    LgaResultParty.lga_result_id.in_([x.id for x in lg]))).all():
+                agg[pp.party] += pp.votes or 0
+            pres23_parties = dict(agg)
     # politician_id per party for the 2023 national presidential tickets, so the
     # candidate names on the state page can link to their profiles.
     pres_ids = {
@@ -783,17 +796,21 @@ def state_detail(geo_id: str, db: Session = Depends(get_db)):
             d for x in pols
             if _is_heavyweight(d := politician_to_dict(x, pol_assess.get(x.id, []), pol_runs.get(x.id, []), lga_names))
         ],
-        "lgas": [_lga_result_dict(x) for x in lgas],
+        "lgas": [_lga_result_dict(x, lga_result_parties.get(x.id, {})) for x in lgas],
         "governor_2019": [_gov_row(g) for g in gov if g.year == "2019"],
         "governor_2023": [_gov_row(g) for g in gov if g.year == "2023"],
         "senators": [_senator_dict(s, senate_wins.get(s.politician_id)) for s in senators],
         "senate_2023": list(senate_races.values()),
         "reps": [_house_dict(m) for m in reps],
         "presidential_2023": ({
-            "APC": pres23.apc, "PDP": pres23.pdp, "LP": pres23.lp, "NNPP": pres23.nnpp,
-            "others": pres23.others, "total": pres23.total_votes, "turnout": pres23.turnout, "winner": pres23.winner,
+            "APC": pres23_parties.get("APC", 0), "PDP": pres23_parties.get("PDP", 0),
+            "LP": pres23_parties.get("LP", 0), "NNPP": pres23_parties.get("NNPP", 0),
+            "others": sum(v for p, v in pres23_parties.items() if p not in ("APC", "PDP", "LP", "NNPP")),
+            "total": (pres23.total_votes if pres23 else sum(pres23_parties.values())),
+            "turnout": None,
+            "winner": (pres23.winner if pres23 else (max(pres23_parties, key=pres23_parties.get) if pres23_parties else "")),
             "politician_ids": pres_ids,
-        } if pres23 else None),
+        } if pres23_parties else None),
         "governor": _governor_dict(incumbent) if incumbent else None,
         "governor_history": [
             {"name": g.name, "party": g.party, "term_start": g.term_start or None, "term_end": g.term_end or None,
@@ -1034,7 +1051,8 @@ def state_pu_wards(geo_id: str, db: Session = Depends(get_db)):
         .group_by(PollingUnit.lga, PollingUnit.ward, PollingUnit.ward_code)
         .order_by(PollingUnit.lga, PollingUnit.ward)
     ).all()
-    wr = {w.ward_code: w for w in db.scalars(select(WardResult).where(WardResult.state_geo == geo_id)).all()}
+    wr = {w.ward_code: w for w in db.scalars(select(WardResultV).where(
+        WardResultV.state_geo == geo_id, WardResultV.election_type == "presidential")).all()}
     out = []
     for r in rows:
         w = wr.get(r.ward_code)
@@ -1071,19 +1089,16 @@ def _pu_definitive(db: Session, pu_codes: list[str], election_type: str = "presi
     return out
 
 
-def _pu_scores(p: PollingUnit) -> dict:
-    """Legacy 4-party scores off the PollingUnit row (fallback before pu_results filled)."""
-    return {"APC": p.votes_apc, "LP": p.votes_lp, "PDP": p.votes_pdp, "NNPP": p.votes_nnpp}
-
-
 @app.get("/api/wards/{ward_code}/polling-units")
 def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
     code = ward_code.replace("-", "/")
+    # polling_units supplies geography (name, registered voters); vote data comes only
+    # from the unified pu_results / ward_result_v tables.
     rows = db.scalars(select(PollingUnit).where(PollingUnit.ward_code == code).order_by(PollingUnit.pu_code)).all()
     if not rows:
         return {"state": "", "lga": "", "ward": "", "ward_code": code, "result": None, "polling_units": []}
     first = rows[0]
-    # ward-level result: prefer unified ward_result_v (presidential), fall back to legacy
+    # ward-level result (unified, presidential)
     result = None
     wv = db.scalar(select(WardResultV).where(
         WardResultV.ward_code == code, WardResultV.election_type == "presidential").order_by(WardResultV.id.desc()))
@@ -1091,14 +1106,7 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
         wparties = {pp.party: pp.votes for pp in db.scalars(
             select(WardResultParty).where(WardResultParty.ward_result_id == wv.id)).all()}
         result = {"winner": wv.winner, "runner_up": wv.runner_up, "total_votes": wv.total_votes, "scores": wparties}
-    else:
-        wr = db.scalar(select(WardResult).where(WardResult.ward_code == code))
-        if wr is not None:
-            result = {
-                "winner": wr.winner, "runner_up": wr.runner_up, "total_votes": wr.total_votes,
-                "scores": {"APC": wr.votes_apc, "LP": wr.votes_lp, "PDP": wr.votes_pdp, "NNPP": wr.votes_nnpp},
-            }
-    # definitive per-PU results (unified) keyed by pu_code, with legacy fallback
+    # definitive per-PU results (unified) keyed by pu_code
     pu_codes = [p.pu_code for p in rows]
     definitive = _pu_definitive(db, pu_codes, "presidential")
     # IReV result sheets for these polling units, grouped by pu_code (one per race we hold)
@@ -1110,17 +1118,12 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
         })
 
     def pu_dict(p: PollingUnit) -> dict:
-        d = definitive.get(p.pu_code)
-        if d:  # unified definitive result present
-            scores = d["parties"] or _pu_scores(p)
-            return {
-                "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
-                "known_votes": d["known_votes"], "winner": d["winner"], "runner_up": d["runner_up"],
-                "scores": scores, "sheets": sorted(sheets_by_pu.get(p.pu_code, []), key=lambda x: x["election_type"]),
-            }
+        d = definitive.get(p.pu_code)  # None until the results are populated
         return {
             "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
-            "known_votes": p.known_votes, "winner": p.winner, "runner_up": p.runner_up, "scores": _pu_scores(p),
+            "known_votes": (d["known_votes"] if d else None),
+            "winner": (d["winner"] if d else ""), "runner_up": (d["runner_up"] if d else ""),
+            "scores": (d["parties"] if d else {}),
             "sheets": sorted(sheets_by_pu.get(p.pu_code, []), key=lambda x: x["election_type"]),
         }
 
@@ -1240,23 +1243,6 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
         }
         for r in presults
     ]
-    # Legacy fallback: until the picker fills pu_results, synthesise a presidential
-    # definitive from the polling_units.votes_* columns so the PU page shows the same
-    # numbers the ward page already shows. Only when we have no unified presidential row.
-    if pu is not None and not any(d["election_type"] == "presidential" for d in definitive):
-        legacy = {k: v for k, v in _pu_scores(pu).items() if v is not None}
-        if legacy:
-            ranked = sorted(legacy.items(), key=lambda x: x[1], reverse=True)
-            definitive.append({
-                "election_type": "presidential", "year": "2023",
-                "winner": pu.winner or (ranked[0][0] if ranked else ""),
-                "runner_up": pu.runner_up or (ranked[1][0] if len(ranked) > 1 else ""),
-                "total_votes": pu.known_votes if pu.known_votes is not None else sum(legacy.values()),
-                "valid_votes": None, "registered_voters": pu.registered_voters,
-                "accredited_voters": None, "source": "legacy", "method": "",
-                "chosen_transcription_id": None,
-                "parties": dict(ranked),
-            })
     # INEC sheet links (one per race)
     sheets = [
         {"election_type": s.election_type, "year": s.year, "sheet_url": s.sheet_url or "",
@@ -1291,7 +1277,15 @@ def state_lgas(geo_id: str, db: Session = Depends(get_db)):
     if state is None:
         raise HTTPException(status_code=404, detail="unknown state geo id")
     lgas = db.scalars(select(Lga).where(Lga.state_geo == geo_id).order_by(Lga.name)).all()
-    res = {r.lga_id: r for r in db.scalars(select(LgaResult).where(LgaResult.state_geo == geo_id)).all() if r.lga_id}
+    # unified LGA presidential results for this state, keyed by lga_id (+ party breakdown)
+    lv_rows = db.scalars(select(LgaResultV).where(
+        LgaResultV.state_geo == geo_id, LgaResultV.election_type == "presidential")).all()
+    lv_parties: dict[int, dict] = defaultdict(dict)
+    if lv_rows:
+        for pp in db.scalars(select(LgaResultParty).where(
+                LgaResultParty.lga_result_id.in_([x.id for x in lv_rows]))).all():
+            lv_parties[pp.lga_result_id][pp.party] = pp.votes
+    res = {x.lga_id: x for x in lv_rows if x.lga_id}
     ward_counts = dict(db.execute(
         select(Ward.lga_id, func.count()).where(Ward.state_geo == geo_id).group_by(Ward.lga_id)
     ).all())
@@ -1308,9 +1302,9 @@ def state_lgas(geo_id: str, db: Session = Depends(get_db)):
         cnt, reg = pu_counts.get(l.id, (0, None))
         out.append({
             "id": l.id, "name": l.name,
-            "leading_party": r.leading_party if r else "",
+            "leading_party": r.winner if r else "",
             "total_votes": r.total_votes if r else 0,
-            "scores": (json.loads(r.scores) if r and r.scores else {}),
+            "scores": (dict(sorted(lv_parties.get(r.id, {}).items(), key=lambda x: -(x[1] or 0))) if r else {}),
             "ward_count": ward_counts.get(l.id, 0) or 0,
             "pu_count": cnt or 0, "registered_voters": int(reg) if reg else None,
         })
@@ -1325,12 +1319,16 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
     l = db.get(Lga, lga_id)
     if l is None:
         raise HTTPException(status_code=404, detail="local government not found")
-    r = db.scalar(select(LgaResult).where(LgaResult.lga_id == lga_id))
+    # LGA presidential result (unified)
     result = None
-    if r is not None:
+    lv = db.scalar(select(LgaResultV).where(
+        LgaResultV.lga_id == lga_id, LgaResultV.election_type == "presidential").order_by(LgaResultV.id.desc()))
+    if lv is not None:
+        lparties = {pp.party: pp.votes for pp in db.scalars(
+            select(LgaResultParty).where(LgaResultParty.lga_result_id == lv.id)).all()}
         result = {
-            "leading_party": r.leading_party, "total_votes": r.total_votes,
-            "scores": (json.loads(r.scores) if r.scores else {}), "year": r.year,
+            "leading_party": lv.winner, "total_votes": lv.total_votes,
+            "scores": dict(sorted(lparties.items(), key=lambda x: -(x[1] or 0))), "year": lv.year,
         }
     ward_rows = db.execute(
         select(PollingUnit.ward, PollingUnit.ward_code, func.count(), func.sum(PollingUnit.registered_voters))
@@ -1338,18 +1336,23 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
         .group_by(PollingUnit.ward, PollingUnit.ward_code)
         .order_by(PollingUnit.ward)
     ).all()
-    wr = {w.ward_code: w for w in db.scalars(select(WardResult).where(WardResult.lga_id == lga_id)).all()}
+    # per-ward presidential results (unified) keyed by ward_code, with party breakdown
+    wv_rows = db.scalars(select(WardResultV).where(
+        WardResultV.lga_id == lga_id, WardResultV.election_type == "presidential")).all()
+    wv = {w.ward_code: w for w in wv_rows}
+    wparties: dict[int, dict] = defaultdict(dict)
+    if wv_rows:
+        for pp in db.scalars(select(WardResultParty).where(
+                WardResultParty.ward_result_id.in_([w.id for w in wv_rows]))).all():
+            wparties[pp.ward_result_id][pp.party] = pp.votes
     wards = [
         {
             "ward": ward, "ward_code": code, "pu_count": cnt,
             "registered_voters": int(reg) if reg else None,
-            "winner": (wr[code].winner if code in wr else ""),
-            "runner_up": (wr[code].runner_up if code in wr else ""),
-            # 2023 presidential votes per major party (verified ward aggregate)
-            "scores": ({"APC": wr[code].votes_apc, "LP": wr[code].votes_lp,
-                        "PDP": wr[code].votes_pdp, "NNPP": wr[code].votes_nnpp}
-                       if code in wr else {}),
-            "total_votes": (wr[code].total_votes if code in wr else None),
+            "winner": (wv[code].winner if code in wv else ""),
+            "runner_up": (wv[code].runner_up if code in wv else ""),
+            "scores": (dict(wparties.get(wv[code].id, {})) if code in wv else {}),
+            "total_votes": (wv[code].total_votes if code in wv else None),
         }
         for ward, code, cnt, reg in ward_rows
     ]
@@ -1475,7 +1478,8 @@ def lga_prediction_states(election_type: str = "presidential", year: str = "2027
     rows = db.scalars(select(WardPrediction).where(
         WardPrediction.election_type == election_type, WardPrediction.year == year
     )).all()
-    baseline = {sp.state: (sp.total_votes or 0) for sp in db.scalars(select(StatePresidential).where(StatePresidential.year == 2023)).all()}
+    baseline = {sr.state: (sr.total_votes or 0) for sr in db.scalars(select(StateResultV).where(
+        StateResultV.year == "2023", StateResultV.election_type == "presidential")).all()}
     by_state: dict[str, list] = defaultdict(list)
     lgas_seen: dict[str, set] = defaultdict(set)
     for r in rows:
@@ -1513,8 +1517,9 @@ def lga_prediction_state(geo_id: str, election_type: str = "presidential", year:
     for r in rows:
         by_lga[r.lga_id].append(r)
     lga_base = dict(db.execute(
-        select(WardResult.lga_id, func.coalesce(func.sum(WardResult.total_votes), 0))
-        .where(WardResult.lga_id.in_(list(by_lga))).group_by(WardResult.lga_id)
+        select(WardResultV.lga_id, func.coalesce(func.sum(WardResultV.total_votes), 0))
+        .where(WardResultV.lga_id.in_(list(by_lga)), WardResultV.election_type == "presidential")
+        .group_by(WardResultV.lga_id)
     ).all()) if by_lga else {}
     lgas = []
     for lga_id, lrows in by_lga.items():
@@ -1555,9 +1560,17 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
         select(PollingUnit.ward_code, func.sum(PollingUnit.registered_voters))
         .where(PollingUnit.lga_id == lga_id).group_by(PollingUnit.ward_code)
     ).all())
+    # unified 2023 presidential ward results for this LGA (+ party breakdown)
+    wv_rows = db.scalars(select(WardResultV).where(
+        WardResultV.lga_id == lga_id, WardResultV.election_type == "presidential").order_by(WardResultV.ward)).all()
+    wv_parties: dict[int, dict] = defaultdict(dict)
+    if wv_rows:
+        for pp in db.scalars(select(WardResultParty).where(
+                WardResultParty.ward_result_id.in_([x.id for x in wv_rows]))).all():
+            wv_parties[pp.ward_result_id][pp.party] = pp.votes
     wards = []
-    for w in db.scalars(select(WardResult).where(WardResult.lga_id == lga_id).order_by(WardResult.ward)).all():
-        parties = {"APC": w.votes_apc, "LP": w.votes_lp, "PDP": w.votes_pdp, "NNPP": w.votes_nnpp}
+    for w in wv_rows:
+        parties = dict(wv_parties.get(w.id, {}))
         cands = _candidate_groups(db, by_ward.get(w.ward_code, []), w.total_votes, comps)
         wards.append({
             "ward": w.ward, "ward_code": w.ward_code,
@@ -1572,9 +1585,10 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
             }] if w.total_votes else [],
         })
 
-    baseline = db.scalar(select(func.coalesce(func.sum(WardResult.total_votes), 0)).where(WardResult.lga_id == lga_id)) or 0
+    baseline = sum(w.total_votes or 0 for w in wv_rows)
     if not baseline:
-        lr = db.scalar(select(LgaResult).where(LgaResult.lga_id == lga_id))
+        lr = db.scalar(select(LgaResultV).where(
+            LgaResultV.lga_id == lga_id, LgaResultV.election_type == "presidential"))
         baseline = (lr.total_votes if lr else 0) or 0
     cands_lga = _candidate_groups(db, rows, baseline, comps)
     return {
@@ -1588,19 +1602,19 @@ def lga_prediction_detail(lga_id: int, election_type: str = "presidential", year
 
 # --- verified election results per LGA (presidential + governor) ---
 
-def _results_table(rows: list) -> dict:
-    """Shape a set of LgaPartyResult rows (one election) into a table: ordered party
-    columns (by total votes), a row per LGA with each party's votes, and the winner."""
+def _lga_results_table(lv_rows: list, parties_by_id: dict) -> dict:
+    """Shape unified LgaResultV rows (one election) into a table: ordered party columns
+    (by total votes), a row per LGA with each party's votes, and the winner."""
     ptot: dict[str, int] = defaultdict(int)
-    by_lga: dict = {}
-    for r in rows:
-        ptot[r.party] += r.votes or 0
-        key = (r.lga_id, r.lga)
-        d = by_lga.setdefault(key, {"lga_id": r.lga_id, "lga": r.lga, "parties": {}, "total": 0})
-        d["parties"][r.party] = (d["parties"].get(r.party, 0) + (r.votes or 0))
-        d["total"] += r.votes or 0
+    lgas: list = []
+    for r in lv_rows:
+        parts = parties_by_id.get(r.id, {})
+        for p, v in parts.items():
+            ptot[p] += v or 0
+        lgas.append({"lga_id": r.lga_id, "lga": r.lga, "parties": dict(parts),
+                     "total": r.total_votes or sum(parts.values())})
     parties = [p for p, _ in sorted(ptot.items(), key=lambda x: x[1], reverse=True)]
-    lgas = sorted(by_lga.values(), key=lambda x: x["lga"])
+    lgas.sort(key=lambda x: x["lga"])
     return {
         "parties": parties,
         "party_totals": {p: ptot[p] for p in parties},
@@ -1636,13 +1650,12 @@ def _legislative_blocks(rows: list) -> list[dict]:
     return out
 
 
-def _presidential_state_summary(sp) -> dict:
-    """State-level presidential totals (used where no LGA breakdown exists, e.g. 2019)."""
-    parts = {"APC": sp.apc or 0, "PDP": sp.pdp or 0, "LP": sp.lp or 0, "NNPP": sp.nnpp or 0}
-    parts = {p: v for p, v in parts.items() if v}
-    if sp.others:
-        parts["Others"] = sp.others
-    return {"parties": parts, "winner": sp.winner, "total_votes": sp.total_votes or sum(parts.values())}
+def _state_summary(sr, parties: dict) -> dict:
+    """State-level totals from a unified StateResultV row (used where no LGA breakdown
+    exists, e.g. 2019 presidential)."""
+    parts = {p: v for p, v in sorted(parties.items(), key=lambda x: -(x[1] or 0)) if v}
+    return {"parties": parts, "winner": sr.winner or next(iter(parts), ""),
+            "total_votes": sr.total_votes or sum(parts.values())}
 
 
 # --- unified results architecture: per-office party totals for the index/summary ---
@@ -1699,30 +1712,34 @@ def _state_office_totals(year: str, db: Session) -> dict:
 def results_states(year: str, db: Session = Depends(get_db)):
     """States with verified results for a year, and which races (presidential/governor/
     senate/house) we have — drives the /elections/{year}/results index."""
-    rows = db.scalars(select(LgaPartyResult).where(LgaPartyResult.year == year)).all()
+    def _blank(sgeo, st):
+        return {"geo_id": sgeo, "state": st, "presidential_lgas": set(), "governor_lgas": set(),
+                "senate": set(), "house": set(), "presidential_state": False}
     by_state: dict[str, dict] = {}
-    for r in rows:
-        s = by_state.setdefault(r.state_geo, {
-            "geo_id": r.state_geo, "state": r.state,
-            "presidential_lgas": set(), "governor_lgas": set(),
-            "senate": set(), "house": set(), "presidential_state": False,
-        })
-        s[f"{r.election_type}_lgas"].add(r.lga_id or r.lga)
+    # LGA-level presence (unified): which states have presidential/governor by LGA
+    for et, sgeo, st, lga_id in db.execute(
+        select(LgaResultV.election_type, LgaResultV.state_geo, LgaResultV.lga, LgaResultV.lga_id)
+        .where(LgaResultV.year == year).distinct()
+    ).all():
+        s = by_state.setdefault(sgeo, _blank(sgeo, geo.state_name(sgeo) or ""))
+        if et in ("presidential", "governor"):
+            s[f"{et}_lgas"].add(lga_id)
     # legislative (senate/house) constituencies per state
     for et, sgeo, st, cons in db.execute(
         select(LegislativeResult.election_type, LegislativeResult.state_geo,
                LegislativeResult.state, LegislativeResult.constituency)
         .where(LegislativeResult.year == year).distinct()
     ).all():
-        s = by_state.setdefault(sgeo, {"geo_id": sgeo, "state": st, "presidential_lgas": set(),
-                                       "governor_lgas": set(), "senate": set(), "house": set(),
-                                       "presidential_state": False})
+        s = by_state.setdefault(sgeo, _blank(sgeo, st))
+        if not s["state"]:
+            s["state"] = st
         s[et].add(cons)
     # state-level presidential (e.g. 2019, where no LGA breakdown exists)
-    for sp in db.scalars(select(StatePresidential).where(StatePresidential.year == int(year))).all() if year.isdigit() else []:
-        s = by_state.setdefault(sp.state_geo, {"geo_id": sp.state_geo, "state": sp.state,
-                                               "presidential_lgas": set(), "governor_lgas": set(),
-                                               "senate": set(), "house": set(), "presidential_state": False})
+    for sr in db.scalars(select(StateResultV).where(
+            StateResultV.year == year, StateResultV.election_type == "presidential")).all():
+        s = by_state.setdefault(sr.state_geo, _blank(sr.state_geo, sr.state))
+        if not s["state"]:
+            s["state"] = sr.state
         s["presidential_state"] = True
     # per-office party totals per state (presidential + governor), party-agnostic
     office_totals = _state_office_totals(year, db)
@@ -1770,24 +1787,36 @@ def results_state(year: str, geo_id: str, db: Session = Depends(get_db)):
     columns), plus Senate + House of Representatives per-constituency candidate lists,
     and a state-level presidential summary where no LGA breakdown exists (e.g. 2019)."""
     state = geo.state_name(geo_id)
-    rows = db.scalars(select(LgaPartyResult).where(
-        LgaPartyResult.year == year, LgaPartyResult.state_geo == geo_id)).all()
+    # unified LGA-level results for this state (presidential + governor) + party breakdown
+    lv_rows = db.scalars(select(LgaResultV).where(
+        LgaResultV.year == year, LgaResultV.state_geo == geo_id)).all()
+    lv_parties: dict[int, dict] = defaultdict(dict)
+    if lv_rows:
+        for pp in db.scalars(select(LgaResultParty).where(
+                LgaResultParty.lga_result_id.in_([x.id for x in lv_rows]))).all():
+            lv_parties[pp.lga_result_id][pp.party] = pp.votes
+    pres_rows = [r for r in lv_rows if r.election_type == "presidential"]
+    gov_rows = [r for r in lv_rows if r.election_type == "governor"]
+    # state-level presidential (where no LGA breakdown, e.g. 2019)
+    sr = db.scalar(select(StateResultV).where(
+        StateResultV.state_geo == geo_id, StateResultV.year == year,
+        StateResultV.election_type == "presidential")) if not pres_rows else None
+    sr_parties = {}
+    if sr is not None:
+        sr_parties = {pp.party: pp.votes for pp in db.scalars(
+            select(StateResultParty).where(StateResultParty.state_result_id == sr.id)).all()}
     leg = db.scalars(select(LegislativeResult).where(
         LegislativeResult.year == year, LegislativeResult.state_geo == geo_id)).all()
-    sp = db.scalar(select(StatePresidential).where(
-        StatePresidential.state_geo == geo_id, StatePresidential.year == int(year))) if year.isdigit() else None
-    if not rows and not leg and sp is None and state is None:
-        raise HTTPException(status_code=404, detail="unknown state")
-    pres = [r for r in rows if r.election_type == "presidential"]
-    gov = [r for r in rows if r.election_type == "governor"]
     senate = [r for r in leg if r.election_type == "senate"]
     house = [r for r in leg if r.election_type == "house"]
+    if not lv_rows and not leg and sr is None and state is None:
+        raise HTTPException(status_code=404, detail="unknown state")
     return {
         "year": year, "geo_id": geo_id,
-        "state": state or (rows[0].state if rows else (leg[0].state if leg else (sp.state if sp else geo_id))),
-        "presidential": _results_table(pres) if pres else None,
-        "presidential_state": _presidential_state_summary(sp) if (sp and not pres) else None,
-        "governor": _results_table(gov) if gov else None,
+        "state": state or (leg[0].state if leg else (sr.state if sr else geo_id)),
+        "presidential": _lga_results_table(pres_rows, lv_parties) if pres_rows else None,
+        "presidential_state": _state_summary(sr, sr_parties) if (sr and not pres_rows) else None,
+        "governor": _lga_results_table(gov_rows, lv_parties) if gov_rows else None,
         "senate": _legislative_blocks(senate) if senate else None,
         "house": _legislative_blocks(house) if house else None,
     }
