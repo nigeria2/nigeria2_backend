@@ -97,12 +97,23 @@ def state_lookup(raw, state_geo):
 _NUM = re.compile(r"-?\d+")
 
 
+# Postgres 32-bit signed integer bounds. Transcriptions occasionally carry an OCR-mangled
+# figure with too many digits (e.g. "65785113956" registered voters) — that overflows the
+# `integer` column and aborts a whole COPY. Such a value is unreliable noise, so drop it (None).
+_INT_MIN, _INT_MAX = -2147483648, 2147483647
+
+
 def _int(v):
     if v is None:
         return None
     s = str(v).strip().replace(",", "")
     m = _NUM.search(s)
-    return int(m.group()) if m else None
+    if not m:
+        return None
+    n = int(m.group())
+    if n < _INT_MIN or n > _INT_MAX:
+        return None
+    return n
 
 
 def _idx(folder):
