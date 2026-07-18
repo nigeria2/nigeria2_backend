@@ -36,13 +36,13 @@ import os
 import pathlib
 import re
 import sys
+import threading
 import time
 
 # UTF-8 console for the ✓/█ box glyphs (Windows cp1252 default breaks them).
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
-from sqlalchemy import create_engine, delete, select, text
-from sqlalchemy.orm import Session
+import psycopg
 
 from rich.console import Console, Group
 from rich.live import Live
@@ -54,7 +54,6 @@ BACKEND = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND))
 
 from app import geo  # noqa: E402
-from app.models import Evidence, EvidenceParty  # noqa: E402
 
 JROOT = pathlib.Path(r"d:/Code/nigeria2.0/data_private/jsons_local")
 MODEL = "qwen3.5-9b"
@@ -67,28 +66,26 @@ DEFAULT_STATUSES = {"valid", "unsure"}
 
 
 # --- DB helpers -----------------------------------------------------------------
-def get_engine():
+def get_raw_dsn():
+    """Return a libpq DSN for a direct psycopg connection (COPY needs the raw driver)."""
     for line in (BACKEND / ".env").read_text(encoding="utf-8").splitlines():
         if line.startswith("DATABASE_URL="):
             url = line.split("=", 1)[1].strip()
             break
     else:
         sys.exit("DATABASE_URL not found in backend/.env")
-    if url.startswith("postgres://"):
-        url = "postgresql+psycopg://" + url[len("postgres://"):]
-    elif url.startswith("postgresql://"):
-        url = "postgresql+psycopg://" + url[len("postgresql://"):]
-    return create_engine(url, pool_pre_ping=True)
+    # psycopg accepts postgres:// and postgresql:// directly; strip the +driver if present
+    return url.replace("postgresql+psycopg://", "postgresql://").replace("postgres+psycopg://", "postgres://")
 
 
-def state_lookup(engine, state_geo):
+def state_lookup(raw, state_geo):
     """Return (state_code, {pu_code: (ward_code, lga_id)}) for a state from polling_units."""
     lk = {}
     code = None
-    with engine.connect() as c:
-        for pu_code, ward_code, lga_id in c.execute(text(
-            "select pu_code, ward_code, lga_id from polling_units where state_geo=:sg"),
-            {"sg": state_geo}):
+    with raw.cursor() as c:
+        c.execute("select pu_code, ward_code, lga_id from polling_units where state_geo=%s",
+                  (state_geo,))
+        for pu_code, ward_code, lga_id in c.fetchall():
             if pu_code:
                 lk[pu_code] = (ward_code, lga_id)
                 if code is None:
@@ -244,7 +241,7 @@ def iter_files(state_dir: pathlib.Path, office: str, statuses: set[str]):
                 yield f, li, wi, pu_num, status
 
 
-def load_state_office(db, board, state_dir, state_geo, state_code, pu_lookup,
+def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
                       office, statuses, dry):
     et = OFFICE_TO_ET[office]
     # gather rows for this (state, office)
@@ -296,32 +293,57 @@ def load_state_office(db, board, state_dir, state_geo, state_code, pu_lookup,
         board.log(f"{state_dir.name}/{office}: nothing to load")
         return
 
-    # idempotent clear: prior kind='llm' evidence for THIS (state, office).
-    eq = select(Evidence.id).where(
-        Evidence.kind == "llm", Evidence.state_geo == state_geo,
-        Evidence.election_type == et, Evidence.year == YEAR)
-    db.execute(delete(EvidenceParty).where(EvidenceParty.evidence_id.in_(eq)))
-    db.execute(delete(Evidence).where(Evidence.id.in_(eq)))
-    db.flush()
-
-    db.bulk_insert_mappings(Evidence, ev_rows)
-    db.flush()
-    # map pu_code -> evidence.id for this (state, office) to attach party rows
-    id_by_code = dict(db.execute(
-        select(Evidence.pu_code, Evidence.id).where(
-            Evidence.kind == "llm", Evidence.state_geo == state_geo,
-            Evidence.election_type == et, Evidence.year == YEAR)).all())
-    party_maps = [
-        {"evidence_id": id_by_code[pc], "party": party, "votes": votes}
-        for pc, e, party, votes in ep_rows if e == et and pc in id_by_code
-    ]
-    if party_maps:
-        db.bulk_insert_mappings(EvidenceParty, party_maps)
-    db.commit()
+    # Raw psycopg COPY — the ONLY thing fast enough over the remote DB. bulk_insert_mappings
+    # does per-row round-trips (~56k/state) and hangs on the high-latency link. One COPY for
+    # evidence, a SELECT to recover ids, one COPY for the party rows.
+    ep_written = _copy_state_office(raw, state_geo, et, ev_rows, ep_rows)
 
     board.ev_written += len(ev_rows)
-    board.ep_written += len(party_maps)
-    board.log(f"{state_dir.name}/{office}: +{len(ev_rows)} evidence, +{len(party_maps)} party rows")
+    board.ep_written += ep_written
+    board.log(f"{state_dir.name}/{office}: +{len(ev_rows)} evidence, +{ep_written} party rows")
+
+
+_EV_COLS = ["pu_code", "election_type", "year", "state_geo", "kind", "source", "method",
+            "registered_voters", "accredited_voters", "valid_votes", "rejected_votes",
+            "total_used_ballots"]
+
+
+def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows):
+    """Idempotently replace this (state, office) LLM evidence using COPY. Returns party-row count."""
+    with raw.cursor() as cur:
+        # idempotent clear (correlated subquery; small per-state scope)
+        cur.execute(
+            "delete from evidence_parties ep using evidence e "
+            "where ep.evidence_id = e.id and e.kind='llm' and e.state_geo=%s "
+            "and e.election_type=%s and e.year=%s", (state_geo, et, YEAR))
+        cur.execute(
+            "delete from evidence where kind='llm' and state_geo=%s and election_type=%s and year=%s",
+            (state_geo, et, YEAR))
+
+        # COPY evidence
+        with cur.copy(f"copy evidence ({', '.join(_EV_COLS)}) from stdin") as cp:
+            for r in ev_rows:
+                cp.write_row([r[c] for c in _EV_COLS])
+
+        # recover pu_code -> id for the rows we just wrote
+        cur.execute(
+            "select pu_code, id from evidence where kind='llm' and state_geo=%s "
+            "and election_type=%s and year=%s", (state_geo, et, YEAR))
+        id_by_code = dict(cur.fetchall())
+
+        # COPY evidence_parties
+        n = 0
+        with cur.copy("copy evidence_parties (evidence_id, party, votes, votes_words) from stdin") as cp:
+            for pc, e, party, votes in ep_rows:
+                if e != et:
+                    continue
+                eid = id_by_code.get(pc)
+                if eid is None:
+                    continue
+                cp.write_row([eid, party, votes, ""])
+                n += 1
+    raw.commit()
+    return n
 
 
 def count_files(state_dir, offices, statuses):
@@ -347,7 +369,7 @@ def main():
     want = [s.strip() for s in args.states.split(",") if s.strip()]
     states = [s for s in (want or all_states) if (JROOT / s).is_dir()]
 
-    engine = get_engine()
+    dsn = get_raw_dsn()
 
     # plan: (state_folder, geo, file_total)
     plan = []
@@ -358,27 +380,45 @@ def main():
         plan.append((s, gid, count_files(JROOT / s, offices, statuses)))
 
     board = Board(plan, offices, "", args.dry_run)
-    console = Console(legacy_windows=False)
+    err = {}
 
-    with Live(board, console=console, refresh_per_second=4, screen=True, vertical_overflow="crop"):
-        with Session(engine) as db:
+    def worker():
+        # dedicated connection for the load; the TUI runs on the main thread and repaints
+        # on rich's own tick, so a long COPY never freezes the board.
+        raw = psycopg.connect(dsn, autocommit=False)
+        try:
             for s, gid, tot in plan:
                 board.cur_state = s
                 board.cur_total = tot
                 board.cur_done = board.done_files.get(s, 0)
-                state_code, pu_lookup = state_lookup(engine, gid)
+                state_code, pu_lookup = state_lookup(raw, gid)
                 board.log(f"== {s} ({gid}) code={state_code}  {len(pu_lookup)} canonical PUs ==")
                 for office in offices:
-                    load_state_office(db, board, JROOT / s, gid, state_code, pu_lookup,
+                    load_state_office(raw, board, JROOT / s, gid, state_code, pu_lookup,
                                       office, statuses, args.dry_run)
                 board.done_files[s] = tot
                 board.state_done[s] = True
-        board.cur_state = None
+            board.cur_state = None
+        except Exception as e:  # noqa: BLE001
+            err["exc"] = e
+            board.log(f"ERROR: {str(e)[:80]}")
+        finally:
+            raw.close()
+
+    console = Console(legacy_windows=False)
+    t = threading.Thread(target=worker, name="loader", daemon=True)
+    with Live(board, console=console, refresh_per_second=4, screen=True, vertical_overflow="crop"):
+        t.start()
+        while t.is_alive():
+            time.sleep(0.25)
         time.sleep(1)
 
     console.print(f"[bold green]DONE.[/] evidence={board.ev_written} party_rows={board.ep_written} "
                   f"unmapped={board.skipped_unmapped} parse_fail={board.parse_fail}"
                   + ("  [yellow](dry-run — nothing written)[/]" if args.dry_run else ""))
+    if "exc" in err:
+        console.print(f"[bold red]FAILED:[/] {err['exc']}")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
