@@ -311,16 +311,28 @@ def _clear_evidence(db: Session, model, party_model, fk_attr, kind, state_geo=No
     db.execute(delete(model).where(model.id.in_(idq)))
 
 
-def import_from_archive(commit: bool, state_geo=None) -> None:
+def import_from_archive(commit: bool, state_geo=None, state_only=False) -> None:
     """Read the *_archive tables (+ polling_units.votes_*) and load them into the unified
     pu_results / *_result_v tables as source='official'. This is how we populate the new
     structure from the preserved legacy data. When state_geo is given, only that state is
-    imported (and only that state's existing official rows are replaced). Dry-run unless
-    --commit."""
+    imported (and only that state's existing official rows are replaced). When state_only,
+    ONLY the state-level-only archive (state_presidential_archive, e.g. 2019 + non-drilled
+    2023 states) is loaded — skips the heavy 177k-PU rollup. Dry-run unless --commit."""
     db = SessionLocal() if SessionLocal else None
     if db is None:
         print("DATABASE_URL not set — aborting.")
         return
+
+    if state_only:
+        n_state = db.scalar(select(func_count()).select_from(StatePresidential))
+        print(f"state_presidential_archive rows: {n_state}")
+        if not commit:
+            print("\nDRY RUN — no writes. Re-run with --commit.")
+            db.close(); return
+        n = _load_state_declared(db, state_geo)
+        db.commit()
+        print(f"Loaded {n} state-level results directly (declared). Committed.")
+        db.close(); return
 
     def _sfilter(q, model):
         return q.where(model.state_geo == state_geo) if state_geo is not None else q
@@ -567,11 +579,14 @@ def main() -> None:
     ap.add_argument("--state", default=None,
                     help="limit --from-archive to one state's geo id (e.g. nga_3 for Akwa Ibom); "
                          "only that state's official rows are replaced")
+    ap.add_argument("--state-only", action="store_true",
+                    help="with --from-archive: load ONLY the state-level-only archive "
+                         "(2019 + non-drilled 2023 state totals); skips the heavy PU rollup")
     ap.add_argument("--commit", action="store_true",
                     help="actually write (default is a dry run that writes nothing)")
     args = ap.parse_args()
     if getattr(args, "from_archive", False):
-        import_from_archive(args.commit, state_geo=args.state)
+        import_from_archive(args.commit, state_geo=args.state, state_only=getattr(args, "state_only", False))
     else:
         run(args.year, args.election, args.commit)
 
