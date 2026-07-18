@@ -49,6 +49,16 @@ from .models import (
     WardPrediction,
     WardResult,
     LgaPartyResult,
+    SheetTranscription,
+    TranscriptionParty,
+    PuResult,
+    PuResultParty,
+    WardResultV,
+    WardResultParty,
+    LgaResultV,
+    LgaResultParty,
+    StateResultV,
+    StateResultParty,
 )
 from . import geo, prediction_worker
 from .history_ingest import PARTY_NAMES, seed_election_history
@@ -1024,7 +1034,33 @@ def state_pu_wards(geo_id: str, db: Session = Depends(get_db)):
     return out
 
 
+def _pu_definitive(db: Session, pu_codes: list[str], election_type: str = "presidential",
+                   year: str = "2023") -> dict[str, dict]:
+    """Definitive PuResult (+ party breakdown) per pu_code, from the unified tables.
+    Returns {} entries with a full party dict, winner, totals — the source of truth
+    for the ward table's per-party columns. Empty when the picker hasn't run yet."""
+    if not pu_codes:
+        return {}
+    results = db.scalars(select(PuResult).where(
+        PuResult.pu_code.in_(pu_codes), PuResult.election_type == election_type,
+        PuResult.year == year)).all()
+    by_id = {r.id: r for r in results}
+    parties_by_res: dict[int, dict] = defaultdict(dict)
+    if by_id:
+        for pp in db.scalars(select(PuResultParty).where(PuResultParty.pu_result_id.in_(list(by_id)))).all():
+            parties_by_res[pp.pu_result_id][pp.party] = pp.votes
+    out: dict[str, dict] = {}
+    for r in results:
+        out[r.pu_code] = {
+            "winner": r.winner, "runner_up": r.runner_up, "total_votes": r.total_votes,
+            "known_votes": r.total_votes or None, "parties": dict(parties_by_res.get(r.id, {})),
+            "source": r.source,
+        }
+    return out
+
+
 def _pu_scores(p: PollingUnit) -> dict:
+    """Legacy 4-party scores off the PollingUnit row (fallback before pu_results filled)."""
     return {"APC": p.votes_apc, "LP": p.votes_lp, "PDP": p.votes_pdp, "NNPP": p.votes_nnpp}
 
 
@@ -1035,34 +1071,54 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
     if not rows:
         return {"state": "", "lga": "", "ward": "", "ward_code": code, "result": None, "polling_units": []}
     first = rows[0]
-    wr = db.scalar(select(WardResult).where(WardResult.ward_code == code))
+    # ward-level result: prefer unified ward_result_v (presidential), fall back to legacy
     result = None
-    if wr is not None:
-        result = {
-            "winner": wr.winner, "runner_up": wr.runner_up, "total_votes": wr.total_votes,
-            "scores": {"APC": wr.votes_apc, "LP": wr.votes_lp, "PDP": wr.votes_pdp, "NNPP": wr.votes_nnpp},
-        }
+    wv = db.scalar(select(WardResultV).where(
+        WardResultV.ward_code == code, WardResultV.election_type == "presidential").order_by(WardResultV.id.desc()))
+    if wv is not None:
+        wparties = {pp.party: pp.votes for pp in db.scalars(
+            select(WardResultParty).where(WardResultParty.ward_result_id == wv.id)).all()}
+        result = {"winner": wv.winner, "runner_up": wv.runner_up, "total_votes": wv.total_votes, "scores": wparties}
+    else:
+        wr = db.scalar(select(WardResult).where(WardResult.ward_code == code))
+        if wr is not None:
+            result = {
+                "winner": wr.winner, "runner_up": wr.runner_up, "total_votes": wr.total_votes,
+                "scores": {"APC": wr.votes_apc, "LP": wr.votes_lp, "PDP": wr.votes_pdp, "NNPP": wr.votes_nnpp},
+            }
+    # definitive per-PU results (unified) keyed by pu_code, with legacy fallback
+    pu_codes = [p.pu_code for p in rows]
+    definitive = _pu_definitive(db, pu_codes, "presidential")
     # IReV result sheets for these polling units, grouped by pu_code (one per race we hold)
     sheets_by_pu: dict[str, list] = defaultdict(list)
-    for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code.in_([p.pu_code for p in rows]))).all():
+    for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code.in_(pu_codes))).all():
         sheets_by_pu[s.pu_code].append({
             "election_type": s.election_type, "year": s.year,
             "sheet_url": s.sheet_url or "", "status": s.sheet_status, "has_json": bool(s.json),
         })
+
+    def pu_dict(p: PollingUnit) -> dict:
+        d = definitive.get(p.pu_code)
+        if d:  # unified definitive result present
+            scores = d["parties"] or _pu_scores(p)
+            return {
+                "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
+                "known_votes": d["known_votes"], "winner": d["winner"], "runner_up": d["runner_up"],
+                "scores": scores, "sheets": sorted(sheets_by_pu.get(p.pu_code, []), key=lambda x: x["election_type"]),
+            }
+        return {
+            "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
+            "known_votes": p.known_votes, "winner": p.winner, "runner_up": p.runner_up, "scores": _pu_scores(p),
+            "sheets": sorted(sheets_by_pu.get(p.pu_code, []), key=lambda x: x["election_type"]),
+        }
+
     return {
         "state": first.state,
         "lga": first.lga,
         "ward": first.ward,
         "ward_code": code,
         "result": result,
-        "polling_units": [
-            {
-                "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
-                "known_votes": p.known_votes, "winner": p.winner, "runner_up": p.runner_up, "scores": _pu_scores(p),
-                "sheets": sorted(sheets_by_pu.get(p.pu_code, []), key=lambda x: x["election_type"]),
-            }
-            for p in rows
-        ],
+        "polling_units": [pu_dict(p) for p in rows],
     }
 
 
@@ -1078,6 +1134,50 @@ def _sheet_recordings(raw: str | None) -> list[dict]:
         return []
     recs = data if isinstance(data, list) else [data]
     return [r for r in recs if isinstance(r, dict)]
+
+
+def _transcription_entries(db: Session, pu_code: str) -> list[dict]:
+    """Every transcription (submission) we hold for a polling unit, from the unified
+    sheet_transcriptions (+ transcription_parties). One entry per recording — different
+    methods/sources of the same sheet are separate entries. Falls back to the legacy
+    ElectionSheet.json recordings when no unified rows exist yet (before the picker/
+    ingest fills them)."""
+    trs = db.scalars(select(SheetTranscription).where(SheetTranscription.pu_code == pu_code)
+                     .order_by(SheetTranscription.election_type, SheetTranscription.created_at)).all()
+    if trs:
+        parties_by_tr: dict[int, list] = defaultdict(list)
+        for tp in db.scalars(select(TranscriptionParty).where(
+                TranscriptionParty.transcription_id.in_([t.id for t in trs]))).all():
+            parties_by_tr[tp.transcription_id].append(
+                {"party": tp.party, "votes": tp.votes, "votes_words": tp.votes_words})
+        return [
+            {
+                "id": t.id, "election_type": t.election_type, "year": t.year,
+                "source": t.source, "method": t.method, "submitted_by": t.submitted_by,
+                "poll_summary": {
+                    "registered_voters": t.registered_voters, "accredited_voters": t.accredited_voters,
+                    "valid_votes": t.valid_votes, "rejected_votes": t.rejected_votes,
+                    "total_used_ballots": t.total_used_ballots,
+                },
+                "party_results": sorted(parties_by_tr.get(t.id, []),
+                                        key=lambda x: (x["votes"] is None, -(x["votes"] or 0))),
+            }
+            for t in trs
+        ]
+    # legacy fallback: recordings embedded in ElectionSheet.json
+    out: list[dict] = []
+    for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
+                        .order_by(ElectionSheet.election_type)).all():
+        for i, rec in enumerate(_sheet_recordings(s.json)):
+            out.append({
+                "id": None, "election_type": s.election_type, "year": s.year,
+                "source": "ec8a-json", "method": (rec.get("method") or ""), "submitted_by": "",
+                "poll_summary": rec.get("poll_summary") or {},
+                "party_results": rec.get("party_results") or [],
+                "source_image": rec.get("source_image"),
+                "legacy_index": i,
+            })
+    return out
 
 
 @app.get("/api/polling-units/{pu_code:path}/sheets")
@@ -1100,6 +1200,56 @@ def pu_sheets(pu_code: str, db: Session = Depends(get_db)):
             }
             for s in rows
         ],
+    }
+
+
+@app.get("/api/polling-units/{pu_code:path}")
+def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
+    """Everything about one polling unit: its location, the INEC result sheets (one per
+    race), the DEFINITIVE result per election (with the full party-by-party breakdown
+    where we have it), and EVERY alternative transcription submitted for it. This is the
+    per-polling-unit page."""
+    pu = db.scalar(select(PollingUnit).where(PollingUnit.pu_code == pu_code))
+    # definitive results per election_type (unified)
+    presults = db.scalars(select(PuResult).where(PuResult.pu_code == pu_code)).all()
+    pr_parties: dict[int, dict] = defaultdict(dict)
+    if presults:
+        for pp in db.scalars(select(PuResultParty).where(
+                PuResultParty.pu_result_id.in_([r.id for r in presults]))).all():
+            pr_parties[pp.pu_result_id][pp.party] = pp.votes
+    definitive = [
+        {
+            "election_type": r.election_type, "year": r.year, "winner": r.winner,
+            "runner_up": r.runner_up, "total_votes": r.total_votes, "valid_votes": r.valid_votes,
+            "registered_voters": r.registered_voters, "accredited_voters": r.accredited_voters,
+            "source": r.source, "method": r.method,
+            "chosen_transcription_id": r.chosen_transcription_id,
+            "parties": dict(sorted(pr_parties.get(r.id, {}).items(), key=lambda x: -(x[1] or 0))),
+        }
+        for r in presults
+    ]
+    # INEC sheet links (one per race)
+    sheets = [
+        {"election_type": s.election_type, "year": s.year, "sheet_url": s.sheet_url or "",
+         "status": s.sheet_status}
+        for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
+                            .order_by(ElectionSheet.election_type)).all()
+    ]
+    if pu is None and not definitive and not sheets:
+        raise HTTPException(status_code=404, detail="polling unit not found")
+    return {
+        "pu_code": pu_code,
+        "pu_name": pu.pu_name if pu else "",
+        "ward": pu.ward if pu else "",
+        "ward_code": pu.ward_code if pu else "",
+        "lga": pu.lga if pu else "",
+        "lga_id": pu.lga_id if pu else None,
+        "state": pu.state if pu else "",
+        "state_geo": pu.state_geo if pu else None,
+        "registered_voters": pu.registered_voters if pu else None,
+        "definitive": definitive,          # one per election_type, with party breakdown
+        "sheets": sheets,                  # INEC IReV links
+        "transcriptions": _transcription_entries(db, pu_code),  # ALL alternative entries
     }
 
 
@@ -1466,6 +1616,56 @@ def _presidential_state_summary(sp) -> dict:
     return {"parties": parts, "winner": sp.winner, "total_votes": sp.total_votes or sum(parts.values())}
 
 
+# --- unified results architecture: per-office party totals for the index/summary ---
+# Source of truth is the *_result_v tables (backfilled from legacy). We aggregate the
+# best-available level per (state, office): LGA-level rows sum up to the state total;
+# where only a state-level row exists (e.g. 2019 presidential) we use it directly.
+def _state_office_totals(year: str, db: Session) -> dict:
+    """{(state_geo, election_type): {"parties": {party: votes}, "total": int,
+    "winner": str, "level": "lga"|"state"}} for one year, party-agnostic."""
+    out: dict[tuple[str, str], dict] = {}
+
+    # LGA-level: sum party rows across all LGAs in a state
+    lga_rows = db.execute(
+        select(LgaResultV.state_geo, LgaResultV.election_type, LgaResultParty.party,
+               func.sum(LgaResultParty.votes))
+        .join(LgaResultParty, LgaResultParty.lga_result_id == LgaResultV.id)
+        .where(LgaResultV.year == year)
+        .group_by(LgaResultV.state_geo, LgaResultV.election_type, LgaResultParty.party)
+    ).all()
+    for sgeo, et, party, votes in lga_rows:
+        d = out.setdefault((sgeo, et), {"parties": defaultdict(int), "level": "lga"})
+        d["parties"][party] += int(votes or 0)
+
+    lga_keys = set(out)  # (state, office) pairs that have an LGA breakdown — those win
+
+    # State-level: only where we have no LGA breakdown for that (state, office)
+    st_rows = db.execute(
+        select(StateResultV.state_geo, StateResultV.election_type, StateResultParty.party,
+               StateResultParty.votes)
+        .join(StateResultParty, StateResultParty.state_result_id == StateResultV.id)
+        .where(StateResultV.year == year)
+    ).all()
+    for sgeo, et, party, votes in st_rows:
+        if (sgeo, et) in lga_keys:
+            continue  # LGA breakdown wins
+        d = out.setdefault((sgeo, et), {"parties": defaultdict(int), "level": "state"})
+        d["parties"][party] += int(votes or 0)
+
+    # finalize: order parties, pick winner, total
+    result: dict = {}
+    for key, d in out.items():
+        parts = dict(sorted(d["parties"].items(), key=lambda x: x[1], reverse=True))
+        parts = {p: v for p, v in parts.items() if v}
+        result[key] = {
+            "parties": parts,
+            "total": sum(parts.values()),
+            "winner": next(iter(parts), ""),
+            "level": d["level"],
+        }
+    return result
+
+
 @app.get("/api/results/{year}")
 def results_states(year: str, db: Session = Depends(get_db)):
     """States with verified results for a year, and which races (presidential/governor/
@@ -1495,8 +1695,24 @@ def results_states(year: str, db: Session = Depends(get_db)):
                                                "presidential_lgas": set(), "governor_lgas": set(),
                                                "senate": set(), "house": set(), "presidential_state": False})
         s["presidential_state"] = True
+    # per-office party totals per state (presidential + governor), party-agnostic
+    office_totals = _state_office_totals(year, db)
+    # national summary per office = sum of state totals
+    national: dict[str, dict] = {}
+    for (sgeo, et), d in office_totals.items():
+        nt = national.setdefault(et, {"parties": defaultdict(int), "states": 0})
+        nt["states"] += 1
+        for p, v in d["parties"].items():
+            nt["parties"][p] += v
+
     out = []
     for s in by_state.values():
+        totals = {}
+        for et in ("presidential", "governor"):
+            t = office_totals.get((s["geo_id"], et))
+            if t:
+                totals[et] = {"parties": t["parties"], "total": t["total"],
+                              "winner": t["winner"], "level": t["level"]}
         out.append({
             "geo_id": s["geo_id"], "state": s["state"],
             "has_presidential": bool(s["presidential_lgas"]) or s["presidential_state"],
@@ -1505,9 +1721,18 @@ def results_states(year: str, db: Session = Depends(get_db)):
             "presidential_lga_count": len(s["presidential_lgas"]),
             "governor_lga_count": len(s["governor_lgas"]),
             "senate_count": len(s["senate"]), "house_count": len(s["house"]),
+            "party_totals": totals,  # {office: {parties, total, winner, level}}
         })
     out.sort(key=lambda x: x["state"])
-    return {"year": year, "states": out}
+
+    summary = {}
+    for et, nt in national.items():
+        parts = dict(sorted(nt["parties"].items(), key=lambda x: x[1], reverse=True))
+        parts = {p: v for p, v in parts.items() if v}
+        summary[et] = {"parties": parts, "total": sum(parts.values()),
+                       "winner": next(iter(parts), ""), "states": nt["states"]}
+
+    return {"year": year, "states": out, "summary": summary}
 
 
 @app.get("/api/results/{year}/{geo_id}")

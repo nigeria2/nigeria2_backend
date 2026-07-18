@@ -665,3 +665,201 @@ class PredictionComponent(Base):
     # candidate for "Candidate Popularity", the running mate for "Running-mate Popularity"
     # (matched against the votes that VP delivered in a past election), None for party base.
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+# ===========================================================================
+# Unified election-results architecture
+# ===========================================================================
+# One normalized spine from the scanned INEC sheet down to (or up from) any geo
+# level. Votes are ALWAYS long-form — one row per party in a `*_result_party`
+# child table — so the model is party-agnostic (full ballot, any office via
+# `election_type`) and every level shares the same shape and serializer.
+#
+#   election_sheet ──< sheet_transcription ──< transcription_party   (submissions)
+#   pu_result ──< pu_result_party                                    (definitive PU)
+#   ward_result / lga_result / state_result  (+ *_party)             (per-level result)
+#
+# CRITICAL: the ward/lga/state result tables are FIRST-CLASS and directly
+# writable — not caches derived only from pu_result. Data often arrives top-down
+# (2019 presidential is state-only; 2023 governorship is LGA-only). Each result
+# row records how it was populated via `source`:
+#   declared  — hand-loaded / entered directly (no finer data required)
+#   rolled_up — computed by the definitive-picker script from finer levels
+#   official  — an INEC-published figure
+# The picker only fills/refreshes levels it can compute; it never erases a
+# coarser declared/official result because finer data is missing.
+
+# Recognised values for the `source` column on every *_result table.
+RESULT_SOURCES = ("declared", "rolled_up", "official")
+# Recognised election types (offices).
+ELECTION_TYPES = ("presidential", "governor", "senate", "house")
+
+
+class SheetTranscription(Base):
+    """One transcription (submission) of an INEC EC8A result sheet. A single sheet
+    (ElectionSheet) can have many of these — the same scan transcribed by different
+    people/methods/sources. Party votes live in the child `transcription_party`
+    rows; the poll-summary fields are captured here. `raw` keeps the verbatim
+    original payload for audit."""
+
+    __tablename__ = "sheet_transcriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sheet_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # FK election_sheets.id
+    pu_code: Mapped[str] = mapped_column(String(40), index=True)  # denormalized for direct lookup
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    source: Mapped[str] = mapped_column(String(30), default="")   # ec8a-json | crowd | ocr | ...
+    method: Mapped[str] = mapped_column(String(60), default="")   # free text describing how
+    submitted_by: Mapped[str] = mapped_column(String(120), default="")  # user id/label, optional
+    # poll summary (all nullable — a transcription may omit some fields)
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rejected_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    total_used_ballots: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    raw: Mapped[str | None] = mapped_column(Text, nullable=True)  # verbatim original JSON, audit
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class TranscriptionParty(Base):
+    """One party's recorded votes within a single transcription (long form)."""
+
+    __tablename__ = "transcription_parties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    transcription_id: Mapped[int] = mapped_column(Integer, index=True)  # FK sheet_transcriptions.id
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int | None] = mapped_column(Integer, nullable=True)   # figure (may be blank on sheet)
+    votes_words: Mapped[str] = mapped_column(String(120), default="")   # votes in words, verbatim
+
+
+class PuResult(Base):
+    """The DEFINITIVE result for one polling unit in one election — the single
+    source of truth the picker script writes. `chosen_transcription_id` links back
+    to the exact transcription this figure came from (provenance). Party-by-party
+    votes are in `pu_result_party` when known (may be absent for a summary-only
+    result)."""
+
+    __tablename__ = "pu_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pu_code: Mapped[str] = mapped_column(String(40), index=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    lga_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    ward_code: Mapped[str] = mapped_column(String(30), default="", index=True)
+    winner: Mapped[str] = mapped_column(String(20), default="")
+    runner_up: Mapped[str] = mapped_column(String(20), default="")
+    total_votes: Mapped[int] = mapped_column(Integer, default=0)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    accredited_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
+    chosen_transcription_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    method: Mapped[str] = mapped_column(String(60), default="")  # how the definitive was chosen
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PuResultParty(Base):
+    """One party's votes in a polling unit's definitive result (long form)."""
+
+    __tablename__ = "pu_result_parties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pu_result_id: Mapped[int] = mapped_column(Integer, index=True)  # FK pu_results.id
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class WardResultV(Base):
+    """A ward's result in one election (directly writable OR rolled up from PUs).
+    Same shape as PuResult without pu_code. Party votes in `ward_result_parties`."""
+
+    __tablename__ = "ward_result_v"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ward_code: Mapped[str] = mapped_column(String(30), index=True)
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    lga_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    ward: Mapped[str] = mapped_column(String(160), default="")
+    winner: Mapped[str] = mapped_column(String(20), default="")
+    runner_up: Mapped[str] = mapped_column(String(20), default="")
+    total_votes: Mapped[int] = mapped_column(Integer, default=0)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class WardResultParty(Base):
+    __tablename__ = "ward_result_parties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ward_result_id: Mapped[int] = mapped_column(Integer, index=True)  # FK ward_result_v.id
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class LgaResultV(Base):
+    """An LGA's result in one election (directly writable OR rolled up). Party votes
+    in `lga_result_parties`."""
+
+    __tablename__ = "lga_result_v"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lga_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    lga: Mapped[str] = mapped_column(String(120), default="")
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    winner: Mapped[str] = mapped_column(String(20), default="")
+    runner_up: Mapped[str] = mapped_column(String(20), default="")
+    total_votes: Mapped[int] = mapped_column(Integer, default=0)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class LgaResultParty(Base):
+    __tablename__ = "lga_result_parties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    lga_result_id: Mapped[int] = mapped_column(Integer, index=True)  # FK lga_result_v.id
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class StateResultV(Base):
+    """A state's result in one election (directly writable OR rolled up). Party votes
+    in `state_result_parties`. This is where state-only data (e.g. 2019 presidential)
+    lives natively."""
+
+    __tablename__ = "state_result_v"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    state: Mapped[str] = mapped_column(String(60), default="")
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    winner: Mapped[str] = mapped_column(String(20), default="")
+    runner_up: Mapped[str] = mapped_column(String(20), default="")
+    total_votes: Mapped[int] = mapped_column(Integer, default=0)
+    valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
+    decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StateResultParty(Base):
+    __tablename__ = "state_result_parties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    state_result_id: Mapped[int] = mapped_column(Integer, index=True)  # FK state_result_v.id
+    party: Mapped[str] = mapped_column(String(20), index=True)
+    votes: Mapped[int] = mapped_column(Integer, default=0)
