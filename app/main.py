@@ -139,6 +139,18 @@ async def lifespan(app: FastAPI):
         run_migrations()
     except Exception as exc:  # don't prevent boot; surface in logs
         print(f"[startup] migration error: {exc}")
+    # Safety net: ensure every model table exists even if a migration was skipped or
+    # its error was swallowed above. create_all only creates MISSING tables, so it is
+    # idempotent and never touches existing ones. Guards the new results-pipeline
+    # tables (sheet_transcriptions, pu_results, *_result_v, …) against a half-applied
+    # migration leaving the app querying a table that doesn't exist.
+    try:
+        if engine is not None:
+            from .db import Base
+            Base.metadata.create_all(engine)
+            print("[startup] ensured all tables exist (create_all)")
+    except Exception as exc:
+        print(f"[startup] create_all error: {exc}")
     try:
         if SessionLocal is not None:
             with SessionLocal() as db:

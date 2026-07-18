@@ -42,6 +42,13 @@ def _winner_runner(pairs: list[tuple[str, int]]) -> tuple[str, str]:
     return winner, runner
 
 
+def _insert_id(conn, sql: str, params: dict) -> int:
+    """INSERT and return the new row id, portably. Uses RETURNING id (Postgres and
+    SQLite ≥3.35). NEVER touches cursor.lastrowid — psycopg has no such attribute, so
+    even reading it raises on Postgres."""
+    return conn.execute(sa.text(sql + " RETURNING id"), params).scalar()
+
+
 def upgrade() -> None:
     conn = op.get_bind()
     insp = sa.inspect(conn)
@@ -54,16 +61,11 @@ def upgrade() -> None:
             "votes_nnpp, total_votes, winner, runner_up FROM ward_results"
         )).mappings().all()
         for r in rows:
-            res = conn.execute(sa.text(
+            wid = _insert_id(conn,
                 "INSERT INTO ward_result_v (ward_code, ward, lga_id, election_type, year, "
                 "state_geo, winner, runner_up, total_votes, source) VALUES "
                 "(:ward_code, :ward, :lga_id, 'presidential', '2023', :state_geo, :winner, "
-                ":runner_up, :total_votes, 'declared')"
-            ), dict(r))
-            wid = res.lastrowid if res.lastrowid else conn.execute(sa.text(
-                "SELECT id FROM ward_result_v WHERE ward_code=:c AND election_type='presidential' "
-                "AND year='2023' AND source='declared' ORDER BY id DESC LIMIT 1"
-            ), {"c": r["ward_code"]}).scalar()
+                ":runner_up, :total_votes, 'declared')", dict(r))
             for party, col in (("APC", "votes_apc"), ("LP", "votes_lp"), ("PDP", "votes_pdp"), ("NNPP", "votes_nnpp")):
                 conn.execute(sa.text(
                     "INSERT INTO ward_result_parties (ward_result_id, party, votes) "
@@ -83,16 +85,12 @@ def upgrade() -> None:
         for (et, year, sgeo, lga_id, lga), parties in groups.items():
             winner, runner = _winner_runner(parties)
             total = sum(v for _, v in parties)
-            res = conn.execute(sa.text(
+            lid = _insert_id(conn,
                 "INSERT INTO lga_result_v (lga_id, lga, election_type, year, state_geo, "
                 "winner, runner_up, total_votes, source) VALUES "
-                "(:lga_id, :lga, :et, :year, :sgeo, :winner, :runner, :total, 'declared')"
-            ), {"lga_id": lga_id, "lga": lga, "et": et, "year": year, "sgeo": sgeo,
-                "winner": winner, "runner": runner, "total": total})
-            lid = res.lastrowid if res.lastrowid else conn.execute(sa.text(
-                "SELECT id FROM lga_result_v WHERE election_type=:et AND year=:year AND lga=:lga "
-                "AND source='declared' ORDER BY id DESC LIMIT 1"
-            ), {"et": et, "year": year, "lga": lga}).scalar()
+                "(:lga_id, :lga, :et, :year, :sgeo, :winner, :runner, :total, 'declared')",
+                {"lga_id": lga_id, "lga": lga, "et": et, "year": year, "sgeo": sgeo,
+                 "winner": winner, "runner": runner, "total": total})
             for party, votes in parties:
                 conn.execute(sa.text(
                     "INSERT INTO lga_result_parties (lga_result_id, party, votes) "
@@ -111,16 +109,12 @@ def upgrade() -> None:
             winner = r["winner"] or _winner_runner(parts)[0]
             _, runner = _winner_runner(parts)
             total = r["total_votes"] or sum(v for _, v in parts)
-            res = conn.execute(sa.text(
+            sid = _insert_id(conn,
                 "INSERT INTO state_result_v (state, state_geo, election_type, year, winner, "
                 "runner_up, total_votes, source) VALUES "
-                "(:state, :sgeo, 'presidential', :year, :winner, :runner, :total, 'declared')"
-            ), {"state": r["state"], "sgeo": r["state_geo"], "year": str(r["year"]),
-                "winner": winner, "runner": runner, "total": total})
-            sid = res.lastrowid if res.lastrowid else conn.execute(sa.text(
-                "SELECT id FROM state_result_v WHERE election_type='presidential' AND year=:year "
-                "AND state=:state AND source='declared' ORDER BY id DESC LIMIT 1"
-            ), {"year": str(r["year"]), "state": r["state"]}).scalar()
+                "(:state, :sgeo, 'presidential', :year, :winner, :runner, :total, 'declared')",
+                {"state": r["state"], "sgeo": r["state_geo"], "year": str(r["year"]),
+                 "winner": winner, "runner": runner, "total": total})
             for party, votes in parts:
                 if votes:
                     conn.execute(sa.text(
