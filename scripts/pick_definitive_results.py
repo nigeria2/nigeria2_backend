@@ -527,12 +527,19 @@ def _rollup_state(db, state_geo):
 def _load_state_declared(db, state_geo) -> int:
     """Load state-level-only archive results (state_presidential_archive) directly, for any
     year — this is the top-down case (e.g. 2019 presidential) where there is no level below
-    to roll up. Written as INDEPENDENT state evidence (kind='inec_declared') + state_result_v,
-    but ONLY for a (state, year) that has no rolled-up result already (so 2023 rollups win)."""
+    to roll up. These figures are collated aggregates with no result-sheet artifact behind
+    them and mixed/unknown provenance, so they are recorded HONESTLY as a piece of evidence
+    with kind='declared' / source='collated (provenance unknown)' — NOT as an INEC-declared
+    number (we do not hold INEC's own declaration as a distinct source). Loaded ONLY for a
+    (state, year) that has no rolled-up result already (so real rollups win)."""
+    # clear both the honest 'declared' rows and any earlier mislabelled 'inec_declared' ones
+    _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "declared", state_geo)
     _clear_evidence(db, StateEvidence, StateEvidenceParty, "state_evidence_id", "inec_declared", state_geo)
-    # (state, year) pairs that already have a rolled-up state result — don't clobber those
+    # (state, year) pairs that have a genuine ROLLUP (kind='rollup') — those win; leave them.
+    # (Must key off rollup EVIDENCE, not state_result_v.source='official' — the latter also
+    #  covers our own declared loads, which would make every pair look "rolled" on a re-run.)
     rolled = {(sgeo, yr) for (sgeo, yr) in db.execute(
-        select(StateResultV.state_geo, StateResultV.year).where(StateResultV.source == "official")).all()}
+        select(StateEvidence.state_geo, StateEvidence.year).where(StateEvidence.kind == "rollup")).all()}
     n = 0
     q = select(StatePresidential)
     if state_geo is not None:
@@ -554,8 +561,8 @@ def _load_state_declared(db, state_geo) -> int:
         db.execute(delete(StateResultParty).where(StateResultParty.state_result_id.in_(idq)))
         db.execute(delete(StateResultV).where(StateResultV.id.in_(idq)))
         ev = StateEvidence(election_type="presidential", year=yr, state_geo=s.state_geo,
-                           kind="inec_declared", source="INEC declared", method="state-declared",
-                           total_votes=total)
+                           kind="declared", source="collated (provenance unknown)",
+                           method="state-declared", total_votes=total)
         db.add(ev); db.flush()
         for p, v in parts:
             db.add(StateEvidenceParty(state_evidence_id=ev.id, party=p, votes=v))

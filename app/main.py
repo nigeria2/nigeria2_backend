@@ -1196,7 +1196,7 @@ def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
 
 
 # order for level (ward/lga/state) evidence: independent sources first, rollup last
-_LEVEL_KIND_ORDER = {"inec_declared": 0, "collation": 1, "2023_transcription": 2, "rollup": 9}
+_LEVEL_KIND_ORDER = {"inec_declared": 0, "declared": 0, "collation": 1, "2023_transcription": 2, "rollup": 9}
 
 
 def _level_evidence(db: Session, model, party_model, fk_attr, geo_attr, geo_val,
