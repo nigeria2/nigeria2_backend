@@ -1109,22 +1109,22 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
     # definitive per-PU results (unified) keyed by pu_code
     pu_codes = [p.pu_code for p in rows]
     definitive = _pu_definitive(db, pu_codes, "presidential")
-    # IReV result sheets for these polling units, grouped by pu_code (one per race we hold)
-    sheets_by_pu: dict[str, list] = defaultdict(list)
-    for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code.in_(pu_codes))).all():
-        sheets_by_pu[s.pu_code].append({
-            "election_type": s.election_type, "year": s.year,
-            "sheet_url": s.sheet_url or "", "status": s.sheet_status, "has_json": bool(s.json),
-        })
+    # accredited voters per PU where we have it (flagged problem units only)
+    accredited_by_pu = {
+        u.pu_code: u.accredited_voters
+        for u in db.scalars(select(ProblemUnit).where(ProblemUnit.pu_code.in_(pu_codes))).all()
+        if u.pu_code and u.accredited_voters
+    }
+    # (INEC result-sheet links now live on the per-polling-unit page, not here)
 
     def pu_dict(p: PollingUnit) -> dict:
         d = definitive.get(p.pu_code)  # None until the results are populated
         return {
             "pu_name": p.pu_name, "pu_code": p.pu_code, "registered_voters": p.registered_voters,
+            "accredited_voters": accredited_by_pu.get(p.pu_code),
             "known_votes": (d["known_votes"] if d else None),
             "winner": (d["winner"] if d else ""), "runner_up": (d["runner_up"] if d else ""),
             "scores": (d["parties"] if d else {}),
-            "sheets": sorted(sheets_by_pu.get(p.pu_code, []), key=lambda x: x["election_type"]),
         }
 
     return {
@@ -1252,6 +1252,9 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
     ]
     if pu is None and not definitive and not sheets:
         raise HTTPException(status_code=404, detail="polling unit not found")
+    # accredited voters: only held for flagged problem units (BVAS accreditation on the
+    # anomaly record). None for regular units — we don't have PU-wide accreditation data.
+    pruni = db.scalar(select(ProblemUnit).where(ProblemUnit.pu_code == pu_code))
     return {
         "pu_code": pu_code,
         "pu_name": pu.pu_name if pu else "",
@@ -1262,6 +1265,7 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
         "state": pu.state if pu else "",
         "state_geo": pu.state_geo if pu else None,
         "registered_voters": pu.registered_voters if pu else None,
+        "accredited_voters": (pruni.accredited_voters if (pruni and pruni.accredited_voters) else None),
         "definitive": definitive,          # one per election_type, with party breakdown
         "sheets": sheets,                  # INEC IReV links
         "transcriptions": _transcription_entries(db, pu_code),  # ALL alternative entries

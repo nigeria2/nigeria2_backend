@@ -280,39 +280,50 @@ def _replace_state(db, year, election, state_acc):
 # --------------------------------------------------------------------------- #
 # Import the archived legacy results into the unified tables (source='official')
 # --------------------------------------------------------------------------- #
-def _clear_official(db: Session, model, party_model, fk_attr) -> None:
-    """Wipe prior source='official' rows (+ children) so the import is re-runnable."""
-    ids = [i for (i,) in db.execute(select(model.id).where(model.source == "official")).all()]
+def _clear_official(db: Session, model, party_model, fk_attr, state_geo=None) -> None:
+    """Wipe prior source='official' rows (+ children) so the import is re-runnable.
+    When state_geo is given, only that state's rows are removed (other states kept)."""
+    q = select(model.id).where(model.source == "official")
+    if state_geo is not None:
+        q = q.where(model.state_geo == state_geo)
+    ids = [i for (i,) in db.execute(q).all()]
     if ids:
         db.execute(delete(party_model).where(getattr(party_model, fk_attr).in_(ids)))
         db.execute(delete(model).where(model.id.in_(ids)))
 
 
-def import_from_archive(commit: bool) -> None:
+def import_from_archive(commit: bool, state_geo=None) -> None:
     """Read the *_archive tables (+ polling_units.votes_*) and load them into the unified
     pu_results / *_result_v tables as source='official'. This is how we populate the new
-    structure from the preserved legacy data. Dry-run unless --commit."""
+    structure from the preserved legacy data. When state_geo is given, only that state is
+    imported (and only that state's existing official rows are replaced). Dry-run unless
+    --commit."""
     db = SessionLocal() if SessionLocal else None
     if db is None:
         print("DATABASE_URL not set — aborting.")
         return
+
+    def _sfilter(q, model):
+        return q.where(model.state_geo == state_geo) if state_geo is not None else q
+
     try:
+        scope = f" (state_geo={state_geo})" if state_geo else " (ALL states)"
         # counts first (dry-run visibility)
-        n_pu = db.scalar(select(func_count()).select_from(PollingUnit))
-        n_ward = db.scalar(select(func_count()).select_from(WardResult))
-        n_lga = db.scalar(select(func_count()).select_from(LgaPartyResult))
-        n_state = db.scalar(select(func_count()).select_from(StatePresidential))
-        print(f"Archive rows: polling_units={n_pu}, ward_results_archive={n_ward}, "
+        n_pu = db.scalar(_sfilter(select(func_count()).select_from(PollingUnit), PollingUnit))
+        n_ward = db.scalar(_sfilter(select(func_count()).select_from(WardResult), WardResult))
+        n_lga = db.scalar(_sfilter(select(func_count()).select_from(LgaPartyResult), LgaPartyResult))
+        n_state = db.scalar(_sfilter(select(func_count()).select_from(StatePresidential), StatePresidential))
+        print(f"Archive rows{scope}: polling_units={n_pu}, ward_results_archive={n_ward}, "
               f"lga_party_results_archive={n_lga}, state_presidential_archive={n_state}")
         if not commit:
             print("\nDRY RUN — no writes. Re-run with --commit to import into the unified tables.")
             return
 
         # 1) polling_units.votes_* -> pu_results (presidential 2023). Bulk for speed
-        # (there are ~177k polling units).
-        _clear_official(db, PuResult, PuResultParty, "pu_result_id")
+        # (there are ~177k polling units nationwide).
+        _clear_official(db, PuResult, PuResultParty, "pu_result_id", state_geo)
         pu_rows, pu_party_src = [], []  # parent mappings; (pu_code, [(party, votes)])
-        for p in db.scalars(select(PollingUnit)).all():
+        for p in db.scalars(_sfilter(select(PollingUnit), PollingUnit)).all():
             parties = [(k, v) for k, v in (("APC", p.votes_apc), ("LP", p.votes_lp),
                                            ("PDP", p.votes_pdp), ("NNPP", p.votes_nnpp)) if v is not None]
             if not parties and p.known_votes is None:
@@ -339,8 +350,8 @@ def import_from_archive(commit: bool) -> None:
             db.flush()
 
         # 2) ward_results_archive -> ward_result_v
-        _clear_official(db, WardResultV, WardResultParty, "ward_result_id")
-        for w in db.scalars(select(WardResult)).all():
+        _clear_official(db, WardResultV, WardResultParty, "ward_result_id", state_geo)
+        for w in db.scalars(_sfilter(select(WardResult), WardResult)).all():
             r = WardResultV(ward_code=w.ward_code, ward=w.ward, lga_id=w.lga_id,
                             election_type="presidential", year="2023", state_geo=w.state_geo,
                             winner=w.winner, runner_up=w.runner_up, total_votes=w.total_votes,
@@ -350,9 +361,9 @@ def import_from_archive(commit: bool) -> None:
                 db.add(WardResultParty(ward_result_id=r.id, party=party, votes=votes or 0))
 
         # 3) lga_party_results_archive -> lga_result_v (presidential + governor)
-        _clear_official(db, LgaResultV, LgaResultParty, "lga_result_id")
+        _clear_official(db, LgaResultV, LgaResultParty, "lga_result_id", state_geo)
         groups: dict = {}
-        for x in db.scalars(select(LgaPartyResult)).all():
+        for x in db.scalars(_sfilter(select(LgaPartyResult), LgaPartyResult)).all():
             groups.setdefault((x.election_type, x.year, x.state_geo, x.lga_id, x.lga), []).append((x.party, x.votes or 0))
         for (et, year, sgeo, lga_id, lga), parties in groups.items():
             winner, runner = _winner_runner(parties)
@@ -364,8 +375,8 @@ def import_from_archive(commit: bool) -> None:
                 db.add(LgaResultParty(lga_result_id=r.id, party=party, votes=votes))
 
         # 4) state_presidential_archive -> state_result_v
-        _clear_official(db, StateResultV, StateResultParty, "state_result_id")
-        for s in db.scalars(select(StatePresidential)).all():
+        _clear_official(db, StateResultV, StateResultParty, "state_result_id", state_geo)
+        for s in db.scalars(_sfilter(select(StatePresidential), StatePresidential)).all():
             parts = [("APC", s.apc or 0), ("PDP", s.pdp or 0), ("LP", s.lp or 0),
                      ("NNPP", s.nnpp or 0), ("Others", s.others or 0)]
             winner = s.winner or _winner_runner(parts)[0]
@@ -392,11 +403,14 @@ def main() -> None:
     ap.add_argument("--from-archive", action="store_true",
                     help="import the archived legacy results into the unified tables (source='official') "
                          "instead of running the transcription picker")
+    ap.add_argument("--state", default=None,
+                    help="limit --from-archive to one state's geo id (e.g. nga_3 for Akwa Ibom); "
+                         "only that state's official rows are replaced")
     ap.add_argument("--commit", action="store_true",
                     help="actually write (default is a dry run that writes nothing)")
     args = ap.parse_args()
     if getattr(args, "from_archive", False):
-        import_from_archive(args.commit)
+        import_from_archive(args.commit, state_geo=args.state)
     else:
         run(args.year, args.election, args.commit)
 
