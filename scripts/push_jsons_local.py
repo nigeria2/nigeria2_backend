@@ -38,6 +38,7 @@ import re
 import sys
 import threading
 import time
+import urllib.parse
 
 # UTF-8 console for the ✓/█ box glyphs (Windows cp1252 default breaks them).
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -252,10 +253,65 @@ class Board:
 
 
 # --- core -----------------------------------------------------------------------
+# INEC result-sheet URL resolution — ported verbatim from data_private/download_sheets.py so
+# we store the URL THAT ACTUALLY SERVES, not the harvested (broken) one. Two rules:
+#   * dead hosts (docs.inecelectionresults.net, irevx.ams3) don't serve — drop / alias them
+#   * the lon1 bucket keys files under a LEADING <election-id>/ segment the harvested `url`
+#     drops (elections_prod/<id>/... 403s; <id>/elections_prod/<id>/... is 200)
+# `document.document_url` is usually already the id-prefixed lon1 URL that works.
+_DEAD_HOST_ALIAS = {
+    "iiirev.incportals.com": "inc-s3-cache.incportals.com",
+    "irevx.ams3.cdn.digitaloceanspaces.com": "irev-results.lon1.digitaloceanspaces.com",
+}
+_DROP_HOSTS = {"docs.inecelectionresults.net"}
+_LON1_MISSING_ID = re.compile(
+    r"^(https://irev-results\.lon1\.digitaloceanspaces\.com)/elections_prod/(\d+)/(.*)$")
+
+
+def _alias(url: str):
+    try:
+        p = urllib.parse.urlparse(url)
+    except Exception:
+        return None
+    live = _DEAD_HOST_ALIAS.get(p.netloc.lower())
+    return urllib.parse.urlunparse(p._replace(netloc=live)) if live else None
+
+
+def _lon1_fix(url: str):
+    m = _LON1_MISSING_ID.match(url or "")
+    if not m:
+        return None
+    base, eid, rest = m.groups()
+    return f"{base}/{eid}/elections_prod/{eid}/{rest}"
+
+
+def _best_sheet_url(doc: dict) -> str:
+    """Pick the INEC URL that actually serves, mirroring download_sheets.candidate_urls:
+    id-prefixed lon1 first, then aliased variants, dropping dead hosts."""
+    raw = [doc.get("document_url"), doc.get("url"), doc.get("backup_url")]
+    src, path = doc.get("source"), doc.get("document_path")
+    if src and path:
+        raw.append(src.rstrip("/") + "/" + path.lstrip("/"))
+    candidates = []
+    for u in raw:
+        if not u:
+            continue
+        for v in ([_alias(u)] if _alias(u) else []) + [u]:
+            fx = _lon1_fix(v)
+            if fx:
+                candidates.append(fx)   # fixed url first
+            candidates.append(v)
+    for u in candidates:
+        host = urllib.parse.urlparse(u).netloc.lower()
+        if host and host not in _DROP_HOSTS:
+            return u
+    return ""
+
+
 def load_sheet_urls(state_folder: str, office: str) -> dict[str, tuple[str, str]]:
     """Build {pu_code: (sheet_url, status)} for a (state, office) from the harvested IReV API
-    metadata under pdfs/_api. `document.url` is the INEC result-sheet PDF; where INEC has none
-    the PU is flagged. Returns {} if that state/office wasn't harvested."""
+    metadata under pdfs/_api, choosing the URL that ACTUALLY serves (see _best_sheet_url).
+    Returns {} if that state/office wasn't harvested."""
     base = API_ROOT / state_folder / office / YEAR
     out: dict[str, tuple[str, str]] = {}
     if not base.is_dir():
@@ -272,8 +328,7 @@ def load_sheet_urls(state_folder: str, office: str) -> dict[str, tuple[str, str]
                 code = (pu.get("pu_code") or "").strip()
                 if not code:
                     continue
-                doc = pu.get("document") or {}
-                url = (doc.get("url") or doc.get("backup_url") or "").strip()
+                url = _best_sheet_url(pu.get("document") or {})
                 status = "saved" if url else ("no_sheet" if pu.get("is_zero_pu") else "")
                 out[code] = (url, status)
     return out
