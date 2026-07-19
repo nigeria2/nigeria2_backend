@@ -66,7 +66,8 @@ JROOT = DATA_PRIVATE / "jsons_local"
 API_ROOT = DATA_PRIVATE / "pdfs" / "_api"
 MODEL = "qwen3.5-9b"
 SOURCE = f"LLM ({MODEL})"
-YEAR = "2023"
+# NB: the election year is read from the folder path (<state>/<office>/<year>/...), NOT
+# hard-coded — off-cycle governorships have their own years (Anambra 2021/2025, Edo 2020/2024).
 
 OFFICE_TO_ET = {"presidential": "presidential", "governorship": "governor", "senatorial": "senate"}
 # statuses we treat as loadable evidence (blurry/truncated are too unreliable)
@@ -308,11 +309,11 @@ def _best_sheet_url(doc: dict) -> str:
     return ""
 
 
-def load_sheet_urls(state_folder: str, office: str) -> dict[str, tuple[str, str]]:
-    """Build {pu_code: (sheet_url, status)} for a (state, office) from the harvested IReV API
-    metadata under pdfs/_api, choosing the URL that ACTUALLY serves (see _best_sheet_url).
-    Returns {} if that state/office wasn't harvested."""
-    base = API_ROOT / state_folder / office / YEAR
+def load_sheet_urls(state_folder: str, office: str, year: str) -> dict[str, tuple[str, str]]:
+    """Build {pu_code: (sheet_url, status)} for a (state, office, year) from the harvested IReV
+    API metadata under pdfs/_api, choosing the URL that ACTUALLY serves (see _best_sheet_url).
+    Returns {} if that state/office/year wasn't harvested."""
+    base = API_ROOT / state_folder / office / year
     out: dict[str, tuple[str, str]] = {}
     if not base.is_dir():
         return out
@@ -334,9 +335,20 @@ def load_sheet_urls(state_folder: str, office: str) -> dict[str, tuple[str, str]
     return out
 
 
-def iter_files(state_dir: pathlib.Path, office: str, statuses: set[str]):
-    """Yield (path, lga_idx, ward_idx, pu_num) for each loadable json under state/office."""
-    base = state_dir / office / YEAR
+def office_years(state_dir: pathlib.Path, office: str) -> list[str]:
+    """The election year folder(s) present under <state>/<office>/ (a 4-digit year name).
+    Most offices have just 2023, but off-cycle governorships have their own years
+    (Anambra 2021/2025, Edo 2020/2024, Ekiti 2022/2026, ...), so we iterate whatever exists."""
+    base = state_dir / office
+    if not base.is_dir():
+        return []
+    return sorted(d.name for d in base.iterdir()
+                  if d.is_dir() and re.fullmatch(r"\d{4}", d.name))
+
+
+def iter_files(state_dir: pathlib.Path, office: str, year: str, statuses: set[str]):
+    """Yield (path, lga_idx, ward_idx, pu_num) for each loadable json under state/office/year."""
+    base = state_dir / office / year
     if not base.is_dir():
         return
     for lga_dir in sorted(base.iterdir()):
@@ -361,17 +373,17 @@ def iter_files(state_dir: pathlib.Path, office: str, statuses: set[str]):
 
 
 def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
-                      office, statuses, dry):
+                      office, year, statuses, dry):
     et = OFFICE_TO_ET[office]
-    # real INEC result-sheet URLs for this (state, office), keyed by pu_code
-    sheet_urls = load_sheet_urls(state_dir.name, office)
-    # gather rows for this (state, office)
+    # real INEC result-sheet URLs for this (state, office, year), keyed by pu_code
+    sheet_urls = load_sheet_urls(state_dir.name, office, year)
+    # gather rows for this (state, office, year)
     ev_rows = []      # dict for Evidence bulk insert (now includes raw JSON)
     ep_rows = []      # (pu_code, party, votes) staged; resolved to evidence_id after flush
     sheet_rows = []   # one pu_sheet per unit: sheet + full transcription JSON + analysis
     seen = set()      # de-dupe pu_code within this office (one evidence per unit)
     processed = 0
-    for f, li, wi, pu_num, status in iter_files(state_dir, office, statuses):
+    for f, li, wi, pu_num, status in iter_files(state_dir, office, year, statuses):
         processed += 1
         if processed % 400 == 0:
             board.cur_done = board.done_files.get(state_dir.name, 0) + processed
@@ -394,7 +406,7 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
         an = parsed["analysis"]
         seen.add(key)
         ev_rows.append({
-            "pu_code": pu_code, "election_type": et, "year": YEAR,
+            "pu_code": pu_code, "election_type": et, "year": year,
             "state_geo": state_geo, "kind": "llm", "source": SOURCE,
             "method": status,  # valid | unsure — the model's own confidence flag
             "registered_voters": poll["registered_voters"],
@@ -410,7 +422,7 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
         # JSON array so more transcriptions of the same sheet can be appended later).
         sheet_url, sheet_status = sheet_urls.get(pu_code, ("", ""))
         sheet_rows.append({
-            "pu_code": pu_code, "election_type": et, "year": YEAR, "state_geo": state_geo,
+            "pu_code": pu_code, "election_type": et, "year": year, "state_geo": state_geo,
             "sheet_url": sheet_url, "sheet_status": sheet_status, "source_image": an["source_image"],
             "status": status, "legibility": an["legibility"], "model": an["model"],
             "sum_check_passed": an["sum_check_passed"], "totals_consistent": an["totals_consistent"],
@@ -421,21 +433,21 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
     if dry:
         board.ev_written += len(ev_rows)
         board.ep_written += len(ep_rows)
-        board.log(f"[dry] {state_dir.name}/{office}: {len(ev_rows)} ev, {len(ep_rows)} party rows")
+        board.log(f"[dry] {state_dir.name}/{office}/{year}: {len(ev_rows)} ev, {len(ep_rows)} party rows")
         return
 
     if not ev_rows:
-        board.log(f"{state_dir.name}/{office}: nothing to load")
+        board.log(f"{state_dir.name}/{office}/{year}: nothing to load")
         return
 
     # Raw psycopg COPY — the ONLY thing fast enough over the remote DB. bulk_insert_mappings
     # does per-row round-trips (~56k/state) and hangs on the high-latency link. One COPY each
     # for evidence, evidence_parties, and pu_sheets.
-    ep_written = _copy_state_office(raw, state_geo, et, ev_rows, ep_rows, sheet_rows)
+    ep_written = _copy_state_office(raw, state_geo, et, year, ev_rows, ep_rows, sheet_rows)
 
     board.ev_written += len(ev_rows)
     board.ep_written += ep_written
-    board.log(f"{state_dir.name}/{office}: +{len(ev_rows)} evidence, +{ep_written} party rows, "
+    board.log(f"{state_dir.name}/{office}/{year}: +{len(ev_rows)} evidence, +{ep_written} party rows, "
               f"+{len(sheet_rows)} sheets")
 
 
@@ -447,21 +459,21 @@ _SHEET_COLS = ["pu_code", "election_type", "year", "state_geo", "sheet_url", "sh
                "totals_consistent", "validity_notes", "discrepancies", "transcriptions"]
 
 
-def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows, sheet_rows):
-    """Idempotently replace this (state, office) LLM evidence + pu_sheets using COPY.
+def _copy_state_office(raw, state_geo, et, year, ev_rows, ep_rows, sheet_rows):
+    """Idempotently replace this (state, office, year) LLM evidence + pu_sheets using COPY.
     Returns party-row count."""
     with raw.cursor() as cur:
         # idempotent clear (correlated subquery; small per-state scope)
         cur.execute(
             "delete from evidence_parties ep using evidence e "
             "where ep.evidence_id = e.id and e.kind='llm' and e.state_geo=%s "
-            "and e.election_type=%s and e.year=%s", (state_geo, et, YEAR))
+            "and e.election_type=%s and e.year=%s", (state_geo, et, year))
         cur.execute(
             "delete from evidence where kind='llm' and state_geo=%s and election_type=%s and year=%s",
-            (state_geo, et, YEAR))
+            (state_geo, et, year))
         cur.execute(
             "delete from pu_sheets where state_geo=%s and election_type=%s and year=%s",
-            (state_geo, et, YEAR))
+            (state_geo, et, year))
 
         # COPY evidence
         with cur.copy(f"copy evidence ({', '.join(_EV_COLS)}) from stdin") as cp:
@@ -471,7 +483,7 @@ def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows, sheet_rows):
         # recover pu_code -> id for the rows we just wrote
         cur.execute(
             "select pu_code, id from evidence where kind='llm' and state_geo=%s "
-            "and election_type=%s and year=%s", (state_geo, et, YEAR))
+            "and election_type=%s and year=%s", (state_geo, et, year))
         id_by_code = dict(cur.fetchall())
 
         # COPY evidence_parties
@@ -497,8 +509,9 @@ def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows, sheet_rows):
 def count_files(state_dir, offices, statuses):
     n = 0
     for office in offices:
-        for _ in iter_files(state_dir, office, statuses):
-            n += 1
+        for year in office_years(state_dir, office):
+            for _ in iter_files(state_dir, office, year, statuses):
+                n += 1
     return n
 
 
@@ -542,8 +555,9 @@ def main():
                 state_code, pu_lookup = state_lookup(raw, gid)
                 board.log(f"== {s} ({gid}) code={state_code}  {len(pu_lookup)} canonical PUs ==")
                 for office in offices:
-                    load_state_office(raw, board, JROOT / s, gid, state_code, pu_lookup,
-                                      office, statuses, args.dry_run)
+                    for year in office_years(JROOT / s, office):
+                        load_state_office(raw, board, JROOT / s, gid, state_code, pu_lookup,
+                                          office, year, statuses, args.dry_run)
                 board.done_files[s] = tot
                 board.state_done[s] = True
             board.cur_state = None
