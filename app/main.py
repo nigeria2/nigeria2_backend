@@ -55,6 +55,7 @@ from .models import (
     StateEvidenceParty,
     PuResult,
     PuResultParty,
+    PuSheet,
     WardResultV,
     WardResultParty,
     LgaResultV,
@@ -681,20 +682,28 @@ def public_outliers(
     """), {**params, "limit": limit, "offset": offset}).mappings().all()
 
     codes = [m["pu_code"] for m in rows]
-    # Batch the two related lookups for this page's units (avoid N+1):
-    #  - the INEC result sheet(s) per unit (with link + status, incl. broken URLs)
-    #  - every recorded party vote, grouped by contributor (evidence.source, e.g. qwen)
+    # Batch the related lookups for this page's units (avoid N+1):
+    #  - the INEC result sheet(s) per unit, with our model's analysis + comment (pu_sheets)
+    #  - every recorded party vote, grouped by contributor (evidence.source, e.g. qwen),
+    #    each carrying the sheet's status + the model's own note on that sheet
     sheets_by_code: dict[str, list] = defaultdict(list)
+    analysis_by_key: dict[tuple[str, str], dict] = {}
     votes_by_code_office: dict[tuple[str, str], dict] = defaultdict(dict)
     if codes:
-        for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code.in_(codes))).all():
+        for s in db.scalars(select(PuSheet).where(PuSheet.pu_code.in_(codes))).all():
+            an = {
+                "status": s.status or "", "legibility": s.legibility or "", "model": s.model or "",
+                "sum_check_passed": s.sum_check_passed, "totals_consistent": s.totals_consistent,
+                "validity_notes": s.validity_notes, "discrepancies": s.discrepancies,
+            }
             sheets_by_code[s.pu_code].append({
                 "election_type": s.election_type, "year": s.year,
                 "url": s.sheet_url or "", "status": s.sheet_status or "",
+                "source_image": s.source_image or "", "analysis": an,
             })
+            analysis_by_key[(s.pu_code, s.election_type)] = an
         # evidence + its party votes for these units, all offices — grouped by source
         evs = db.scalars(select(Evidence).where(Evidence.pu_code.in_(codes))).all()
-        ev_by_id = {e.id: e for e in evs}
         parties_by_ev: dict[int, dict] = defaultdict(dict)
         if evs:
             for ep in db.scalars(select(EvidenceParty).where(
@@ -705,6 +714,8 @@ def public_outliers(
             src = votes_by_code_office[key].setdefault(e.source or e.kind, {
                 "kind": e.kind, "source": e.source or "", "method": e.method or "",
                 "valid_votes": e.valid_votes, "parties": {},
+                # the model's read of this sheet (status + its own comment), for LLM sources
+                "analysis": analysis_by_key.get(key) if e.kind == "llm" else None,
             })
             for p, v in parties_by_ev.get(e.id, {}).items():
                 if v is not None:
@@ -737,6 +748,56 @@ def public_outliers(
             "no_roll": "no registered voters on record but > 2000 votes",
         },
         "outliers": items,
+    }, headers=_PUBLIC_CORS)
+
+
+# --- Public sheets + transcriptions API -------------------------------------------------
+# List the INEC result sheets we hold for a polling unit, and fetch the EXACT transcription
+# JSON we produced for any one of them. pu_code is the INEC code, e.g. 03/01/01/001.
+def _sheet_summary(s: "PuSheet") -> dict:
+    return {
+        "pu_code": s.pu_code, "election_type": s.election_type, "year": s.year,
+        "state_geo": s.state_geo, "sheet_url": s.sheet_url or "", "sheet_status": s.sheet_status or "",
+        "source_image": s.source_image or "",
+        "analysis": {   # the model's own read of this sheet
+            "status": s.status or "", "legibility": s.legibility or "", "model": s.model or "",
+            "sum_check_passed": s.sum_check_passed, "totals_consistent": s.totals_consistent,
+            "validity_notes": s.validity_notes, "discrepancies": s.discrepancies,
+        },
+    }
+
+
+@app.get("/api/v1/polling-units/{pu_code:path}/sheets/{election_type}")
+def public_sheet_transcriptions(pu_code: str, election_type: str, db: Session = Depends(get_db)):
+    """Public: one polling unit's result SHEET for an office, with the EXACT transcription(s)
+    we produced of it — the verbatim JSON the model returned (party votes, poll summary,
+    validity block incl. the model's own `validity_notes` comment, transcription notes).
+    `election_type` is presidential | governor | senate."""
+    s = db.scalar(select(PuSheet).where(
+        PuSheet.pu_code == pu_code, PuSheet.election_type == election_type))
+    if s is None:
+        return JSONResponse({"detail": "no sheet for this unit/office"}, status_code=404, headers=_PUBLIC_CORS)
+    try:
+        transcriptions = json.loads(s.transcriptions) if s.transcriptions else []
+    except Exception:
+        transcriptions = []
+    out = _sheet_summary(s)
+    out["transcriptions"] = transcriptions   # the exact JSON we transcribed, one per reading
+    return JSONResponse(out, headers=_PUBLIC_CORS)
+
+
+@app.get("/api/v1/polling-units/{pu_code:path}/sheets")
+def public_unit_sheets(pu_code: str, db: Session = Depends(get_db)):
+    """Public: every result sheet we hold for a polling unit (one per office), each with its
+    link, status, and our model's analysis + comment. Fetch a sheet's full transcription JSON
+    at .../sheets/{election_type}."""
+    sheets = db.scalars(select(PuSheet).where(PuSheet.pu_code == pu_code)
+                        .order_by(PuSheet.election_type)).all()
+    if not sheets:
+        return JSONResponse({"pu_code": pu_code, "count": 0, "sheets": []}, headers=_PUBLIC_CORS)
+    return JSONResponse({
+        "pu_code": pu_code, "count": len(sheets),
+        "sheets": [_sheet_summary(s) for s in sheets],
     }, headers=_PUBLIC_CORS)
 
 
