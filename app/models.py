@@ -896,6 +896,40 @@ class PuResultParty(Base):
     votes: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class PuSheet(Base):
+    """One INEC result SHEET for a polling unit (per election_type + year), plus EVERY
+    transcription we produced of it — the exact JSON, nothing dropped.
+
+    A sheet is a scanned EC8A form on INEC's IReV server; `sheet_url`/`sheet_status` point
+    at it (we don't re-host). `transcriptions` is a JSON array (text) — one element per
+    transcription of THIS sheet (e.g. one per model/run), each the verbatim JSON the model
+    produced (party_results, poll_summary, validity{status, sum_check_passed, validity_notes,
+    …}, transcription_notes{legibility, discrepancies, …}). So the API can hand back the exact
+    data we transcribed. The flattened `status`/`analysis` columns surface the latest/primary
+    transcription's confidence + the model's own comment for quick filtering & display."""
+
+    __tablename__ = "pu_sheets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    pu_code: Mapped[str] = mapped_column(String(40), index=True)          # INEC code 03/01/01/001
+    election_type: Mapped[str] = mapped_column(String(20), index=True, default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    sheet_url: Mapped[str] = mapped_column(Text, default="")              # INEC IReV scan
+    sheet_status: Mapped[str] = mapped_column(String(20), default="")     # saved | no_sheet | dead
+    source_image: Mapped[str] = mapped_column(String(120), default="")    # filename transcribed (001.jpg)
+    # the model's read of THIS sheet (flattened from the primary transcription for quick use)
+    status: Mapped[str] = mapped_column(String(20), index=True, default="")  # valid|unsure|blurry|truncated
+    legibility: Mapped[str] = mapped_column(String(40), default="")
+    model: Mapped[str] = mapped_column(String(80), default="")            # e.g. qwen3.5-9b
+    sum_check_passed: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    totals_consistent: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    validity_notes: Mapped[str | None] = mapped_column(Text, nullable=True)   # the model's comment
+    discrepancies: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transcriptions: Mapped[str | None] = mapped_column(Text, nullable=True)   # JSON array of exact transcriptions
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class WardResultV(Base):
     """A ward's result in one election (directly writable OR rolled up from PUs).
     Same shape as PuResult without pu_code. Party votes in `ward_result_parties`."""

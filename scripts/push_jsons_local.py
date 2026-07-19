@@ -125,9 +125,11 @@ def _idx(folder):
 
 
 def parse_file(path: pathlib.Path):
-    """Return (party_votes:list[(party,votes)], poll:dict, valid_votes) or None."""
+    """Return a dict with the parsed votes/poll PLUS the model's analysis and the FULL raw
+    JSON, or None. Nothing the model produced is dropped — `raw` is the verbatim text."""
     try:
-        d = json.loads(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+        d = json.loads(text)
     except Exception:
         return None
     parties = []
@@ -146,7 +148,21 @@ def parse_file(path: pathlib.Path):
     }
     dt = _int((d.get("declared_total_valid_votes") or {}).get("figures"), cap=_POLL_SUMMARY_CAP)
     vv = poll["valid_votes"] if poll["valid_votes"] is not None else dt
-    return parties, poll, vv
+    # the model's own read of the sheet — the analysis + comment the user wants surfaced
+    val = d.get("validity", {}) or {}
+    notes = d.get("transcription_notes", {}) or {}
+    analysis = {
+        "status": (val.get("status") or "").strip(),
+        "legibility": (notes.get("legibility") or "").strip(),
+        "model": (notes.get("method") or "").replace("openrouter:", "").strip() or MODEL,
+        "sum_check_passed": val.get("sum_check_passed"),
+        "totals_consistent": val.get("totals_internally_consistent"),
+        "validity_notes": (val.get("validity_notes") or "").strip() or None,
+        "discrepancies": (notes.get("discrepancies") or "").strip() or None,
+        "source_image": (d.get("source_image") or "").strip(),
+    }
+    return {"parties": parties, "poll": poll, "valid_votes": vv,
+            "analysis": analysis, "raw": text}
 
 
 # --- board (rich TUI) -----------------------------------------------------------
@@ -259,8 +275,9 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
                       office, statuses, dry):
     et = OFFICE_TO_ET[office]
     # gather rows for this (state, office)
-    ev_rows = []      # dict for Evidence bulk insert
+    ev_rows = []      # dict for Evidence bulk insert (now includes raw JSON)
     ep_rows = []      # (pu_code, party, votes) staged; resolved to evidence_id after flush
+    sheet_rows = []   # one pu_sheet per unit: sheet + full transcription JSON + analysis
     seen = set()      # de-dupe pu_code within this office (one evidence per unit)
     processed = 0
     for f, li, wi, pu_num, status in iter_files(state_dir, office, statuses):
@@ -282,7 +299,8 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
         if parsed is None:
             board.parse_fail += 1
             continue
-        parties, poll, vv = parsed
+        parties, poll, vv = parsed["parties"], parsed["poll"], parsed["valid_votes"]
+        an = parsed["analysis"]
         seen.add(key)
         ev_rows.append({
             "pu_code": pu_code, "election_type": et, "year": YEAR,
@@ -293,9 +311,20 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
             "valid_votes": vv,
             "rejected_votes": poll["rejected_votes"],
             "total_used_ballots": poll["total_used_ballots"],
+            "raw": parsed["raw"],        # verbatim transcription JSON — nothing dropped
         })
         for party, votes in parties:
             ep_rows.append((pu_code, et, party, votes))
+        # one pu_sheet row per unit/office: the sheet + this transcription (as a 1-element
+        # JSON array so more transcriptions of the same sheet can be appended later).
+        sheet_rows.append({
+            "pu_code": pu_code, "election_type": et, "year": YEAR, "state_geo": state_geo,
+            "sheet_url": "", "sheet_status": "", "source_image": an["source_image"],
+            "status": status, "legibility": an["legibility"], "model": an["model"],
+            "sum_check_passed": an["sum_check_passed"], "totals_consistent": an["totals_consistent"],
+            "validity_notes": an["validity_notes"], "discrepancies": an["discrepancies"],
+            "transcriptions": json.dumps([json.loads(parsed["raw"])]),
+        })
 
     if dry:
         board.ev_written += len(ev_rows)
@@ -308,22 +337,27 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
         return
 
     # Raw psycopg COPY — the ONLY thing fast enough over the remote DB. bulk_insert_mappings
-    # does per-row round-trips (~56k/state) and hangs on the high-latency link. One COPY for
-    # evidence, a SELECT to recover ids, one COPY for the party rows.
-    ep_written = _copy_state_office(raw, state_geo, et, ev_rows, ep_rows)
+    # does per-row round-trips (~56k/state) and hangs on the high-latency link. One COPY each
+    # for evidence, evidence_parties, and pu_sheets.
+    ep_written = _copy_state_office(raw, state_geo, et, ev_rows, ep_rows, sheet_rows)
 
     board.ev_written += len(ev_rows)
     board.ep_written += ep_written
-    board.log(f"{state_dir.name}/{office}: +{len(ev_rows)} evidence, +{ep_written} party rows")
+    board.log(f"{state_dir.name}/{office}: +{len(ev_rows)} evidence, +{ep_written} party rows, "
+              f"+{len(sheet_rows)} sheets")
 
 
 _EV_COLS = ["pu_code", "election_type", "year", "state_geo", "kind", "source", "method",
             "registered_voters", "accredited_voters", "valid_votes", "rejected_votes",
-            "total_used_ballots"]
+            "total_used_ballots", "raw"]
+_SHEET_COLS = ["pu_code", "election_type", "year", "state_geo", "sheet_url", "sheet_status",
+               "source_image", "status", "legibility", "model", "sum_check_passed",
+               "totals_consistent", "validity_notes", "discrepancies", "transcriptions"]
 
 
-def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows):
-    """Idempotently replace this (state, office) LLM evidence using COPY. Returns party-row count."""
+def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows, sheet_rows):
+    """Idempotently replace this (state, office) LLM evidence + pu_sheets using COPY.
+    Returns party-row count."""
     with raw.cursor() as cur:
         # idempotent clear (correlated subquery; small per-state scope)
         cur.execute(
@@ -332,6 +366,9 @@ def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows):
             "and e.election_type=%s and e.year=%s", (state_geo, et, YEAR))
         cur.execute(
             "delete from evidence where kind='llm' and state_geo=%s and election_type=%s and year=%s",
+            (state_geo, et, YEAR))
+        cur.execute(
+            "delete from pu_sheets where state_geo=%s and election_type=%s and year=%s",
             (state_geo, et, YEAR))
 
         # COPY evidence
@@ -356,6 +393,11 @@ def _copy_state_office(raw, state_geo, et, ev_rows, ep_rows):
                     continue
                 cp.write_row([eid, party, votes, ""])
                 n += 1
+
+        # COPY pu_sheets (sheet + full transcription JSON + the model's analysis/comment)
+        with cur.copy(f"copy pu_sheets ({', '.join(_SHEET_COLS)}) from stdin") as cp:
+            for r in sheet_rows:
+                cp.write_row([r[c] for c in _SHEET_COLS])
     raw.commit()
     return n
 
