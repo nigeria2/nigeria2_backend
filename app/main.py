@@ -680,18 +680,53 @@ def public_outliers(
         LIMIT :limit OFFSET :offset
     """), {**params, "limit": limit, "offset": offset}).mappings().all()
 
+    codes = [m["pu_code"] for m in rows]
+    # Batch the two related lookups for this page's units (avoid N+1):
+    #  - the INEC result sheet(s) per unit (with link + status, incl. broken URLs)
+    #  - every recorded party vote, grouped by contributor (evidence.source, e.g. qwen)
+    sheets_by_code: dict[str, list] = defaultdict(list)
+    votes_by_code_office: dict[tuple[str, str], dict] = defaultdict(dict)
+    if codes:
+        for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code.in_(codes))).all():
+            sheets_by_code[s.pu_code].append({
+                "election_type": s.election_type, "year": s.year,
+                "url": s.sheet_url or "", "status": s.sheet_status or "",
+            })
+        # evidence + its party votes for these units, all offices — grouped by source
+        evs = db.scalars(select(Evidence).where(Evidence.pu_code.in_(codes))).all()
+        ev_by_id = {e.id: e for e in evs}
+        parties_by_ev: dict[int, dict] = defaultdict(dict)
+        if evs:
+            for ep in db.scalars(select(EvidenceParty).where(
+                    EvidenceParty.evidence_id.in_([e.id for e in evs]))).all():
+                parties_by_ev[ep.evidence_id][ep.party] = ep.votes
+        for e in evs:
+            key = (e.pu_code, e.election_type)
+            src = votes_by_code_office[key].setdefault(e.source or e.kind, {
+                "kind": e.kind, "source": e.source or "", "method": e.method or "",
+                "valid_votes": e.valid_votes, "parties": {},
+            })
+            for p, v in parties_by_ev.get(e.id, {}).items():
+                if v is not None:
+                    src["parties"][p] = v
+
     items = []
     for m in rows:
         flags = [k for k in _OUTLIER_RULES if m[k]]
         reg = m["registered"]
+        pc, et = m["pu_code"], m["election_type"]
+        # votes recorded for THIS office, grouped by contributor
+        vbs = votes_by_code_office.get((pc, et), {})
         items.append({
-            "pu_code": m["pu_code"], "pu_name": m["pu_name"] or "",
+            "pu_code": pc, "pu_name": m["pu_name"] or "",
             "state": m["state"], "state_geo": m["state_geo"],
             "lga": m["lga"], "lga_id": m["lga_id"], "ward": m["ward"], "ward_code": m["ward_code"],
-            "election_type": m["election_type"], "year": year,
+            "election_type": et, "year": year,
             "registered_voters": reg, "total_votes": m["total_votes"], "winner": m["winner"],
             "ratio": round(m["total_votes"] / reg, 2) if reg else None,
             "rules": flags,
+            "sheets": sheets_by_code.get(pc, []),        # result sheet link(s), incl. broken
+            "votes_by_source": list(vbs.values()),        # every recording, grouped by contributor
         })
     return JSONResponse({
         "year": year, "count": len(items), "total": total,
