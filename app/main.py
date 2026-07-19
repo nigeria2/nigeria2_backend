@@ -626,17 +626,19 @@ def public_outliers(
     state: str | None = None,
     office: str | None = None,
     rule: str | None = None,
-    limit: int = 200,
+    limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
 ):
     """Public: polling-unit results that look anomalous for a year. A row is flagged when,
     against the canonical INEC register, any of these holds: `over_voting` (total votes >=
     2x registered), `large_roll` (registered > 2000), `no_roll` (no register on record but
-    > 2000 votes). Each row lists which rules it tripped. Filter by `state` (slug, e.g.
-    akwa-ibom), `office` (presidential|governor|senate), or a single `rule`. Paginated with
-    `limit` (max 1000) & `offset`. Candidates for review — not proof of fraud."""
-    limit = max(1, min(int(limit), 1000))
+    > 2000 votes). Each row lists which rules it tripped, links to the INEC result sheet, and
+    lists every vote we recorded. Filter by `state` (slug, e.g. akwa-ibom), `office`
+    (presidential|governor|senate), or a single `rule`. Paginated with `limit` (default 50,
+    max 100) & `offset`; the response returns `has_more`/`next_offset`. Candidates for review
+    — not proof of fraud."""
+    limit = max(1, min(int(limit), 100))
     offset = max(0, int(offset))
     where = ["r.year = :year"]
     params: dict = {"year": year}
@@ -739,9 +741,13 @@ def public_outliers(
             "sheets": sheets_by_code.get(pc, []),        # result sheet link(s), incl. broken
             "votes_by_source": list(vbs.values()),        # every recording, grouped by contributor
         })
+    returned_to = offset + len(items)
+    has_more = returned_to < total
     return JSONResponse({
         "year": year, "count": len(items), "total": total,
         "limit": limit, "offset": offset,
+        "has_more": has_more,
+        "next_offset": returned_to if has_more else None,
         "rules": {
             "over_voting": "total votes >= 2x the canonical registered voters",
             "large_roll": "registered voters > 2000",

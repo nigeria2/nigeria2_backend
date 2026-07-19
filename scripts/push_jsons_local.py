@@ -51,11 +51,18 @@ from rich.table import Table
 from rich.text import Text
 
 BACKEND = pathlib.Path(__file__).resolve().parent.parent
+REPO_ROOT = BACKEND.parent
 sys.path.insert(0, str(BACKEND))
 
 from app import geo  # noqa: E402
 
-JROOT = pathlib.Path(r"d:/Code/nigeria2.0/data_private/jsons_local")
+# Paths are relative to the repo root (override the private-data location with DATA_PRIVATE_DIR
+# if it lives elsewhere). Never hard-code an absolute developer path.
+DATA_PRIVATE = pathlib.Path(os.environ.get("DATA_PRIVATE_DIR") or (REPO_ROOT / "data_private"))
+JROOT = DATA_PRIVATE / "jsons_local"
+# Harvested INEC IReV API metadata (same state/office/2023/lga/ward path shape), one file
+# per ward listing its PUs — each PU's `document.url` is the real INEC result-sheet PDF.
+API_ROOT = DATA_PRIVATE / "pdfs" / "_api"
 MODEL = "qwen3.5-9b"
 SOURCE = f"LLM ({MODEL})"
 YEAR = "2023"
@@ -245,6 +252,33 @@ class Board:
 
 
 # --- core -----------------------------------------------------------------------
+def load_sheet_urls(state_folder: str, office: str) -> dict[str, tuple[str, str]]:
+    """Build {pu_code: (sheet_url, status)} for a (state, office) from the harvested IReV API
+    metadata under pdfs/_api. `document.url` is the INEC result-sheet PDF; where INEC has none
+    the PU is flagged. Returns {} if that state/office wasn't harvested."""
+    base = API_ROOT / state_folder / office / YEAR
+    out: dict[str, tuple[str, str]] = {}
+    if not base.is_dir():
+        return out
+    for lga_dir in base.iterdir():
+        if not lga_dir.is_dir():
+            continue
+        for wf in lga_dir.glob("*.json"):
+            try:
+                pus = json.loads(wf.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            for pu in (pus if isinstance(pus, list) else []):
+                code = (pu.get("pu_code") or "").strip()
+                if not code:
+                    continue
+                doc = pu.get("document") or {}
+                url = (doc.get("url") or doc.get("backup_url") or "").strip()
+                status = "saved" if url else ("no_sheet" if pu.get("is_zero_pu") else "")
+                out[code] = (url, status)
+    return out
+
+
 def iter_files(state_dir: pathlib.Path, office: str, statuses: set[str]):
     """Yield (path, lga_idx, ward_idx, pu_num) for each loadable json under state/office."""
     base = state_dir / office / YEAR
@@ -274,6 +308,8 @@ def iter_files(state_dir: pathlib.Path, office: str, statuses: set[str]):
 def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
                       office, statuses, dry):
     et = OFFICE_TO_ET[office]
+    # real INEC result-sheet URLs for this (state, office), keyed by pu_code
+    sheet_urls = load_sheet_urls(state_dir.name, office)
     # gather rows for this (state, office)
     ev_rows = []      # dict for Evidence bulk insert (now includes raw JSON)
     ep_rows = []      # (pu_code, party, votes) staged; resolved to evidence_id after flush
@@ -317,9 +353,10 @@ def load_state_office(raw, board, state_dir, state_geo, state_code, pu_lookup,
             ep_rows.append((pu_code, et, party, votes))
         # one pu_sheet row per unit/office: the sheet + this transcription (as a 1-element
         # JSON array so more transcriptions of the same sheet can be appended later).
+        sheet_url, sheet_status = sheet_urls.get(pu_code, ("", ""))
         sheet_rows.append({
             "pu_code": pu_code, "election_type": et, "year": YEAR, "state_geo": state_geo,
-            "sheet_url": "", "sheet_status": "", "source_image": an["source_image"],
+            "sheet_url": sheet_url, "sheet_status": sheet_status, "source_image": an["source_image"],
             "status": status, "legibility": an["legibility"], "model": an["model"],
             "sum_check_passed": an["sum_check_passed"], "totals_consistent": an["totals_consistent"],
             "validity_notes": an["validity_notes"], "discrepancies": an["discrepancies"],
