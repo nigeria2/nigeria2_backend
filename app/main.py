@@ -609,13 +609,13 @@ def public_page_pu(year: str, state: str, lga: str, ward: str, pu: str,
 # Flags a (unit, office) result on any of three rules, measured against the CANONICAL INEC
 # register (polling_units.registered_voters), not the transcribed one:
 #   over_voting  — total votes >= 2x the registered voters (impossible legitimately)
-#   large_roll   — registered voters > 5000 (unusually large unit; 2000+ turned out normal)
+#   large_roll   — registered voters > 10000 (unusually large unit; 2000-5000 turned out normal)
 #   no_roll      — no registered voters on record, yet > 2000 votes (can't be validated)
 # These are candidates for review, not proof of fraud. All CORS-open, no key.
 _OUTLIER_RULES = ("over_voting", "large_roll", "no_roll")
 _OUTLIER_SQL = """
     (pu.registered_voters > 0 AND r.total_votes >= 2 * pu.registered_voters) AS over_voting,
-    (pu.registered_voters > 5000) AS large_roll,
+    (pu.registered_voters > 10000) AS large_roll,
     ((pu.registered_voters IS NULL OR pu.registered_voters = 0) AND r.total_votes > 2000) AS no_roll
 """
 
@@ -632,7 +632,7 @@ def public_outliers(
 ):
     """Public: polling-unit results that look anomalous for a year. A row is flagged when,
     against the canonical INEC register, any of these holds: `over_voting` (total votes >=
-    2x registered), `large_roll` (registered > 5000), `no_roll` (no register on record but
+    2x registered), `large_roll` (registered > 10000), `no_roll` (no register on record but
     > 2000 votes). Each row lists which rules it tripped, links to the INEC result sheet, and
     lists every vote we recorded. Filter by `state` (slug, e.g. akwa-ibom), `office`
     (presidential|governor|senate), or a single `rule`. Paginated with `limit` (default 50,
@@ -654,7 +654,7 @@ def public_outliers(
     # the outlier predicate (any rule), optionally narrowed to one named rule
     rule_pred = {
         "over_voting": "pu.registered_voters > 0 AND r.total_votes >= 2 * pu.registered_voters",
-        "large_roll": "pu.registered_voters > 5000",
+        "large_roll": "pu.registered_voters > 10000",
         "no_roll": "(pu.registered_voters IS NULL OR pu.registered_voters = 0) AND r.total_votes > 2000",
     }
     if rule:
@@ -750,7 +750,7 @@ def public_outliers(
         "next_offset": returned_to if has_more else None,
         "rules": {
             "over_voting": "total votes >= 2x the canonical registered voters",
-            "large_roll": "registered voters > 5000",
+            "large_roll": "registered voters > 10000",
             "no_roll": "no registered voters on record but > 2000 votes",
         },
         "outliers": items,
