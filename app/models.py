@@ -707,7 +707,7 @@ ELECTION_TYPES = ("presidential", "governor", "senate", "house")
 
 # Recognised kinds of evidence (the type of a recorded figure). Every piece is a GUESS —
 # there is no "definitive" and no single "chosen" evidence; the unit result is a MERGE.
-EVIDENCE_KINDS = ("2023_transcription", "inec", "llm", "human", "crowd")
+EVIDENCE_KINDS = ("2023_transcription", "inec", "llm", "human", "crowd", "correction")
 
 
 class Evidence(Base):
@@ -734,6 +734,9 @@ class Evidence(Base):
     kind: Mapped[str] = mapped_column(String(20), index=True, default="inec")  # see EVIDENCE_KINDS
     source: Mapped[str] = mapped_column(String(120), index=True, default="")   # where it came from
     method: Mapped[str] = mapped_column(String(60), default="")   # free text describing how
+    # merge priority — HIGHER wins when picking the result for a PU (default 0). A manual
+    # correction / higher-trust source uses a larger number so it beats the raw transcription.
+    priority: Mapped[int] = mapped_column(Integer, index=True, default=0)
     submitted_by: Mapped[str] = mapped_column(String(120), index=True, default="")  # who added it (label)
     submitted_by_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)  # users.id
     # poll summary (all nullable — a piece of evidence may omit some fields)

@@ -881,8 +881,99 @@ def rollup_llm(commit: bool, state_geo=None, year="2023") -> None:
 # --------------------------------------------------------------------------- #
 # Which evidence wins when a polling unit has more than one. qwen LLM first (Mark:
 # "we prefer our qwen evidence"), then other transcriptions, then declared aggregates.
-_KIND_PRIORITY = {"llm": 0, "2023_transcription": 1, "inec": 2, "human": 3, "crowd": 4, "declared": 5}
+_KIND_PRIORITY = {"correction": -1, "llm": 0, "2023_transcription": 1, "inec": 2, "human": 3, "crowd": 4, "declared": 5}
 _RESULT_METHOD = "qwen-preferred"
+
+# The all-parties-inflated misread ("zero written in words read as a 4-digit number"): a sheet
+# where two or more parties each poll > this. No real PU has two different parties both topping
+# 1000, so 2+ over the threshold is a reliable signature. We void such a sheet (all votes 0).
+_INFLATED_VOTE = 1000
+_INFLATED_MIN_PARTIES = 2
+_CORRECTION_PRIORITY = 100
+_CORRECTION_SOURCE = "auto-correction (voided inflated misread)"
+
+
+def zero_inflated(commit: bool, state_geo=None, year="2023") -> None:
+    """Void the all-parties-inflated misread sheets. For every (pu, office) LLM evidence row
+    where >= _INFLATED_MIN_PARTIES parties each have votes > _INFLATED_VOTE, insert a NEW
+    higher-priority `correction` evidence row with ALL party votes = 0 (the original stays for
+    audit). build_results then picks the correction over the misread because priority wins.
+    Idempotent: clears prior kind='correction' rows for the scope first. Dry-run unless --commit."""
+    db = SessionLocal() if SessionLocal else None
+    if db is None:
+        print("DATABASE_URL not set — aborting.")
+        return
+    try:
+        # find offending evidence: llm rows with >=N parties over the threshold. JOIN aggregate,
+        # no id-list, so it never hits the parameter limit.
+        q = (select(Evidence.id, Evidence.pu_code, Evidence.election_type, Evidence.state_geo)
+             .join(EvidenceParty, EvidenceParty.evidence_id == Evidence.id)
+             .where(Evidence.kind == "llm", Evidence.year == year,
+                    EvidenceParty.votes > _INFLATED_VOTE))
+        if state_geo is not None:
+            q = q.where(Evidence.state_geo == state_geo)
+        q = (q.group_by(Evidence.id, Evidence.pu_code, Evidence.election_type, Evidence.state_geo)
+              .having(_sa_func.count() >= _INFLATED_MIN_PARTIES))
+        offenders = db.execute(q).all()   # [(ev_id, pu_code, et, sgeo), ...]
+        # the distinct parties present on each offending sheet (so the correction lists them all as 0)
+        off_ids = [r[0] for r in offenders]
+        parties_by_ev: dict[int, set] = defaultdict(set)
+        if off_ids:
+            # chunk to stay under the driver param limit on a nationwide run
+            for i in range(0, len(off_ids), 20000):
+                chunk = off_ids[i:i + 20000]
+                for eid, party in db.execute(
+                    select(EvidenceParty.evidence_id, EvidenceParty.party)
+                    .where(EvidenceParty.evidence_id.in_(chunk))).all():
+                    parties_by_ev[eid].add(party)
+
+        print(f"Inflated misread sheets found (>= {_INFLATED_MIN_PARTIES} parties > {_INFLATED_VOTE}): "
+              f"{len(offenders)}" + (f" (state {state_geo})" if state_geo else " (ALL states)"))
+        if not commit:
+            print("DRY RUN — no writes. Re-run with --commit.")
+            return
+        if not offenders:
+            print("Nothing to correct.")
+            return
+
+        # idempotent: drop prior corrections for this scope
+        cq = select(Evidence.id).where(Evidence.kind == "correction", Evidence.year == year)
+        if state_geo is not None:
+            cq = cq.where(Evidence.state_geo == state_geo)
+        db.execute(delete(EvidenceParty).where(EvidenceParty.evidence_id.in_(cq)))
+        db.execute(delete(Evidence).where(Evidence.id.in_(cq)))
+
+        # insert one correction evidence per offending sheet (all party votes zeroed)
+        ev_maps = [{
+            "pu_code": pc, "election_type": et, "year": year, "state_geo": sgeo,
+            "kind": "correction", "source": _CORRECTION_SOURCE,
+            "method": f">= {_INFLATED_MIN_PARTIES} parties > {_INFLATED_VOTE} — voided to zero",
+            "priority": _CORRECTION_PRIORITY, "valid_votes": 0,
+        } for (eid, pc, et, sgeo) in offenders]
+        db.bulk_insert_mappings(Evidence, ev_maps)
+        db.flush()
+        # map (pu_code, office) -> new correction id
+        cid = {}
+        crq = select(Evidence.id, Evidence.pu_code, Evidence.election_type).where(
+            Evidence.kind == "correction", Evidence.year == year)
+        if state_geo is not None:
+            crq = crq.where(Evidence.state_geo == state_geo)
+        for i, pc, et in db.execute(crq).all():
+            cid[(pc, et)] = i
+        party_maps = []
+        for (eid, pc, et, sgeo) in offenders:
+            new_id = cid.get((pc, et))
+            if new_id is None:
+                continue
+            for party in parties_by_ev.get(eid, set()):
+                party_maps.append({"evidence_id": new_id, "party": party, "votes": 0})
+        if party_maps:
+            db.bulk_insert_mappings(EvidenceParty, party_maps)
+        db.commit()
+        print(f"Wrote {len(ev_maps)} correction rows (kind='correction', priority={_CORRECTION_PRIORITY}, "
+              f"all votes 0) + {len(party_maps)} party rows. Run --build-results to re-merge.")
+    finally:
+        db.close()
 
 
 def build_results(commit: bool, state_geo=None, year="2023") -> None:
@@ -924,19 +1015,20 @@ def build_results(commit: bool, state_geo=None, year="2023") -> None:
 
         tot = {"pu": 0, "ward": 0, "lga": 0, "state": 0}
         for et in offices:
-            # ---- 1) pick ONE evidence per (pu_code, office): lowest kind-priority wins ----
-            # rank kinds server-side, then keep the best row per pu_code.
-            ev_q = (select(Evidence.pu_code, Evidence.id, Evidence.kind,
+            # ---- 1) pick ONE evidence per (pu_code, office) ----
+            # HIGHER evidence.priority wins first (a manual correction beats the raw reading),
+            # then lower kind-priority (qwen first), then more valid_votes, then newer id.
+            ev_q = (select(Evidence.pu_code, Evidence.id, Evidence.kind, Evidence.priority,
                            Evidence.valid_votes, Evidence.registered_voters)
                     .where(Evidence.election_type == et, Evidence.year == year))
             if state_geo is not None:
                 ev_q = ev_q.where(Evidence.state_geo == state_geo)
-            best: dict[str, tuple] = {}     # pu_code -> (priority, ev_id, valid, reg)
-            for pc, eid, kind, valid, reg in db.execute(ev_q).all():
-                pri = _KIND_PRIORITY.get(kind, 9)
+            best: dict[str, tuple] = {}     # pu_code -> (sortkey, ev_id, valid, reg)
+            for pc, eid, kind, prio, valid, reg in db.execute(ev_q).all():
+                kpri = _KIND_PRIORITY.get(kind, 9)
                 cur = best.get(pc)
-                # lower priority wins; tie-break on more valid_votes then higher id (newer)
-                cand = (pri, -(valid or 0), -eid)
+                # tuple compares ascending, so negate priority (higher wins) & valid_votes
+                cand = (-(prio or 0), kpri, -(valid or 0), -eid)
                 if cur is None or cand < cur[0]:
                     best[pc] = (cand, eid, valid, reg)
             chosen_ids = {v[1] for v in best.values()}
@@ -1109,10 +1201,16 @@ def main() -> None:
                     help="build the merged RESULTS (pu_results + ward/lga/state_result_v) from "
                          "evidence, preferring qwen LLM and falling back to the next-best evidence; "
                          "all offices. Idempotent. Use --state to scope.")
+    ap.add_argument("--zero-inflated", action="store_true",
+                    help="void the all-parties-inflated misread sheets: for each LLM sheet with "
+                         ">=2 parties over 1000 votes, insert a higher-priority 'correction' "
+                         "evidence row with all votes 0. Then re-run --build-results.")
     ap.add_argument("--commit", action="store_true",
                     help="actually write (default is a dry run that writes nothing)")
     args = ap.parse_args()
-    if getattr(args, "build_results", False):
+    if getattr(args, "zero_inflated", False):
+        zero_inflated(args.commit, state_geo=args.state, year=args.year)
+    elif getattr(args, "build_results", False):
         build_results(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "rollup_llm", False):
         rollup_llm(args.commit, state_geo=args.state, year=args.year)
