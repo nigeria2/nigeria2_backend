@@ -538,8 +538,18 @@ def _lga_id_from_slug(lga_slug: str) -> int | None:
 
 
 @app.get("/elections/{year}/{state}")
-def public_page_state(year: str, state: str, db: Session = Depends(get_db)):
-    """Public twin of the state results page. `state` is the website slug, e.g. akwa-ibom."""
+def public_page_state(
+    year: str, state: str,
+    office: str | None = None, rule: str | None = None,
+    limit: int = 200, offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """Public twin of the state results page. `state` is the website slug, e.g. akwa-ibom.
+    The reserved slug `outliers` (i.e. /elections/{year}/outliers) returns the anomalous
+    polling units instead — see public_outliers."""
+    if state == "outliers":
+        return public_outliers(year, state=None, office=office, rule=rule,
+                               limit=limit, offset=offset, db=db)
     geo_id = _slug_to_geo(state)
     if geo_id is None:
         return JSONResponse({"detail": f"unknown state '{state}'"}, status_code=404, headers=_PUBLIC_CORS)
@@ -592,6 +602,107 @@ def public_page_pu(year: str, state: str, lga: str, ward: str, pu: str,
     except HTTPException as e:
         return JSONResponse({"detail": e.detail}, status_code=e.status_code, headers=_PUBLIC_CORS)
     return JSONResponse(data, headers=_PUBLIC_CORS)
+
+
+# --- Public outliers API: polling units whose figures look anomalous --------------------
+# Flags a (unit, office) result on any of three rules, measured against the CANONICAL INEC
+# register (polling_units.registered_voters), not the transcribed one:
+#   over_voting  — total votes >= 2x the registered voters (impossible legitimately)
+#   large_roll   — registered voters > 2000 (unusually large unit)
+#   no_roll      — no registered voters on record, yet > 2000 votes (can't be validated)
+# These are candidates for review, not proof of fraud. All CORS-open, no key.
+_OUTLIER_RULES = ("over_voting", "large_roll", "no_roll")
+_OUTLIER_SQL = """
+    (pu.registered_voters > 0 AND r.total_votes >= 2 * pu.registered_voters) AS over_voting,
+    (pu.registered_voters > 2000) AS large_roll,
+    ((pu.registered_voters IS NULL OR pu.registered_voters = 0) AND r.total_votes > 2000) AS no_roll
+"""
+
+
+@app.get("/api/v1/outliers/{year}")
+def public_outliers(
+    year: str,
+    state: str | None = None,
+    office: str | None = None,
+    rule: str | None = None,
+    limit: int = 200,
+    offset: int = 0,
+    db: Session = Depends(get_db),
+):
+    """Public: polling-unit results that look anomalous for a year. A row is flagged when,
+    against the canonical INEC register, any of these holds: `over_voting` (total votes >=
+    2x registered), `large_roll` (registered > 2000), `no_roll` (no register on record but
+    > 2000 votes). Each row lists which rules it tripped. Filter by `state` (slug, e.g.
+    akwa-ibom), `office` (presidential|governor|senate), or a single `rule`. Paginated with
+    `limit` (max 1000) & `offset`. Candidates for review — not proof of fraud."""
+    limit = max(1, min(int(limit), 1000))
+    offset = max(0, int(offset))
+    where = ["r.year = :year"]
+    params: dict = {"year": year}
+    if state:
+        geo_id = _slug_to_geo(state)
+        if geo_id is None:
+            return JSONResponse({"detail": f"unknown state '{state}'"}, status_code=404, headers=_PUBLIC_CORS)
+        where.append("r.state_geo = :sgeo")
+        params["sgeo"] = geo_id
+    if office:
+        where.append("r.election_type = :office")
+        params["office"] = office
+    # the outlier predicate (any rule), optionally narrowed to one named rule
+    rule_pred = {
+        "over_voting": "pu.registered_voters > 0 AND r.total_votes >= 2 * pu.registered_voters",
+        "large_roll": "pu.registered_voters > 2000",
+        "no_roll": "(pu.registered_voters IS NULL OR pu.registered_voters = 0) AND r.total_votes > 2000",
+    }
+    if rule:
+        if rule not in rule_pred:
+            return JSONResponse({"detail": f"unknown rule '{rule}'; use one of {list(rule_pred)}"},
+                                status_code=400, headers=_PUBLIC_CORS)
+        where.append(f"({rule_pred[rule]})")
+    else:
+        where.append("(" + " OR ".join(f"({p})" for p in rule_pred.values()) + ")")
+    where_sql = " AND ".join(where)
+
+    base = f"""
+        FROM pu_results r
+        JOIN polling_units pu ON pu.pu_code = r.pu_code
+        WHERE {where_sql}
+    """
+    total = db.execute(text(f"SELECT count(*) {base}"), params).scalar() or 0
+    rows = db.execute(text(f"""
+        SELECT r.pu_code, pu.pu_name, pu.ward, pu.ward_code, pu.lga, pu.lga_id, pu.state,
+               r.state_geo, r.election_type, pu.registered_voters AS registered,
+               r.total_votes, r.winner, {_OUTLIER_SQL.strip().rstrip(',')}
+        {base}
+        ORDER BY (CASE WHEN pu.registered_voters > 0
+                       THEN r.total_votes::float / pu.registered_voters ELSE r.total_votes END) DESC,
+                 r.pu_code
+        LIMIT :limit OFFSET :offset
+    """), {**params, "limit": limit, "offset": offset}).mappings().all()
+
+    items = []
+    for m in rows:
+        flags = [k for k in _OUTLIER_RULES if m[k]]
+        reg = m["registered"]
+        items.append({
+            "pu_code": m["pu_code"], "pu_name": m["pu_name"] or "",
+            "state": m["state"], "state_geo": m["state_geo"],
+            "lga": m["lga"], "lga_id": m["lga_id"], "ward": m["ward"], "ward_code": m["ward_code"],
+            "election_type": m["election_type"], "year": year,
+            "registered_voters": reg, "total_votes": m["total_votes"], "winner": m["winner"],
+            "ratio": round(m["total_votes"] / reg, 2) if reg else None,
+            "rules": flags,
+        })
+    return JSONResponse({
+        "year": year, "count": len(items), "total": total,
+        "limit": limit, "offset": offset,
+        "rules": {
+            "over_voting": "total votes >= 2x the canonical registered voters",
+            "large_roll": "registered voters > 2000",
+            "no_roll": "no registered voters on record but > 2000 votes",
+        },
+        "outliers": items,
+    }, headers=_PUBLIC_CORS)
 
 
 @app.get("/api/parties/elections")
