@@ -976,13 +976,15 @@ def zero_inflated(commit: bool, state_geo=None, year="2023") -> None:
         db.close()
 
 
-def build_results(commit: bool, state_geo=None, year="2023") -> None:
+def build_results(commit: bool, state_geo=None, year="2023", office=None) -> None:
     """Generate the merged RESULT at every level from the evidence, preferring qwen LLM.
 
     Per (polling unit, office) we pick ONE evidence row — qwen LLM if present, else the
     next-best by kind priority — and copy it into pu_results (+ parties). Then we roll the
     PU results up into ward/lga/state_result_v by summing. Offices: presidential, governor,
-    senate (whatever the evidence covers). source='official', method='qwen-preferred'.
+    senate (whatever the evidence covers, or just `office` when given — used by the recurring
+    push so it only rebuilds the office being transcribed). source='official',
+    method='qwen-preferred'.
 
     Idempotent: clears the method='qwen-preferred' pu_results and, per (office, state) that
     we regenerate, the *_result_v rows, before rewriting — so re-runs never duplicate. All
@@ -997,10 +999,12 @@ def build_results(commit: bool, state_geo=None, year="2023") -> None:
         lga_names = {l.id: l.name for l in db.scalars(select(Lga)).all()}
         from app import geo as _geo
 
-        # offices present in the evidence for this scope
+        # offices present in the evidence for this scope (narrowed to `office` when given)
         oq = select(Evidence.election_type).where(Evidence.year == year)
         if state_geo is not None:
             oq = oq.where(Evidence.state_geo == state_geo)
+        if office is not None:
+            oq = oq.where(Evidence.election_type == office)
         offices = sorted({r[0] for r in db.execute(oq.distinct()).all()})
         if not offices:
             print(f"No evidence for year={year}"
@@ -1211,7 +1215,7 @@ def main() -> None:
     if getattr(args, "zero_inflated", False):
         zero_inflated(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "build_results", False):
-        build_results(args.commit, state_geo=args.state, year=args.year)
+        build_results(args.commit, state_geo=args.state, year=args.year, office=args.election)
     elif getattr(args, "rollup_llm", False):
         rollup_llm(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "push_archive_evidence", False):

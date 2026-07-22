@@ -176,11 +176,12 @@ def parse_file(path: pathlib.Path):
 
 # --- board (rich TUI) -----------------------------------------------------------
 class Board:
-    def __init__(self, plan, offices, workers_note, dry):
+    def __init__(self, plan, offices, workers_note, dry, quiet=False):
         self.plan = plan                 # list of (state_folder, geo, file_total)
         self.offices = offices
         self.note = workers_note
         self.dry = dry
+        self.quiet = quiet               # --no-tui: print log lines instead of the Live board
         self.cur = None
         self.cur_state = None
         self.cur_done = 0
@@ -196,6 +197,8 @@ class Board:
 
     def log(self, line):
         self.recent = (self.recent + [line])[-9:]
+        if self.quiet:
+            print(f"[{time.strftime('%H:%M:%S')}] {line}", flush=True)
 
     def __rich__(self):
         el = int(time.time() - self.start)
@@ -521,6 +524,9 @@ def main():
     ap.add_argument("--offices", default="presidential,governorship,senatorial")
     ap.add_argument("--include-unsure", default="true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--no-tui", action="store_true",
+                    help="print plain progress lines instead of the full-screen board "
+                         "(for unattended/logged runs, e.g. the recurring 2-hourly push)")
     args = ap.parse_args()
 
     statuses = {"valid"} if args.__dict__["include_unsure"].lower() in ("false", "0", "no") else DEFAULT_STATUSES
@@ -540,7 +546,7 @@ def main():
             continue
         plan.append((s, gid, count_files(JROOT / s, offices, statuses)))
 
-    board = Board(plan, offices, "", args.dry_run)
+    board = Board(plan, offices, "", args.dry_run, quiet=args.no_tui)
     err = {}
 
     def worker():
@@ -566,6 +572,17 @@ def main():
             board.log(f"ERROR: {str(e)[:80]}")
         finally:
             raw.close()
+
+    if args.no_tui:
+        # unattended: run the load inline, plain log lines (see Board.log quiet mode)
+        worker()
+        print(f"DONE. evidence={board.ev_written} party_rows={board.ep_written} "
+              f"unmapped={board.skipped_unmapped} parse_fail={board.parse_fail}"
+              + ("  (dry-run — nothing written)" if args.dry_run else ""), flush=True)
+        if "exc" in err:
+            print(f"FAILED: {err['exc']}", flush=True)
+            raise SystemExit(1)
+        return
 
     console = Console(legacy_windows=False)
     t = threading.Thread(target=worker, name="loader", daemon=True)
