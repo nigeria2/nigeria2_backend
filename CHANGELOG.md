@@ -13,6 +13,20 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Changed
+- **Results are now built from confidence scores rather than a fixed source order.**
+  Where several readings of the same polling unit disagree, we now take the one we
+  trust most instead of always preferring the machine reading. Hand-crosschecked
+  transcriptions rank highest, then clean machine readings, then readings either
+  source flagged as unsure. Anything a penalty rule has knocked below 50 is no longer
+  used as a unit's result at all — the next-best reading is used instead.
+- Ward, LGA and state totals now **only count polling units we are confident in**
+  (a score of 80 or more). Units whose only reading is flagged unsure are shown on
+  their own page but left out of the totals above them, so an uncertain reading can
+  no longer quietly move a state result. This lowers some totals against previous
+  figures: the units are still there, but they are no longer counted until we have a
+  better reading of them.
+
 ### Added
 - Confidence scores are now **penalised for obvious misreads**, and hovering a
   confidence badge on a polling-unit page lists exactly what was deducted and why.

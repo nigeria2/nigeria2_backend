@@ -42,13 +42,15 @@ from sqlalchemy import delete, select, text  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
 from app import geo  # noqa: E402
+from app import confidence as C  # noqa: E402
 from app.models import Evidence, EvidenceParty  # noqa: E402
 
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "2023_data"
 PARTIES = ["APC", "LP", "PDP", "NNPP"]
 
-CONF_CROSSCHECKED = 90
-CONF_UNSURE = 70
+# from app/confidence.py so the trust ladder has ONE source of truth
+CONF_CROSSCHECKED = C.SCORE_HAND_CROSSCHECKED   # 90 — most trusted reading
+CONF_UNSURE = C.SCORE_HAND_UNSURE               # 70
 
 
 def _int(v):

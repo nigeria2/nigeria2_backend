@@ -20,12 +20,15 @@
   Run inline instead of spawning a visible window (for CI).
 
 .EXAMPLE
-  ./rebuild_rollup.ps1 -Commit               # min-confidence 80, visible window
+  ./rebuild_rollup.ps1 -Commit               # uses the default floor, visible window
   ./rebuild_rollup.ps1 -MinConfidence 80 -Commit
 #>
 [CmdletBinding()]
 param(
-    [int]$MinConfidence = 80,
+    # 0 = use app/confidence.MIN_ROLLUP_CONFIDENCE (the single source of truth).
+    # Don't hard-code a number here: the ladder was rescaled once and a stale 80 in this
+    # script silently cut the two "unsure" tiers out of the national totals.
+    [int]$MinConfidence = 0,
     [switch]$Commit,
     [switch]$NoNewWindow
 )
@@ -47,14 +50,22 @@ if (-not $env:DATABASE_URL) {
 }
 if (-not $env:DATABASE_URL) { throw "DATABASE_URL is empty after reading $EnvFile" }
 
-$commitArg = if ($Commit) { '--commit' } else { '' }
+# NOTE: build the arg list as an ARRAY. Interpolating an empty string for the non-commit
+# case passes a literal '' through to python, which argparse rejects with
+# "unrecognized arguments" — that made the spawned window die instantly.
+$pyArgs = @('-u', '-m', 'scripts.pick_definitive_results', '--build-results')
+if ($MinConfidence -gt 0) { $pyArgs += @('--min-confidence', "$MinConfidence") }
+if ($Commit) { $pyArgs += '--commit' }
+$argLine = ($pyArgs -join ' ')
 $mode = if ($Commit) { "COMMIT (writing, min-confidence $MinConfidence)" } else { "DRY RUN" }
 
+# try/catch + pause on BOTH paths so a crash stays readable instead of closing the window
 $inner = @"
 Set-Location '$BackendDir'
 `$env:DATABASE_URL = '$($env:DATABASE_URL)'
 Write-Host '=== rebuild roll-up  |  $mode ===' -ForegroundColor Cyan
-python -m scripts.pick_definitive_results --build-results --min-confidence $MinConfidence $commitArg
+try { python $argLine } catch { Write-Host "ERROR: `$_" -ForegroundColor Red }
+if (`$LASTEXITCODE -ne 0) { Write-Host "exited with code `$LASTEXITCODE" -ForegroundColor Red }
 Write-Host ''
 Write-Host 'Done. Press any key to close this window.' -ForegroundColor Green
 `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
@@ -63,8 +74,7 @@ Write-Host 'Done. Press any key to close this window.' -ForegroundColor Green
 if ($NoNewWindow) {
     Write-Host "=== rebuild roll-up  |  $mode ===" -ForegroundColor Cyan
     Push-Location $BackendDir
-    try { python -m scripts.pick_definitive_results --build-results --min-confidence $MinConfidence $commitArg }
-    finally { Pop-Location }
+    try { python @pyArgs } finally { Pop-Location }
 } else {
     Write-Host "Launching a visible terminal for the roll-up rebuild ($mode)..." -ForegroundColor Yellow
     Start-Process -FilePath 'powershell.exe' `

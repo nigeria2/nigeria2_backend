@@ -882,8 +882,10 @@ def rollup_llm(commit: bool, state_geo=None, year="2023") -> None:
 # --------------------------------------------------------------------------- #
 # Which evidence wins when a polling unit has more than one. qwen LLM first (Mark:
 # "we prefer our qwen evidence"), then other transcriptions, then declared aggregates.
+# Legacy ordering, kept only for the older run() path. build_results now ranks by
+# evidence.confidence (see app/confidence.py) instead of by kind.
 _KIND_PRIORITY = {"correction": -1, "llm": 0, "2023_transcription": 1, "inec": 2, "human": 3, "crowd": 4, "declared": 5}
-_RESULT_METHOD = "qwen-preferred"
+_RESULT_METHOD = "confidence-ranked"
 
 # The all-parties-inflated misread ("zero written in words read as a 4-digit number"): a sheet
 # where two or more parties each poll > this. No real PU has two different parties both topping
@@ -977,6 +979,9 @@ def zero_inflated(commit: bool, state_geo=None, year="2023") -> None:
         db.close()
 
 
+# NOTE: _confidence_by_pu / _corrected_pus are no longer used by build_results — a result
+# now inherits the confidence of the evidence row it was built from (which already carries
+# the sheet-quality score AND any penalties). Kept for ad-hoc use / reference.
 def _confidence_by_pu(db, et, year, state_geo, corrected_pus: set) -> dict[str, int]:
     """{pu_code: confidence 0-100} for one office, from each PU's sheet quality.
     `corrected_pus` are pu_codes with an auto-void (inflated misread) correction -> score 0.
@@ -1047,29 +1052,46 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None,
             return
         print(f"Building results for offices {offices}"
               + (f" (state {state_geo})" if state_geo else " (ALL states)")
-              + ", qwen LLM preferred.")
+              + f", highest-confidence reading wins (floor {_conf.MIN_RESULT_CONFIDENCE}).")
         if not commit:
             print("DRY RUN — no writes. Re-run with --commit.")
             return
 
         tot = {"pu": 0, "ward": 0, "lga": 0, "state": 0}
+        skipped_low = 0          # PUs left with no result because every reading was penalised
         for et in offices:
-            # ---- 1) pick ONE evidence per (pu_code, office) ----
-            # HIGHER evidence.priority wins first (a manual correction beats the raw reading),
-            # then lower kind-priority (qwen first), then more valid_votes, then newer id.
+            # ---- 1) pick ONE evidence per (pu_code, office), BY CONFIDENCE ----
+            # The confidence score IS the trust ladder (see app/confidence.py): hand-
+            # crosschecked 90 > LLM-valid 85 > LLM-unsure 75 > hand-unsure 70, with penalty
+            # rules subtracting from those. So: highest confidence wins. A manual correction
+            # (evidence.priority) still trumps everything, then confidence, then valid_votes.
+            # Readings below MIN_RESULT_CONFIDENCE are NOT eligible at all — a unit falls back
+            # to its next-best reading, or gets no result rather than a known-broken one.
             ev_q = (select(Evidence.pu_code, Evidence.id, Evidence.kind, Evidence.priority,
-                           Evidence.valid_votes, Evidence.registered_voters)
+                           Evidence.valid_votes, Evidence.registered_voters,
+                           Evidence.confidence)
                     .where(Evidence.election_type == et, Evidence.year == year))
             if state_geo is not None:
                 ev_q = ev_q.where(Evidence.state_geo == state_geo)
-            best: dict[str, tuple] = {}     # pu_code -> (sortkey, ev_id, valid, reg)
-            for pc, eid, kind, prio, valid, reg in db.execute(ev_q).all():
-                kpri = _KIND_PRIORITY.get(kind, 9)
+            best: dict[str, tuple] = {}     # pu_code -> (sortkey, ev_id, valid, reg, score)
+            seen_pus: set[str] = set()
+            for pc, eid, kind, prio, valid, reg, conf in db.execute(ev_q).all():
+                seen_pus.add(pc)
+                # an unscored reading is treated as the floor so scored ones win
+                score = conf if conf is not None else 0
+                if prio and prio > 0:
+                    # A manual/auto CORRECTION is a deliberate decision (e.g. voiding an
+                    # inflated misread to zero), not a bad reading — it outranks everything
+                    # and is recorded at the correction score rather than a misleading 0.
+                    score = max(score, _conf.SCORE_CORRECTION)
+                elif score < _conf.MIN_RESULT_CONFIDENCE:
+                    continue     # penalised/broken — not eligible to become the result
                 cur = best.get(pc)
-                # tuple compares ascending, so negate priority (higher wins) & valid_votes
-                cand = (-(prio or 0), kpri, -(valid or 0), -eid)
+                # tuple compares ascending, so negate the "higher is better" fields
+                cand = (-(prio or 0), -score, -(valid or 0), -eid)
                 if cur is None or cand < cur[0]:
-                    best[pc] = (cand, eid, valid, reg)
+                    best[pc] = (cand, eid, valid, reg, score)
+            skipped_low += len(seen_pus) - len(best)
             chosen_ids = {v[1] for v in best.values()}
             if not chosen_ids:
                 continue
@@ -1096,13 +1118,13 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None,
             db.execute(delete(PuResultParty).where(PuResultParty.pu_result_id.in_(pr_idq)))
             db.execute(delete(PuResult).where(PuResult.id.in_(pr_idq)))
 
-            # ---- confidence per PU (sheet quality) for this office ----
-            corrected = _corrected_pus(db, et, year, state_geo)
-            conf_by_pu = _confidence_by_pu(db, et, year, state_geo, corrected)
-
             # ---- build pu_results rows (each carries its confidence 0-100) ----
+            # The result INHERITS the confidence of the reading it was built from (captured
+            # in `best` above), so the score shown for a unit is the score of the evidence
+            # actually used, penalties included. No id-list lookup here: a 150k-element IN
+            # clause blows psycopg's 65535-parameter limit.
             pu_maps, pu_party_maps = [], []
-            for pc, (_c, eid, valid, reg) in best.items():
+            for pc, (_c, eid, valid, reg, score) in best.items():
                 info = geo_map.get(pc)
                 if not info:
                     continue
@@ -1110,8 +1132,6 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None,
                 parties = party_by_ev.get(eid, {})
                 winner, runner = _winner_runner(parties)
                 total = sum(v for v in parties.values() if v) if parties else (valid or 0)
-                # no sheet row for this PU -> treat as a missing sheet
-                score = conf_by_pu.get(pc, _conf.SCORE_MISSING_SHEET)
                 pu_maps.append({
                     "pu_code": pc, "election_type": et, "year": year, "state_geo": sg,
                     "lga_id": lga_id, "ward_code": ward_code, "winner": winner,
@@ -1180,8 +1200,12 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None,
                 skip=lambda k: k[0] is None)
             print(f"  {et}: pu={tot['pu']} ward={tot['ward']} lga={tot['lga']} state={tot['state']} (cumulative)")
 
-        print(f"Results built (qwen preferred). pu_results={tot['pu']}, "
-              f"ward={tot['ward']}, lga={tot['lga']}, state={tot['state']}. Committed.")
+        print(f"Results built (confidence-ranked, floor {_conf.MIN_RESULT_CONFIDENCE}). "
+              f"pu_results={tot['pu']}, ward={tot['ward']}, lga={tot['lga']}, "
+              f"state={tot['state']}. Committed.")
+        if skipped_low:
+            print(f"  {skipped_low:,} polling-unit/office pairs got NO result — every reading "
+                  f"for them scored below {_conf.MIN_RESULT_CONFIDENCE} (all penalised).")
     finally:
         db.close()
 
@@ -1283,7 +1307,10 @@ def main() -> None:
         zero_inflated(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "build_results", False):
         build_results(args.commit, state_geo=args.state, year=args.year, office=args.election,
-                      min_confidence=getattr(args, "min_confidence", None))
+                      # default to the shared constant so the roll-up floor tracks the
+                      # trust ladder instead of drifting from a hard-coded number
+                      min_confidence=(args.min_confidence if args.min_confidence is not None
+                                      else _conf.MIN_ROLLUP_CONFIDENCE))
     elif getattr(args, "rollup_llm", False):
         rollup_llm(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "push_archive_evidence", False):

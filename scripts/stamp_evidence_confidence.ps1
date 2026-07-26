@@ -41,7 +41,8 @@ if (-not $env:DATABASE_URL) {
 }
 if (-not $env:DATABASE_URL) { throw "DATABASE_URL is empty after reading $EnvFile" }
 
-$commitArg = if ($Commit) { '--commit' } else { '' }
+# '' would be passed to python as a literal empty arg and argparse rejects it
+$commitArg = if ($Commit) { '--commit' } else { $null }
 $mode = if ($Commit) { 'COMMIT (writing)' } else { 'DRY RUN (no writes)' }
 
 $inner = @"
@@ -49,6 +50,7 @@ Set-Location '$BackendDir'
 `$env:DATABASE_URL = '$($env:DATABASE_URL)'
 Write-Host '=== stamp qwen evidence confidence  |  $mode ===' -ForegroundColor Cyan
 python -m scripts.stamp_evidence_confidence $commitArg
+if (`$LASTEXITCODE -ne 0) { Write-Host "exited with code `$LASTEXITCODE" -ForegroundColor Red }
 Write-Host ''
 Write-Host 'Done. Press any key to close this window.' -ForegroundColor Green
 `$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
