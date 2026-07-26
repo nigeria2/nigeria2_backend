@@ -13,6 +13,15 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Added
+- Each polling-unit result now carries a **confidence score (0–100)**, shown top-right
+  of the result. The first signal is the quality of the INEC result sheet the figure
+  came from: a missing sheet location, a blurry/illegible scan, or an auto-voided
+  inflated misread scores low; a clean sheet scores high.
+- Ward, LGA and state totals now **exclude low-confidence polling units** (score below
+  80) from the roll-up. Those units still appear on their own page — they just don't
+  count toward the aggregate — so the published totals lean on trustworthy sheets.
+
 ### Fixed
 - The evidence table on a polling-unit page no longer hides parties outside the
   four national ones. It now shows a column for any party with a recorded vote in

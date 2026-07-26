@@ -46,10 +46,11 @@ from app.models import (  # noqa: E402
     WardResultV, WardResultParty,
     LgaResultV, LgaResultParty,
     StateResultV, StateResultParty,
-    PollingUnit, Lga,
+    PollingUnit, Lga, PuSheet,
     # archive models (physical tables *_archive) — read only by --from-archive
     WardResult, LgaResult, LgaPartyResult, StatePresidential,
 )
+from app import confidence as _conf  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -976,7 +977,35 @@ def zero_inflated(commit: bool, state_geo=None, year="2023") -> None:
         db.close()
 
 
-def build_results(commit: bool, state_geo=None, year="2023", office=None) -> None:
+def _confidence_by_pu(db, et, year, state_geo, corrected_pus: set) -> dict[str, int]:
+    """{pu_code: confidence 0-100} for one office, from each PU's sheet quality.
+    `corrected_pus` are pu_codes with an auto-void (inflated misread) correction -> score 0.
+    A PU with no sheet row scores as a missing sheet."""
+    sq = select(PuSheet.pu_code, PuSheet.sheet_url, PuSheet.sheet_status,
+                PuSheet.status, PuSheet.legibility).where(
+        PuSheet.election_type == et, PuSheet.year == year)
+    if state_geo is not None:
+        sq = sq.where(PuSheet.state_geo == state_geo)
+    out: dict[str, int] = {}
+    for pc, url, sstatus, vstatus, leg in db.execute(sq).all():
+        out[pc] = _conf.score_from_sheet(
+            sheet_url=url, sheet_status=sstatus, validity_status=vstatus,
+            legibility=leg, is_inflated=(pc in corrected_pus))
+    return out
+
+
+def _corrected_pus(db, et, year, state_geo) -> set:
+    """pu_codes that have a kind='correction' evidence row for this office (auto-voided
+    inflated misreads) — these get the lowest confidence."""
+    q = select(Evidence.pu_code).where(
+        Evidence.kind == "correction", Evidence.election_type == et, Evidence.year == year)
+    if state_geo is not None:
+        q = q.where(Evidence.state_geo == state_geo)
+    return {r[0] for r in db.execute(q.distinct()).all()}
+
+
+def build_results(commit: bool, state_geo=None, year="2023", office=None,
+                  min_confidence=None) -> None:
     """Generate the merged RESULT at every level from the evidence, preferring qwen LLM.
 
     Per (polling unit, office) we pick ONE evidence row — qwen LLM if present, else the
@@ -985,6 +1014,12 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None) -> Non
     senate (whatever the evidence covers, or just `office` when given — used by the recurring
     push so it only rebuilds the office being transcribed). source='official',
     method='qwen-preferred'.
+
+    Each pu_results row is scored 0-100 for CONFIDENCE from its sheet quality (missing /
+    blurry / inflated sheets score low). When `min_confidence` is set, only units scoring
+    at least that much are summed into the ward/LGA/state roll-up (low-confidence units are
+    still written to pu_results, just excluded from the totals). The number of units and
+    votes dropped is logged per office.
 
     Idempotent: clears the method='qwen-preferred' pu_results and, per (office, state) that
     we regenerate, the *_result_v rows, before rewriting — so re-runs never duplicate. All
@@ -1061,7 +1096,11 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None) -> Non
             db.execute(delete(PuResultParty).where(PuResultParty.pu_result_id.in_(pr_idq)))
             db.execute(delete(PuResult).where(PuResult.id.in_(pr_idq)))
 
-            # ---- build pu_results rows ----
+            # ---- confidence per PU (sheet quality) for this office ----
+            corrected = _corrected_pus(db, et, year, state_geo)
+            conf_by_pu = _confidence_by_pu(db, et, year, state_geo, corrected)
+
+            # ---- build pu_results rows (each carries its confidence 0-100) ----
             pu_maps, pu_party_maps = [], []
             for pc, (_c, eid, valid, reg) in best.items():
                 info = geo_map.get(pc)
@@ -1071,11 +1110,14 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None) -> Non
                 parties = party_by_ev.get(eid, {})
                 winner, runner = _winner_runner(parties)
                 total = sum(v for v in parties.values() if v) if parties else (valid or 0)
+                # no sheet row for this PU -> treat as a missing sheet
+                score = conf_by_pu.get(pc, _conf.SCORE_MISSING_SHEET)
                 pu_maps.append({
                     "pu_code": pc, "election_type": et, "year": year, "state_geo": sg,
                     "lga_id": lga_id, "ward_code": ward_code, "winner": winner,
                     "runner_up": runner, "total_votes": total, "valid_votes": valid,
                     "registered_voters": reg, "source": "official", "method": _RESULT_METHOD,
+                    "confidence": score, "confidence_band": _conf.band(score),
                 })
                 for p, v in parties.items():
                     pu_party_maps.append((pc, p, v))
@@ -1094,6 +1136,22 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None) -> Non
                 tot["pu"] += len(pu_maps)
 
             # ---- 2) roll PU results up into ward/lga/state RESULTS (per office) ----
+            # Only PUs meeting the confidence threshold are summed into the ward total; the
+            # low-confidence units still exist in pu_results, they just don't count here.
+            pu_filter = None
+            if min_confidence is not None:
+                # log how many PUs / votes we are about to exclude, for transparency
+                dropq = (select(_sa_func.count(), _sa_func.coalesce(_sa_func.sum(PuResult.total_votes), 0))
+                         .where(PuResult.election_type == et, PuResult.year == year,
+                                PuResult.method == _RESULT_METHOD,
+                                (PuResult.confidence.is_(None)) | (PuResult.confidence < min_confidence)))
+                if state_geo is not None:
+                    dropq = dropq.where(PuResult.state_geo == state_geo)
+                d_units, d_votes = db.execute(dropq).one()
+                if d_units:
+                    print(f"  {et}: excluding {d_units} low-confidence PU(s) "
+                          f"(< {min_confidence}), ~{int(d_votes or 0)} votes, from the roll-up")
+                pu_filter = (PuResult.confidence.isnot(None)) & (PuResult.confidence >= min_confidence)
             tot["ward"] += _rollup_level(
                 db, et, year, state_geo, PuResult, PuResultParty, "pu_result_id",
                 (PuResult.ward_code, PuResult.state_geo, PuResult.lga_id),
@@ -1101,7 +1159,7 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None) -> Non
                 lambda k, parties, w, r: WardResultV(
                     ward_code=k[0], lga_id=k[2], election_type=et, year=year, state_geo=k[1],
                     winner=w, runner_up=r, total_votes=sum(parties.values()), source="official"),
-                skip=lambda k: not k[0])
+                skip=lambda k: not k[0], child_filter=pu_filter)
             tot["lga"] += _rollup_level(
                 db, et, year, state_geo, WardResultV, WardResultParty, "ward_result_id",
                 (WardResultV.lga_id, WardResultV.state_geo),
@@ -1129,10 +1187,12 @@ def build_results(commit: bool, state_geo=None, year="2023", office=None) -> Non
 
 
 def _rollup_level(db, et, year, state_geo, child_result, child_party, child_fk, group_cols,
-                  parent_result, parent_party, parent_fk, make_row, skip) -> int:
+                  parent_result, parent_party, parent_fk, make_row, skip, child_filter=None) -> int:
     """Sum a child *_result level into its parent, for one office. Clears the parent's
     (office, scope) rows first (idempotent), aggregates via JOIN (no id-list), writes
-    parent result + party rows. Returns rows written."""
+    parent result + party rows. `child_filter` is an optional extra WHERE on the child rows
+    (e.g. a confidence threshold) so low-confidence children are excluded from the sum.
+    Returns rows written."""
     # clear parent rows for this (office, year, scope)
     idq = select(parent_result.id).where(
         parent_result.election_type == et, parent_result.year == year)
@@ -1146,6 +1206,8 @@ def _rollup_level(db, et, year, state_geo, child_result, child_party, child_fk, 
          .where(child_result.election_type == et, child_result.year == year))
     if state_geo is not None:
         q = q.where(child_result.state_geo == state_geo)
+    if child_filter is not None:
+        q = q.where(child_filter)
     q = q.group_by(*group_cols, child_party.party)
     agg: dict = {}
     for row in db.execute(q).all():
@@ -1209,13 +1271,19 @@ def main() -> None:
                     help="void the all-parties-inflated misread sheets: for each LLM sheet with "
                          ">=2 parties over 1000 votes, insert a higher-priority 'correction' "
                          "evidence row with all votes 0. Then re-run --build-results.")
+    ap.add_argument("--min-confidence", type=int, default=None,
+                    help="with --build-results: only roll PUs scoring at least this (0-100) "
+                         "into the ward/LGA/state totals. Low-confidence units (missing/blurry/"
+                         "inflated sheets) still appear in pu_results but are excluded from the "
+                         "sums. Recommended: 80.")
     ap.add_argument("--commit", action="store_true",
                     help="actually write (default is a dry run that writes nothing)")
     args = ap.parse_args()
     if getattr(args, "zero_inflated", False):
         zero_inflated(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "build_results", False):
-        build_results(args.commit, state_geo=args.state, year=args.year, office=args.election)
+        build_results(args.commit, state_geo=args.state, year=args.year, office=args.election,
+                      min_confidence=getattr(args, "min_confidence", None))
     elif getattr(args, "rollup_llm", False):
         rollup_llm(args.commit, state_geo=args.state, year=args.year)
     elif getattr(args, "push_archive_evidence", False):

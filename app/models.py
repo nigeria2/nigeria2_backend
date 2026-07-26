@@ -869,6 +869,11 @@ class PuResult(Base):
     registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
     method: Mapped[str] = mapped_column(String(60), default="")  # how the result was merged
+    # Quality/trust score 0-100 for THIS unit's result. First signal is sheet quality
+    # (missing/blurry/inflated -> low). Null = not scored yet. `confidence_band` derives
+    # high (>=80) / medium (50-79) / low (<50). The roll-up can require a minimum score.
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    confidence_band: Mapped[str] = mapped_column(String(10), default="")
     decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

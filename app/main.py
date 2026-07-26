@@ -1638,6 +1638,9 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
             "runner_up": r.runner_up, "total_votes": r.total_votes, "valid_votes": r.valid_votes,
             "registered_voters": r.registered_voters,
             "source": r.source, "method": r.method,
+            # 0-100 quality/trust score for this unit's result (sheet quality is the first
+            # signal); band is high/medium/low. Null until the confidence backfill has run.
+            "confidence": r.confidence, "confidence_band": r.confidence_band or "",
             "parties": dict(sorted(pr_parties.get(r.id, {}).items(), key=lambda x: -(x[1] or 0))),
         }
         for r in presults
