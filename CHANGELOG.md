@@ -13,6 +13,12 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Fixed
+- The evidence table on a polling-unit page no longer hides parties outside the
+  four national ones. It now shows a column for any party with a recorded vote in
+  the evidence, so a local winner (e.g. BP with 247 votes) is visible instead of
+  looking like the evidence disagreed with the result above it.
+
 ### Added
 - New **Changelog** page (`/changelog`) rendering this file, plus a repository
   rule that every change must record an entry here.
