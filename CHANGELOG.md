@@ -16,9 +16,11 @@ user-facing sentence — what changed and why it matters — grouped under
 ### Added
 - Confidence scores are now **penalised for obvious misreads**, and hovering a
   confidence badge on a polling-unit page lists exactly what was deducted and why.
-  Two rules so far, each −50 on a 2023 presidential reading: (1) a minor party
-  (not APC/LP/PDP/NNPP) recorded with more than 2,000 votes; (2) APC, PDP and LP all
-  reading 0 while two or more minor parties each score over 100 (a mis-aligned sheet).
+  Three rules so far on 2023 presidential readings: (1) −50 where a minor party
+  (not APC/LP/PDP/NNPP) is recorded with more than 2,000 votes; (2) −50 where APC, PDP
+  and LP all read 0 while two or more minor parties each score over 100 (a mis-aligned
+  sheet); (3) −55 where accredited voters read above 1,500 — more than twice the legal
+  maximum for a polling unit, so it cannot be a real figure.
 
 ### Data
 - Loaded the full 2023 crosschecked presidential dataset as evidence — **163,150

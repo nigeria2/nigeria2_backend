@@ -16,6 +16,9 @@ Rules (all: 2023 presidential):
   all_majors_zero_minors — APC = PDP = LP = 0 while 2+ minor parties (not APC/PDP/LP/    -50
                            NNPP) each score > 100. A sheet where the three biggest parties
                            are blank but small parties aren't is a mis-aligned read.
+  accredited_over_1500   — accredited_voters > 1500 on ANY evidence kind (llm, human,    -55
+                           2023_transcription…). A PU is capped near 750 registered
+                           voters, so >1500 is over twice the legal maximum.
 
 Run LOCALLY against $DATABASE_URL. Choose rules with --rules (default: all). Dry-run
 prints what it WOULD do; --commit writes.
@@ -39,12 +42,10 @@ from app.models import Evidence, EvidencePenalty  # noqa: E402
 
 ELECTION = "presidential"
 YEAR = "2023"
-POINTS = 50
-
-
 # --------------------------------------------------------------------------- #
 # Rule finders. Each returns {evidence_id: (pu_code, [(party, votes, reason), ...])}.
-# One tuple per party generates one penalty record; the evidence row is docked POINTS once.
+# One tuple generates one penalty record; the evidence row is docked the rule's points once.
+# `party` is "" when the fault is a poll-summary field rather than a party figure.
 # --------------------------------------------------------------------------- #
 def find_minor_party_over_2000(db) -> dict:
     """A minor party (not APC/LP/PDP/NNPP) with more than 2000 votes — an OCR misread."""
@@ -107,9 +108,37 @@ def find_all_majors_zero_minors(db) -> dict:
     return out
 
 
+def find_accredited_over_1500(db) -> dict:
+    """accredited_voters > 1500 on ANY evidence kind (llm, 2023_transcription, human, …).
+
+    INEC caps a polling unit at ~750 registered voters, so an accredited figure over 1500 is
+    twice the legal maximum and cannot be real. Comparing the two independent readings shows
+    this is overwhelmingly a transcription artefact: on the 142,782 PUs that have both, the
+    LLM claims >1500 on 5,636 while the human-crosschecked dataset claims it on 1 — and never
+    the reverse. The rule is applied across ALL kinds so whichever source is wrong is docked.
+    """
+    q = text("""
+        SELECT e.id, e.pu_code, e.kind, e.accredited_voters
+        FROM evidence e
+        WHERE e.election_type = :et AND e.year = :yr
+          AND e.accredited_voters > 1500
+        ORDER BY e.accredited_voters DESC
+    """).bindparams(et=ELECTION, yr=YEAR)
+    out: dict[int, tuple] = {}
+    for eid, pu, kind, acc in db.execute(q).all():
+        reason = (f"Accredited voters read as {int(acc):,} — a polling unit is capped at "
+                  f"about 750 registered voters, so anything over 1,500 is more than twice "
+                  f"the legal maximum and is a transcription error ({kind} reading).")
+        # not a party-level fault: record it against the poll summary, party left blank
+        out[eid] = (pu, [("", int(acc), reason)])
+    return out
+
+
+# rule name -> (finder, points deducted)
 RULES = {
-    "minor_party_over_2000": find_minor_party_over_2000,
-    "all_majors_zero_minors": find_all_majors_zero_minors,
+    "minor_party_over_2000": (find_minor_party_over_2000, 50),
+    "all_majors_zero_minors": (find_all_majors_zero_minors, 50),
+    "accredited_over_1500": (find_accredited_over_1500, 55),
 }
 
 
@@ -127,8 +156,8 @@ def _reset_rule(db, rule: str) -> None:
     db.flush()
 
 
-def _apply_rule(db, rule: str, hits: dict, commit: bool) -> int:
-    """Dock POINTS once per hit evidence row and record one penalty per offending party.
+def _apply_rule(db, rule: str, hits: dict, points: int, commit: bool) -> int:
+    """Dock `points` once per hit evidence row and record one penalty per offending figure.
     Returns the number of evidence rows affected."""
     n_rows = len(hits)
     n_pen = sum(len(v[1]) for v in hits.values())
@@ -136,11 +165,11 @@ def _apply_rule(db, rule: str, hits: dict, commit: bool) -> int:
         "SELECT count(*), COALESCE(SUM(points),0) FROM evidence_penalties WHERE rule=:r"),
         {"r": rule}).one()
     print(f"[{rule}] evidence rows to penalize: {n_rows:,} "
-          f"({n_pen:,} offending party figures, -{POINTS} each)")
+          f"({n_pen:,} offending figures, -{points} each)")
     print(f"[{rule}] prior penalties on record (reset first): {prior[0]:,} ({prior[1]:,} pts)")
     for eid, (pu, parties) in list(hits.items())[:4]:
-        worst = ", ".join(f"{p}={v}" for p, v, _ in parties[:6])
-        print(f"    e.g. evidence {eid} [{pu}] -> {worst}  (-{POINTS})")
+        worst = ", ".join(f"{p or 'accredited'}={v}" for p, v, _ in parties[:6])
+        print(f"    e.g. evidence {eid} [{pu}] -> {worst}  (-{points})")
     if not commit:
         return n_rows
 
@@ -149,14 +178,14 @@ def _apply_rule(db, rule: str, hits: dict, commit: bool) -> int:
     for i in range(0, len(eids), 10000):
         chunk = eids[i:i + 10000]
         db.execute(update(Evidence).where(Evidence.id.in_(chunk)).values(
-            confidence=text(f"GREATEST(0, COALESCE(confidence,0) - {POINTS})")))
+            confidence=text(f"GREATEST(0, COALESCE(confidence,0) - {points})")))
     db.flush()
     pen_maps = []
     for eid, (pu, parties) in hits.items():
         for party, votes, reason in parties:
             pen_maps.append({
                 "evidence_id": eid, "pu_code": pu, "election_type": ELECTION, "year": YEAR,
-                "rule": rule, "party": party, "votes": votes, "points": POINTS, "reason": reason,
+                "rule": rule, "party": party, "votes": votes, "points": points, "reason": reason,
             })
     if pen_maps:
         db.bulk_insert_mappings(EvidencePenalty, pen_maps)
@@ -189,8 +218,9 @@ def main() -> None:
         print(f"Mode: {'COMMIT' if args.commit else 'DRY RUN'}\n")
         totals = {}
         for rule in chosen:
-            hits = RULES[rule](db)
-            totals[rule] = _apply_rule(db, rule, hits, args.commit)
+            finder, points = RULES[rule]
+            hits = finder(db)
+            totals[rule] = _apply_rule(db, rule, hits, points, args.commit)
             print()
         print("=== SUMMARY ===")
         for rule, n in totals.items():
