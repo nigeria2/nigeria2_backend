@@ -14,6 +14,10 @@ user-facing sentence — what changed and why it matters — grouped under
 ## 2026-07-26
 
 ### Changed
+- State results pages now open on the **presidential race** and let you switch
+  between presidential, governorship, senate and House with **tabs at the top**,
+  instead of scrolling past the governorship to reach anything else. Links to a
+  specific race (ending `#senate`, for example) still open on that race.
 - **Results are now built from confidence scores rather than a fixed source order.**
   Where several readings of the same polling unit disagree, we now take the one we
   trust most instead of always preferring the machine reading. Hand-crosschecked
