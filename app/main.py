@@ -46,6 +46,7 @@ from .models import (
     WardPrediction,
     Evidence,
     EvidenceParty,
+    EvidencePenalty,
     WardEvidence,
     WardEvidenceParty,
     LgaEvidence,
@@ -1528,16 +1529,27 @@ def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
     ev = db.scalars(select(Evidence).where(Evidence.pu_code == pu_code)).all()
     if not ev:
         return []
+    ev_ids = [e.id for e in ev]
     parties_by_ev: dict[int, list] = defaultdict(list)
     for ep in db.scalars(select(EvidenceParty).where(
-            EvidenceParty.evidence_id.in_([e.id for e in ev]))).all():
+            EvidenceParty.evidence_id.in_(ev_ids))).all():
         parties_by_ev[ep.evidence_id].append(
             {"party": ep.party, "votes": ep.votes, "votes_words": ep.votes_words})
+    # confidence penalties applied to each reading (what was deducted and why) — drives the
+    # hover on the confidence badge.
+    penalties_by_ev: dict[int, list] = defaultdict(list)
+    for pn in db.scalars(select(EvidencePenalty).where(
+            EvidencePenalty.evidence_id.in_(ev_ids))).all():
+        penalties_by_ev[pn.evidence_id].append({
+            "rule": pn.rule, "reason": pn.reason, "party": pn.party,
+            "votes": pn.votes, "points": pn.points,
+        })
     entries = [
         {
             "id": e.id, "election_type": e.election_type, "year": e.year,
             "kind": e.kind, "source": e.source, "method": e.method,
             "confidence": e.confidence, "confidence_band": confidence.band(e.confidence),
+            "penalties": penalties_by_ev.get(e.id, []),
             "created_at": (e.created_at.isoformat() if e.created_at else None),
             "poll_summary": {
                 "registered_voters": e.registered_voters, "accredited_voters": e.accredited_voters,

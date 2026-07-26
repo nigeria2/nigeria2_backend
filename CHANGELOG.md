@@ -13,6 +13,12 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Added
+- Confidence scores are now **penalised for obvious misreads**: a 2023 presidential
+  reading where a minor party (not APC/LP/PDP/NNPP) is recorded with more than 2,000
+  votes loses 50 points, since that's almost always an OCR error. Hovering the
+  confidence badge on a polling-unit page lists exactly what was deducted and why.
+
 ### Data
 - Loaded the full 2023 crosschecked presidential dataset as evidence — **163,150
   polling units** across all 37 states now carry an independent "2023 transcription"

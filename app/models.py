@@ -748,6 +748,29 @@ class EvidenceParty(Base):
     votes_words: Mapped[str] = mapped_column(String(120), default="")   # votes in words, verbatim
 
 
+class EvidencePenalty(Base):
+    """One confidence DEDUCTION applied to a piece of evidence, with its reason.
+
+    Confidence is never lowered silently: each deduction is recorded here (which evidence /
+    polling unit, the rule, a human reason, the offending party+votes, and the points taken
+    off). `evidence.confidence` is reduced by `points`; this row explains it and feeds the
+    hover on the site. Re-runnable: a rule clears its own prior rows before re-applying."""
+
+    __tablename__ = "evidence_penalties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    evidence_id: Mapped[int] = mapped_column(Integer, index=True)  # FK evidence.id
+    pu_code: Mapped[str] = mapped_column(String(40), index=True, default="")
+    election_type: Mapped[str] = mapped_column(String(20), default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023")
+    rule: Mapped[str] = mapped_column(String(60), index=True, default="")   # slug of the rule
+    reason: Mapped[str] = mapped_column(Text, default="")                    # human-readable why
+    party: Mapped[str] = mapped_column(String(20), default="")               # offending party
+    votes: Mapped[int | None] = mapped_column(Integer, nullable=True)        # offending figure
+    points: Mapped[int] = mapped_column(Integer, default=0)                  # points deducted
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 # --- Per-level evidence (ward / lga / state) ------------------------------------------
 # Every geo level's score is a MERGE of its evidence, mirroring the polling-unit `evidence`
 # table. Evidence at a level has two origins:
