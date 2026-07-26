@@ -13,6 +13,14 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Changed
+- Results pages now say **"Estimated Results"** throughout (headings, breadcrumbs and
+  captions), making clear these are our estimates transcribed from INEC result sheets,
+  not official declared figures.
+- The **"Declared"** evidence badge is now labelled **"Online Reports"** to reflect
+  what those figures actually are.
+- The changelog page now uses a smaller, more compact font.
+
 ### Added
 - Each polling-unit result now carries a **confidence score (0–100)**, shown top-right
   of the result. The first signal is the quality of the INEC result sheet the figure
