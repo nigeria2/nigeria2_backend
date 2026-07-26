@@ -13,6 +13,12 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Data
+- Loaded the full 2023 crosschecked presidential dataset as evidence — **163,150
+  polling units** across all 37 states now carry an independent "2023 transcription"
+  reading alongside the LLM one (previously only ~3,900). Each is scored for
+  confidence: 90 for crosschecked units, 70 for units flagged unsure.
+
 ### Added
 - Each transcription in a polling unit's **Evidence** table now shows its own
   **confidence score**, so you can see how much to trust each individual reading
