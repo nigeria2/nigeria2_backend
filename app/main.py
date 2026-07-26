@@ -1437,6 +1437,7 @@ def _pu_definitive(db: Session, pu_codes: list[str], election_type: str = "presi
             "winner": r.winner, "runner_up": r.runner_up, "total_votes": r.total_votes,
             "known_votes": r.total_votes or None, "parties": dict(parties_by_res.get(r.id, {})),
             "source": r.source,
+            "confidence": r.confidence, "confidence_band": r.confidence_band or "",
         }
     return out
 
@@ -1485,6 +1486,8 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
             "known_votes": (d["known_votes"] if d else None),
             "winner": (d["winner"] if d else ""), "runner_up": (d["runner_up"] if d else ""),
             "scores": (d["parties"] if d else {}),
+            "confidence": (d["confidence"] if d else None),
+            "confidence_band": (d["confidence_band"] if d else ""),
         }
 
     return {

@@ -13,6 +13,10 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Added
+- The ward polling-unit list now shows a **Confidence** column, so you can see each
+  unit's 0–100 sheet-quality score alongside its votes.
+
 ### Changed
 - Results pages now say **"Estimated Results"** throughout (headings, breadcrumbs and
   captions), making clear these are our estimates transcribed from INEC result sheets,
