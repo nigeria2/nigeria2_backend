@@ -13,6 +13,13 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Changed
+- **Faster deploys.** The site build now prerenders pages in parallel (concurrency)
+  with automatic retry on transient network blips — full builds dropped from several
+  minutes to ~1.5 minutes and no longer fail on a single flaky fetch. Deploys now
+  upload only the files that actually changed and invalidate only those paths, instead
+  of re-pushing everything and clearing the whole CDN cache.
+
 ### Added
 - The ward polling-unit list now shows a **Confidence** column, so you can see each
   unit's 0–100 sheet-quality score alongside its votes.
