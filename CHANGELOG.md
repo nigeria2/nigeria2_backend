@@ -13,6 +13,11 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-07-26
 
+### Added
+- Each transcription in a polling unit's **Evidence** table now shows its own
+  **confidence score**, so you can see how much to trust each individual reading
+  (not just the merged result).
+
 ### Changed
 - **Faster deploys.** The site build now prerenders pages in parallel (concurrency)
   with automatic retry on transient network blips — full builds dropped from several

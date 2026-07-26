@@ -62,7 +62,7 @@ from .models import (
     StateResultV,
     StateResultParty,
 )
-from . import geo, prediction_worker
+from . import geo, prediction_worker, confidence
 from .history_ingest import PARTY_NAMES, seed_election_history
 from .schemas import (
     AnalysisIn,
@@ -1537,6 +1537,7 @@ def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
         {
             "id": e.id, "election_type": e.election_type, "year": e.year,
             "kind": e.kind, "source": e.source, "method": e.method,
+            "confidence": e.confidence, "confidence_band": confidence.band(e.confidence),
             "created_at": (e.created_at.isoformat() if e.created_at else None),
             "poll_summary": {
                 "registered_voters": e.registered_voters, "accredited_voters": e.accredited_voters,

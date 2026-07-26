@@ -729,6 +729,9 @@ class Evidence(Base):
     valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rejected_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_used_ballots: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 0-100 trust score for THIS reading (same scale as pu_results.confidence). First
+    # signal is the quality of the sheet it came from. Null = not scored yet.
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     raw: Mapped[str | None] = mapped_column(Text, nullable=True)  # verbatim original JSON, audit
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
