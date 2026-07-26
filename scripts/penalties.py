@@ -19,6 +19,8 @@ Rules (all: 2023 presidential):
   accredited_over_1500   — accredited_voters > 1500 on ANY evidence kind (llm, human,    -55
                            2023_transcription…). A PU is capped near 750 registered
                            voters, so >1500 is over twice the legal maximum.
+  votes_over_registered  — SUM(party votes) > registered_voters, ANY evidence kind. A    -55
+                           unit cannot record more votes than it has registered voters.
 
 Run LOCALLY against $DATABASE_URL. Choose rules with --rules (default: all). Dry-run
 prints what it WOULD do; --commit writes.
@@ -134,11 +136,45 @@ def find_accredited_over_1500(db) -> dict:
     return out
 
 
+def find_votes_over_registered(db) -> dict:
+    """Total party votes exceed the polling unit's registered voters — impossible.
+
+    Applied to ANY evidence kind. More ballots than people on the register cannot happen,
+    so the reading (or its registered figure) is wrong. The LLM fails this on ~9.7% of its
+    readings vs ~1.0% for the human-crosschecked dataset, and a third of the LLM failures
+    are more than 3x the register — i.e. clearly broken, not a borderline register quirk.
+    """
+    q = text("""
+        WITH v AS (
+          SELECT e.id, e.pu_code, e.kind, e.registered_voters AS reg,
+                 COALESCE(SUM(ep.votes), 0) AS sum_votes
+          FROM evidence e
+          LEFT JOIN evidence_parties ep ON ep.evidence_id = e.id
+          WHERE e.election_type = :et AND e.year = :yr
+            AND e.registered_voters IS NOT NULL
+          GROUP BY e.id, e.pu_code, e.kind, e.registered_voters
+        )
+        SELECT id, pu_code, kind, reg, sum_votes
+        FROM v WHERE sum_votes > reg
+        ORDER BY sum_votes DESC
+    """).bindparams(et=ELECTION, yr=YEAR)
+    out: dict[int, tuple] = {}
+    for eid, pu, kind, reg, total in db.execute(q).all():
+        ratio = (total / reg) if reg else 0
+        ratio_txt = f" ({ratio:.1f}x the register)" if reg else ""
+        reason = (f"Total votes read as {int(total):,} against {int(reg):,} registered "
+                  f"voters{ratio_txt} — a polling unit cannot record more votes than it has "
+                  f"registered voters, so this reading is wrong ({kind} reading).")
+        out[eid] = (pu, [("", int(total), reason)])
+    return out
+
+
 # rule name -> (finder, points deducted)
 RULES = {
     "minor_party_over_2000": (find_minor_party_over_2000, 50),
     "all_majors_zero_minors": (find_all_majors_zero_minors, 50),
     "accredited_over_1500": (find_accredited_over_1500, 55),
+    "votes_over_registered": (find_votes_over_registered, 55),
 }
 
 
@@ -168,7 +204,8 @@ def _apply_rule(db, rule: str, hits: dict, points: int, commit: bool) -> int:
           f"({n_pen:,} offending figures, -{points} each)")
     print(f"[{rule}] prior penalties on record (reset first): {prior[0]:,} ({prior[1]:,} pts)")
     for eid, (pu, parties) in list(hits.items())[:4]:
-        worst = ", ".join(f"{p or 'accredited'}={v}" for p, v, _ in parties[:6])
+        # party is "" for poll-summary rules (accredited / totals); label it generically
+        worst = ", ".join(f"{p or 'figure'}={v}" for p, v, _ in parties[:6])
         print(f"    e.g. evidence {eid} [{pu}] -> {worst}  (-{points})")
     if not commit:
         return n_rows
