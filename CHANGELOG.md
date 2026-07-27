@@ -14,6 +14,10 @@ user-facing sentence — what changed and why it matters — grouped under
 ## 2026-07-26
 
 ### Changed
+- The **Evidence table at the bottom of a page now only lists the race you are
+  looking at**. Previously a state's presidential tab showed governorship and senate
+  evidence too, and LGA and ward pages — which only ever show presidential results —
+  listed evidence for races that appeared nowhere on the page.
 - State results pages now open on the **presidential race** and let you switch
   between presidential, governorship, senate and House with **tabs at the top**,
   instead of scrolling past the governorship to reach anything else. Links to a
