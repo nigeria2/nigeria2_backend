@@ -67,7 +67,23 @@ def upgrade() -> None:
             WHERE state = :state AND district = :district
         """), fix)
 
+    # politician_id is a hardcoded snapshot taken from production (auto-increment ids are
+    # stable for existing rows, but only production's actual history is guaranteed to match
+    # these — confirmed against a local test DB seeded from scratch, where the same ids
+    # pointed at entirely different people). Refuse to repoint politician_id unless the
+    # target row's name matches what we expect, rather than silently mis-attributing data
+    # on a database whose seed history doesn't match production's.
     for fix in _IDENTITY_FIXES:
+        correct_name = conn.execute(
+            text("SELECT name FROM politicians WHERE id = :correct_politician_id"), fix
+        ).scalar()
+        if correct_name != fix["name"]:
+            raise RuntimeError(
+                f"politician id {fix['correct_politician_id']} is {correct_name!r}, "
+                f"expected {fix['name']!r} ({fix['state']} {fix['district']}) — "
+                "this database's politician ids don't match the production snapshot "
+                "this migration was written against; refusing to repoint senators.politician_id"
+            )
         conn.execute(text("UPDATE politicians SET title = '' WHERE id = :wrong_politician_id"), fix)
         conn.execute(text("""
             UPDATE senators
