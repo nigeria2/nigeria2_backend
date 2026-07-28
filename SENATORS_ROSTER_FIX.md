@@ -35,7 +35,8 @@ results) and are called out here so a future audit doesn't re-flag them.
 1. **`app/senators_data.py`** — corrected the 13 entries (see git diff for the exact
    before/after). Fixes fresh/dev seeding going forward; does nothing for an already-seeded
    database, since `seed_senators()` only runs against an empty table.
-2. **`migrations/versions/0053_fix_senator_data_errors.py`** — repairs already-seeded data:
+2. **`migrations/versions/0057_fix_senator_data_errors.py`** (renumbered from `0053` after
+   `main` claimed that revision — see merge-order note below) — repairs already-seeded data:
    - 3 field-only `UPDATE senators SET name=..., party=...` (the politician_id was already
      right).
    - 10 `UPDATE politicians SET title = ''` (clearing the fabricated senator title off the
@@ -49,21 +50,47 @@ results) and are called out here so a future audit doesn't re-flag them.
      accurate (e.g. `David Umahi` correctly keeps `"Governor of Ebonyi State (2015–2023)"`,
      his prior and more notable role, rather than being overwritten with a generic senator
      title).
+   - A safety check runs before each identity repoint: it verifies `politicians.name`
+     actually matches what's expected for `correct_politician_id` before touching anything,
+     and raises (rolling back the whole migration) if it doesn't. Added after testing turned
+     up that hardcoded politician ids are only guaranteed valid against the exact database
+     they were sourced from — see below.
    - `downgrade()` is a no-op — the original seed data was wrong, not worth restoring.
 
 Full per-seat table (wrong name/party → correct name/party/politician_id) is in the commit
 message and was reviewed as a plan before implementation.
 
+## Merge order
+
+This branch's migration chains after `nigeria2_backend#2` (contact form)'s `0056`, which
+chains after `main`'s `0055` — which needs `nigeria2_backend#3` (a pre-existing, unrelated
+crash in migration `0049` found while testing this PR) merged first. **Merge order: #3 → #2
+→ #1 (this PR).**
+
 ## Verification status
 
-Confirmed locally: migration syntax valid, `alembic heads` resolves to a single head
-(`0053`) with no branch conflicts, `app/senators_data.py` still has 109 entries with no
-duplicate names.
+Tested end-to-end against a real, throwaway local Postgres instance (own `initdb`'d
+cluster) — not just syntax-checked:
 
-**Not yet verified**: actually running `alembic upgrade head` against a database — no local
-Postgres credentials were available in the dev environment this was built in. Needs to run
-against a real dev/staging DB before merging, or will run automatically via the existing
-`run_migrations()` call in `app/main.py`'s `lifespan` on deploy. After it runs, spot-check:
+- Reproduced the actual bug first: booted the real app on a branch with none of this fix,
+  letting it seed the genuinely wrong data (confirmed: Abia Central seeded as Austin
+  Akobundu, PDP, with a fabricated `"Senator, Abia Central"` title).
+- Ran `alembic upgrade head` against that pre-existing wrong data (the real scenario, not a
+  fresh empty table) — all 13 seats corrected, all 10 fabricated titles cleared, and
+  unrelated data (David Umahi's `"Governor of Ebonyi State (2015–2023)"` title) left
+  untouched.
+- **Found a real defect in the process**: `correct_politician_id` is a hardcoded snapshot of
+  production's ids. On the freshly-seeded local test DB, the same ids pointed at entirely
+  different people (auto-increment ids depend on insertion order/history, which differs per
+  database). Re-confirmed via the live API that production's actual ids are still correct —
+  but the migration as originally written would have silently repointed
+  `senators.politician_id` to the wrong person on any database whose history doesn't match
+  production's. Fixed with the safety check described above; verified both that it correctly
+  blocks (and cleanly rolls back) on a mismatched database, and that it still succeeds when
+  ids do match.
+
+Still worth checking directly: production's actual `alembic_version` before merging (see
+`nigeria2_backend#3`) — after all migrations land, spot-check:
 - `/api/politicians/88` (Akobundu) — `title` should be `""`, not `"Senator, Abia Central"`.
 - `/api/politicians/360` (Onuigbo) — unchanged, `"Senator-elect, Abia Central"`.
 - `/api/senators` — the 13 affected seats show the corrected name/party.
