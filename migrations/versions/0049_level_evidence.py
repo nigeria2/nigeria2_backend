@@ -39,6 +39,7 @@ def _idx(table: str, cols) -> None:
         name = f"ix_{table}_{c}"
         if name not in have:
             op.create_index(name, table, [c])
+            have.add(name)
 
 
 def _evidence_table(name: str, geo_col: sa.Column | None, geo_idx: str) -> None:
