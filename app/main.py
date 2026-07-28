@@ -17,6 +17,7 @@ from .auth import create_token, current_user, require_admin, verify_google_crede
 from .db import SessionLocal, engine, get_db
 from .models import (
     Analysis,
+    ContactMessage,
     DeclaredCandidate,
     Governor,
     GovernorHistory,
@@ -68,6 +69,8 @@ from .history_ingest import PARTY_NAMES, seed_election_history
 from .schemas import (
     AnalysisIn,
     AssessmentIn,
+    ContactIn,
+    ContactOut,
     DeclaredCandidateIn,
     GoogleAuthIn,
     JoinIn,
@@ -389,6 +392,33 @@ def join(payload: JoinIn, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(rec)
     return JoinOut(id=rec.id)
+
+
+# --- public: contact form ---
+@app.post("/api/contact", response_model=ContactOut, status_code=201)
+def contact(payload: ContactIn, db: Session = Depends(get_db)):
+    rec = ContactMessage(
+        name=payload.name,
+        email=payload.email,
+        subject=payload.subject or "",
+        message=payload.message,
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return ContactOut(id=rec.id)
+
+
+@app.get("/api/admin/contact-messages")
+def admin_contact_messages(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    rows = db.scalars(select(ContactMessage).order_by(ContactMessage.created_at.desc())).all()
+    return [
+        {
+            "id": r.id, "name": r.name, "email": r.email, "subject": r.subject,
+            "message": r.message, "created_at": r.created_at,
+        }
+        for r in rows
+    ]
 
 
 # --- predictions (public; already aggregated from traces) ---

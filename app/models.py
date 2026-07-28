@@ -25,6 +25,21 @@ class InterestedUser(Base):
     )
 
 
+class ContactMessage(Base):
+    """A message submitted via the public contact form."""
+
+    __tablename__ = "contact_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(200))
+    email: Mapped[str] = mapped_column(String(200), index=True)
+    subject: Mapped[str] = mapped_column(String(120), default="")
+    message: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
 class User(Base):
     """A Google-authenticated account, with full contributor profile."""
 
