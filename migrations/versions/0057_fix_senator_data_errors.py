@@ -7,8 +7,8 @@ entirely — a losing 2023 candidate instead of the actual winner. Fixing senato
 alone doesn't touch an already-seeded database, hence this migration. Full rationale for
 each seat: see the "Fix wrong senators" plan reviewed 2026-07-24.
 
-Revision ID: 0053
-Revises: 0052
+Revision ID: 0057
+Revises: 0056
 Create Date: 2026-07-24
 
 """
@@ -17,8 +17,8 @@ from typing import Sequence, Union
 from alembic import op
 from sqlalchemy import text
 
-revision: str = "0053"
-down_revision: Union[str, None] = "0052"
+revision: str = "0057"
+down_revision: Union[str, None] = "0056"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
