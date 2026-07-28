@@ -351,24 +351,8 @@ class LegislativeResult(Base):
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
-class ElectionSheet(Base):
-    """Link from a polling unit to its INEC IReV result sheet and our transcription.
-    One row per (pu_code, election_type, year). `sheet_url` points at INEC's own server
-    (we do not re-host the scan); `sheet_status` is our download outcome; `json` holds the
-    verbatim EC8A transcription (JSON text) where we have produced one. Joined to a
-    polling unit by matching pu_code (same INEC state/lga/ward/pu code)."""
-
-    __tablename__ = "election_sheets"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    election_type: Mapped[str] = mapped_column(String(20), index=True)  # presidential|governorship|senatorial
-    year: Mapped[str] = mapped_column(String(10), default="2023", index=True)
-    state: Mapped[str] = mapped_column(String(60), default="")
-    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
-    pu_code: Mapped[str] = mapped_column(String(40), index=True)  # INEC code, e.g. 03/01/01/001
-    sheet_url: Mapped[str] = mapped_column(Text, default="")      # INEC IReV sheet (their server)
-    sheet_status: Mapped[str] = mapped_column(String(20), default="")  # saved | no_sheet | dead
-    json: Mapped[str | None] = mapped_column(Text, nullable=True)  # our EC8A transcription, JSON text
+# NOTE: the legacy `election_sheets` table was consolidated into `pu_sheets` and dropped
+# by migration 0052. All result-sheet reads now go through PuSheet.
 
 
 class PollingUnit(Base):
@@ -745,6 +729,9 @@ class Evidence(Base):
     valid_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rejected_votes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_used_ballots: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # 0-100 trust score for THIS reading (same scale as pu_results.confidence). First
+    # signal is the quality of the sheet it came from. Null = not scored yet.
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     raw: Mapped[str | None] = mapped_column(Text, nullable=True)  # verbatim original JSON, audit
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -759,6 +746,29 @@ class EvidenceParty(Base):
     party: Mapped[str] = mapped_column(String(20), index=True)
     votes: Mapped[int | None] = mapped_column(Integer, nullable=True)   # figure (may be blank on sheet)
     votes_words: Mapped[str] = mapped_column(String(120), default="")   # votes in words, verbatim
+
+
+class EvidencePenalty(Base):
+    """One confidence DEDUCTION applied to a piece of evidence, with its reason.
+
+    Confidence is never lowered silently: each deduction is recorded here (which evidence /
+    polling unit, the rule, a human reason, the offending party+votes, and the points taken
+    off). `evidence.confidence` is reduced by `points`; this row explains it and feeds the
+    hover on the site. Re-runnable: a rule clears its own prior rows before re-applying."""
+
+    __tablename__ = "evidence_penalties"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    evidence_id: Mapped[int] = mapped_column(Integer, index=True)  # FK evidence.id
+    pu_code: Mapped[str] = mapped_column(String(40), index=True, default="")
+    election_type: Mapped[str] = mapped_column(String(20), default="presidential")
+    year: Mapped[str] = mapped_column(String(10), default="2023")
+    rule: Mapped[str] = mapped_column(String(60), index=True, default="")   # slug of the rule
+    reason: Mapped[str] = mapped_column(Text, default="")                    # human-readable why
+    party: Mapped[str] = mapped_column(String(20), default="")               # offending party
+    votes: Mapped[int | None] = mapped_column(Integer, nullable=True)        # offending figure
+    points: Mapped[int] = mapped_column(Integer, default=0)                  # points deducted
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # --- Per-level evidence (ward / lga / state) ------------------------------------------
@@ -885,6 +895,11 @@ class PuResult(Base):
     registered_voters: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(30), default="declared")  # see RESULT_SOURCES
     method: Mapped[str] = mapped_column(String(60), default="")  # how the result was merged
+    # Quality/trust score 0-100 for THIS unit's result. First signal is sheet quality
+    # (missing/blurry/inflated -> low). Null = not scored yet. `confidence_band` derives
+    # high (>=80) / medium (50-79) / low (<50). The roll-up can require a minimum score.
+    confidence: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    confidence_band: Mapped[str] = mapped_column(String(10), default="")
     decided_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

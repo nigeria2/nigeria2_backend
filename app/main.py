@@ -24,7 +24,6 @@ from .models import (
     InterestedUser,
     Lga,
     LegislativeResult,
-    ElectionSheet,
     Party,
     PartyElection,
     PartyHistory,
@@ -47,6 +46,7 @@ from .models import (
     WardPrediction,
     Evidence,
     EvidenceParty,
+    EvidencePenalty,
     WardEvidence,
     WardEvidenceParty,
     LgaEvidence,
@@ -63,7 +63,7 @@ from .models import (
     StateResultV,
     StateResultParty,
 )
-from . import geo, prediction_worker
+from . import geo, prediction_worker, confidence
 from .history_ingest import PARTY_NAMES, seed_election_history
 from .schemas import (
     AnalysisIn,
@@ -102,7 +102,6 @@ from .seed import (
     seed_prediction_components,
     load_lga_party_results,
     load_legislative_results,
-    load_election_sheets,
     seed_lgas,
     refresh_lga_names,
     link_lga_references,
@@ -252,9 +251,6 @@ async def lifespan(app: FastAPI):
                 lr = load_legislative_results(db)
                 if lr:
                     print(f"[startup] loaded {lr} legislative (2019 senate+house) result rows")
-                es = load_election_sheets(db)
-                if es:
-                    print(f"[startup] loaded {es} election-sheet links")
                 lp = seed_ward_predictions(db)
                 if lp:
                     print(f"[startup] seeded {lp} ward prediction(s)")
@@ -339,6 +335,29 @@ def health():
 @app.get("/api/ping")
 def ping():
     return {"ping": "pong"}
+
+
+# CHANGELOG.md is the single source of truth for the /changelog page. In production
+# only the backend repo is deployed, so the canonical copy lives at the backend repo
+# root (backend/CHANGELOG.md, = parents[1]); the outer monorepo root (parents[2]) is
+# the fallback for local dev. Both are kept in sync.
+_CHANGELOG_PATHS = [
+    pathlib.Path(__file__).resolve().parents[1] / "CHANGELOG.md",
+    pathlib.Path(__file__).resolve().parents[2] / "CHANGELOG.md",
+]
+
+
+@app.get("/api/changelog")
+def changelog():
+    """The project changelog (CHANGELOG.md) as raw markdown, for the /changelog page."""
+    md = ""
+    for p in _CHANGELOG_PATHS:
+        try:
+            md = p.read_text(encoding="utf-8")
+            break
+        except OSError:
+            continue
+    return JSONResponse({"markdown": md}, headers=_PUBLIC_CORS)
 
 
 @app.get("/db/health")
@@ -1419,6 +1438,7 @@ def _pu_definitive(db: Session, pu_codes: list[str], election_type: str = "presi
             "winner": r.winner, "runner_up": r.runner_up, "total_votes": r.total_votes,
             "known_votes": r.total_votes or None, "parties": dict(parties_by_res.get(r.id, {})),
             "source": r.source,
+            "confidence": r.confidence, "confidence_band": r.confidence_band or "",
         }
     return out
 
@@ -1443,12 +1463,20 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
     # definitive per-PU results (unified) keyed by pu_code
     pu_codes = [p.pu_code for p in rows]
     definitive = _pu_definitive(db, pu_codes, "presidential")
-    # accredited voters per PU where we have it (flagged problem units only)
-    accredited_by_pu = {
-        u.pu_code: u.accredited_voters
-        for u in db.scalars(select(ProblemUnit).where(ProblemUnit.pu_code.in_(pu_codes))).all()
-        if u.pu_code and u.accredited_voters
-    }
+    # Accredited voters per PU, primarily from the transcribed EC8A evidence (present for
+    # ~96% of units), falling back to the small set of flagged problem units. We take the
+    # max non-null accredited figure across a unit's presidential evidence rows.
+    accredited_by_pu: dict[str, int] = {}
+    for e in db.scalars(select(Evidence).where(
+            Evidence.pu_code.in_(pu_codes),
+            Evidence.election_type == "presidential",
+            Evidence.accredited_voters.isnot(None))).all():
+        cur = accredited_by_pu.get(e.pu_code)
+        if cur is None or (e.accredited_voters or 0) > cur:
+            accredited_by_pu[e.pu_code] = e.accredited_voters
+    for u in db.scalars(select(ProblemUnit).where(ProblemUnit.pu_code.in_(pu_codes))).all():
+        if u.pu_code and u.accredited_voters and u.pu_code not in accredited_by_pu:
+            accredited_by_pu[u.pu_code] = u.accredited_voters
     # (INEC result-sheet links now live on the per-polling-unit page, not here)
 
     def pu_dict(p: PollingUnit) -> dict:
@@ -1459,6 +1487,8 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
             "known_votes": (d["known_votes"] if d else None),
             "winner": (d["winner"] if d else ""), "runner_up": (d["runner_up"] if d else ""),
             "scores": (d["parties"] if d else {}),
+            "confidence": (d["confidence"] if d else None),
+            "confidence_band": (d["confidence_band"] if d else ""),
         }
 
     return {
@@ -1499,15 +1529,27 @@ def _evidence_entries(db: Session, pu_code: str) -> list[dict]:
     ev = db.scalars(select(Evidence).where(Evidence.pu_code == pu_code)).all()
     if not ev:
         return []
+    ev_ids = [e.id for e in ev]
     parties_by_ev: dict[int, list] = defaultdict(list)
     for ep in db.scalars(select(EvidenceParty).where(
-            EvidenceParty.evidence_id.in_([e.id for e in ev]))).all():
+            EvidenceParty.evidence_id.in_(ev_ids))).all():
         parties_by_ev[ep.evidence_id].append(
             {"party": ep.party, "votes": ep.votes, "votes_words": ep.votes_words})
+    # confidence penalties applied to each reading (what was deducted and why) — drives the
+    # hover on the confidence badge.
+    penalties_by_ev: dict[int, list] = defaultdict(list)
+    for pn in db.scalars(select(EvidencePenalty).where(
+            EvidencePenalty.evidence_id.in_(ev_ids))).all():
+        penalties_by_ev[pn.evidence_id].append({
+            "rule": pn.rule, "reason": pn.reason, "party": pn.party,
+            "votes": pn.votes, "points": pn.points,
+        })
     entries = [
         {
             "id": e.id, "election_type": e.election_type, "year": e.year,
             "kind": e.kind, "source": e.source, "method": e.method,
+            "confidence": e.confidence, "confidence_band": confidence.band(e.confidence),
+            "penalties": penalties_by_ev.get(e.id, []),
             "created_at": (e.created_at.isoformat() if e.created_at else None),
             "poll_summary": {
                 "registered_voters": e.registered_voters, "accredited_voters": e.accredited_voters,
@@ -1574,17 +1616,17 @@ def pu_sheets(pu_code: str, db: Session = Depends(get_db)):
     sheet URL and our verbatim EC8A transcription(s). A sheet can carry more than one
     recording — the same result sheet transcribed by different methods — so
     `recordings` is always a list (one entry per recording)."""
-    rows = db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
-                      .order_by(ElectionSheet.election_type)).all()
+    rows = db.scalars(select(PuSheet).where(PuSheet.pu_code == pu_code)
+                      .order_by(PuSheet.election_type)).all()
     return {
         "pu_code": pu_code,
         "sheets": [
             {
-                "election_type": s.election_type, "year": s.year, "state": s.state,
-                "sheet_url": s.sheet_url or "", "status": s.sheet_status,
-                "recordings": _sheet_recordings(s.json),
+                "election_type": s.election_type, "year": s.year, "state": s.state_geo or "",
+                "sheet_url": s.sheet_url or "", "status": s.sheet_status or "",
+                "recordings": _sheet_recordings(s.transcriptions),
                 # kept for backwards compatibility (first recording, or null)
-                "transcription": (_sheet_recordings(s.json)[:1] or [None])[0],
+                "transcription": (_sheet_recordings(s.transcriptions)[:1] or [None])[0],
             }
             for s in rows
         ],
@@ -1612,16 +1654,20 @@ def polling_unit_detail(pu_code: str, db: Session = Depends(get_db)):
             "runner_up": r.runner_up, "total_votes": r.total_votes, "valid_votes": r.valid_votes,
             "registered_voters": r.registered_voters,
             "source": r.source, "method": r.method,
+            # 0-100 quality/trust score for this unit's result (sheet quality is the first
+            # signal); band is high/medium/low. Null until the confidence backfill has run.
+            "confidence": r.confidence, "confidence_band": r.confidence_band or "",
             "parties": dict(sorted(pr_parties.get(r.id, {}).items(), key=lambda x: -(x[1] or 0))),
         }
         for r in presults
     ]
     # ALL result sheets we hold for this unit, INCLUDING broken/dead URLs (status shown).
+    # Sourced from pu_sheets (all 37 states); election_type is already governor/senate here.
     sheets = [
         {"election_type": s.election_type, "year": s.year, "sheet_url": s.sheet_url or "",
-         "status": s.sheet_status}
-        for s in db.scalars(select(ElectionSheet).where(ElectionSheet.pu_code == pu_code)
-                            .order_by(ElectionSheet.election_type)).all()
+         "status": s.sheet_status or ""}
+        for s in db.scalars(select(PuSheet).where(PuSheet.pu_code == pu_code)
+                            .order_by(PuSheet.election_type)).all()
     ]
     if pu is None and not result and not sheets:
         raise HTTPException(status_code=404, detail="polling unit not found")
