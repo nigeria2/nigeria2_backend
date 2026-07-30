@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import delete, func, select, text
@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
+from .email import CONTACT_NOTIFY_EMAIL, send_email
 from .models import (
     Analysis,
     ContactMessage,
@@ -396,7 +397,7 @@ def join(payload: JoinIn, db: Session = Depends(get_db)):
 
 # --- public: contact form ---
 @app.post("/api/contact", response_model=ContactOut, status_code=201)
-def contact(payload: ContactIn, db: Session = Depends(get_db)):
+def contact(payload: ContactIn, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     rec = ContactMessage(
         name=payload.name,
         email=payload.email,
@@ -406,6 +407,15 @@ def contact(payload: ContactIn, db: Session = Depends(get_db)):
     db.add(rec)
     db.commit()
     db.refresh(rec)
+    # Notifies staff once SMTP_HOST/CONTACT_NOTIFY_EMAIL are configured; a no-op log line
+    # until then. Backgrounded so a slow/unreachable mail server never adds latency to (or
+    # can fail) this response — the submission is already safely committed above.
+    background_tasks.add_task(
+        send_email,
+        to=CONTACT_NOTIFY_EMAIL,
+        subject=f"New contact form message: {rec.subject or 'General enquiry'}",
+        body=f"From: {rec.name} <{rec.email}>\n\n{rec.message}",
+    )
     return ContactOut(id=rec.id)
 
 
