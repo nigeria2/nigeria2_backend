@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from .auth import create_token, current_user, require_admin, verify_google_credential
 from .db import SessionLocal, engine, get_db
-from .email import CONTACT_NOTIFY_EMAIL, send_email
+from .email import contact_notify_email, send_email
 from .models import (
     Analysis,
     ContactMessage,
@@ -412,7 +412,7 @@ def contact(payload: ContactIn, background_tasks: BackgroundTasks, db: Session =
     # can fail) this response — the submission is already safely committed above.
     background_tasks.add_task(
         send_email,
-        to=CONTACT_NOTIFY_EMAIL,
+        to=contact_notify_email(),
         subject=f"New contact form message: {rec.subject or 'General enquiry'}",
         body=f"From: {rec.name} <{rec.email}>\n\n{rec.message}",
     )
