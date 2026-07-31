@@ -28,6 +28,27 @@ class JoinOut(BaseModel):
     message: str = "joined"
 
 
+class ContactIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=200)
+    email: str = Field(min_length=3, max_length=200)
+    subject: str | None = Field(default=None, max_length=120)
+    message: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        if not _EMAIL_RE.match(v):
+            raise ValueError("invalid email address")
+        return v
+
+
+class ContactOut(BaseModel):
+    id: int
+    message: str = "sent"
+
+
 # --- auth ---
 class GoogleAuthIn(BaseModel):
     credential: str = Field(min_length=10)
