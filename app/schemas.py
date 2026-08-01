@@ -1,7 +1,7 @@
 """Pydantic request/response schemas."""
 import re
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -47,6 +47,50 @@ class ContactIn(BaseModel):
 class ContactOut(BaseModel):
     id: int
     message: str = "sent"
+
+
+_REPORT_LEVELS = {"pu", "ward", "lga"}
+
+
+class ReportIssueIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    level: str
+    pu_code: str | None = Field(default=None, max_length=30)
+    ward_code: str | None = Field(default=None, max_length=30)
+    lga_id: int | None = None
+    state_geo: str | None = Field(default=None, max_length=20)
+    year: str = Field(default="", max_length=10)
+    election_type: str | None = Field(default=None, max_length=20)
+    name: str = Field(default="", max_length=200)
+    email: str = Field(default="", max_length=200)
+    message: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("level")
+    @classmethod
+    def _valid_level(cls, v: str) -> str:
+        if v not in _REPORT_LEVELS:
+            raise ValueError(f"level must be one of {sorted(_REPORT_LEVELS)}")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        if v and not _EMAIL_RE.match(v):
+            raise ValueError("invalid email address")
+        return v
+
+    @model_validator(mode="after")
+    def _identifier_matches_level(self) -> "ReportIssueIn":
+        required = {"pu": "pu_code", "ward": "ward_code", "lga": "lga_id"}[self.level]
+        if getattr(self, required) in (None, ""):
+            raise ValueError(f"{required} is required when level='{self.level}'")
+        return self
+
+
+class ReportIssueOut(BaseModel):
+    id: int
+    message: str = "reported"
 
 
 # --- auth ---
