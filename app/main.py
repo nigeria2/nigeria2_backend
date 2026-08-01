@@ -124,6 +124,10 @@ from .seed import (
 
 STATE_NAMES = sorted(BASE.keys())
 _ELECTIONS_DIR = pathlib.Path(__file__).resolve().parent / "data" / "elections"
+# LGA/ward-level offices: presidential and governorship both have real per-LGA/per-ward
+# breakdowns. senate/house are per-constituency (a district spans multiple LGAs, no
+# LGA->constituency mapping exists yet) so they stay state-page-only for now.
+_LGA_OFFICES = {"presidential", "governor"}
 
 
 def run_migrations() -> None:
@@ -1484,32 +1488,36 @@ def _pu_definitive(db: Session, pu_codes: list[str], election_type: str = "presi
 
 
 @app.get("/api/wards/{ward_code}/polling-units")
-def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
+def ward_polling_units(ward_code: str, office: str = "presidential", db: Session = Depends(get_db)):
+    if office not in _LGA_OFFICES:
+        raise HTTPException(status_code=400, detail=f"office must be one of {sorted(_LGA_OFFICES)}")
     code = ward_code.replace("-", "/")
     # polling_units supplies geography (name, registered voters); vote data comes only
     # from the unified pu_results / ward_result_v tables.
     rows = db.scalars(select(PollingUnit).where(PollingUnit.ward_code == code).order_by(PollingUnit.pu_code)).all()
     if not rows:
-        return {"state": "", "lga": "", "ward": "", "ward_code": code, "result": None, "polling_units": []}
+        return {"state": "", "lga": "", "ward": "", "ward_code": code, "office": office, "result": None, "polling_units": []}
     first = rows[0]
-    # ward-level result (unified, presidential)
+    # ward-level result (unified) for the requested office
     result = None
     wv = db.scalar(select(WardResultV).where(
-        WardResultV.ward_code == code, WardResultV.election_type == "presidential").order_by(WardResultV.id.desc()))
+        WardResultV.ward_code == code, WardResultV.election_type == office).order_by(WardResultV.id.desc()))
     if wv is not None:
         wparties = {pp.party: pp.votes for pp in db.scalars(
             select(WardResultParty).where(WardResultParty.ward_result_id == wv.id)).all()}
         result = {"winner": wv.winner, "runner_up": wv.runner_up, "total_votes": wv.total_votes, "scores": wparties}
-    # definitive per-PU results (unified) keyed by pu_code
+    # definitive per-PU results (unified) keyed by pu_code, for the requested office
     pu_codes = [p.pu_code for p in rows]
-    definitive = _pu_definitive(db, pu_codes, "presidential")
+    definitive = _pu_definitive(db, pu_codes, office)
     # Accredited voters per PU, primarily from the transcribed EC8A evidence (present for
     # ~96% of units), falling back to the small set of flagged problem units. We take the
-    # max non-null accredited figure across a unit's presidential evidence rows.
+    # max non-null accredited figure across a unit's evidence rows for this office —
+    # presidential/NASS and governorship/state-assembly were different election days in
+    # 2023, so accreditation genuinely differs by office, not just vote totals.
     accredited_by_pu: dict[str, int] = {}
     for e in db.scalars(select(Evidence).where(
             Evidence.pu_code.in_(pu_codes),
-            Evidence.election_type == "presidential",
+            Evidence.election_type == office,
             Evidence.accredited_voters.isnot(None))).all():
         cur = accredited_by_pu.get(e.pu_code)
         if cur is None or (e.accredited_voters or 0) > cur:
@@ -1536,6 +1544,7 @@ def ward_polling_units(ward_code: str, db: Session = Depends(get_db)):
         "lga": first.lga,
         "ward": first.ward,
         "ward_code": code,
+        "office": office,
         "result": result,
         "polling_units": [pu_dict(p) for p in rows],
         # every piece of evidence for THIS ward's score: rollup-from-PUs + any independent source
@@ -1771,17 +1780,19 @@ def state_lgas(geo_id: str, db: Session = Depends(get_db)):
 
 
 @app.get("/api/lga/{lga_id}")
-def lga_detail(lga_id: int, db: Session = Depends(get_db)):
-    """Everything we know about one local government: its 2023 presidential result,
-    its wards & polling units, the politicians whose strongholds include it, and any
-    flagged problem units."""
+def lga_detail(lga_id: int, office: str = "presidential", db: Session = Depends(get_db)):
+    """Everything we know about one local government: its 2023 result for `office`
+    (presidential|governor, default presidential), its wards & polling units, the
+    politicians whose strongholds include it, and any flagged problem units."""
+    if office not in _LGA_OFFICES:
+        raise HTTPException(status_code=400, detail=f"office must be one of {sorted(_LGA_OFFICES)}")
     l = db.get(Lga, lga_id)
     if l is None:
         raise HTTPException(status_code=404, detail="local government not found")
-    # LGA presidential result (unified)
+    # LGA result (unified) for the requested office
     result = None
     lv = db.scalar(select(LgaResultV).where(
-        LgaResultV.lga_id == lga_id, LgaResultV.election_type == "presidential").order_by(LgaResultV.id.desc()))
+        LgaResultV.lga_id == lga_id, LgaResultV.election_type == office).order_by(LgaResultV.id.desc()))
     if lv is not None:
         lparties = {pp.party: pp.votes for pp in db.scalars(
             select(LgaResultParty).where(LgaResultParty.lga_result_id == lv.id)).all()}
@@ -1795,9 +1806,9 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
         .group_by(PollingUnit.ward, PollingUnit.ward_code)
         .order_by(PollingUnit.ward)
     ).all()
-    # per-ward presidential results (unified) keyed by ward_code, with party breakdown
+    # per-ward results (unified) for the requested office, keyed by ward_code, with party breakdown
     wv_rows = db.scalars(select(WardResultV).where(
-        WardResultV.lga_id == lga_id, WardResultV.election_type == "presidential")).all()
+        WardResultV.lga_id == lga_id, WardResultV.election_type == office)).all()
     wv = {w.ward_code: w for w in wv_rows}
     wparties: dict[int, dict] = defaultdict(dict)
     if wv_rows:
@@ -1838,7 +1849,7 @@ def lga_detail(lga_id: int, db: Session = Depends(get_db)):
         for u in db.scalars(select(ProblemUnit).where(ProblemUnit.lga_id == lga_id).order_by(ProblemUnit.severity)).all()
     ]
     return {
-        "id": l.id, "name": l.name, "state": l.state, "geo_id": l.state_geo,
+        "id": l.id, "name": l.name, "state": l.state, "geo_id": l.state_geo, "office": office,
         "result": result, "wards": wards, "ward_count": len(wards),
         "pu_count": sum(w["pu_count"] for w in wards),
         "registered_voters": sum((w["registered_voters"] or 0) for w in wards),
