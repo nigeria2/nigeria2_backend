@@ -124,10 +124,16 @@ from .seed import (
 
 STATE_NAMES = sorted(BASE.keys())
 _ELECTIONS_DIR = pathlib.Path(__file__).resolve().parent / "data" / "elections"
-# LGA/ward-level offices: presidential and governorship both have real per-LGA/per-ward
-# breakdowns. senate/house are per-constituency (a district spans multiple LGAs, no
-# LGA->constituency mapping exists yet) so they stay state-page-only for now.
-_LGA_OFFICES = {"presidential", "governor"}
+# LGA/ward-level offices: an LGA/ward's OWN roll-up (this LGA's votes for office X) is
+# just a bottom-up sum of the polling units inside it — PollingUnit.lga_id/ward_code
+# already know that, regardless of office, so this works for senate/house exactly like
+# presidential/governor the moment PU-level evidence exists for them (build_results() in
+# scripts/pick_definitive_results.py is already generic over election_type). What's
+# still missing is a different thing: the FULL senatorial-district/federal-constituency
+# candidate list spans multiple LGAs, and there's no LGA->constituency mapping to know
+# which other LGAs share a district — but that's not needed for an LGA to show its own
+# tally, only for a "who else is on my ballot" view, which isn't part of this endpoint.
+_LGA_OFFICES = {"presidential", "governor", "senate", "house"}
 
 
 def run_migrations() -> None:
