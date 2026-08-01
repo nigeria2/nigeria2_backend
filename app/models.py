@@ -40,6 +40,30 @@ class ContactMessage(Base):
     )
 
 
+class DataReport(Base):
+    """A public report that a result figure looks wrong, anchored to whichever level
+    (polling unit / ward / LGA) the reporter was looking at. Anonymous, no auth required —
+    same trust model as the contact form."""
+
+    __tablename__ = "data_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    level: Mapped[str] = mapped_column(String(10), index=True)  # pu | ward | lga
+    pu_code: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    ward_code: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    lga_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    state_geo: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    year: Mapped[str] = mapped_column(String(10), default="")
+    # The race the report concerns, where known — a report on an LGA's overall total may
+    # not point at one specific office.
+    election_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    email: Mapped[str] = mapped_column(String(200), default="")
+    message: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="open")  # open | reviewed | resolved
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class User(Base):
     """A Google-authenticated account, with full contributor profile."""
 

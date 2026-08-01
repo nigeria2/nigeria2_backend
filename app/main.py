@@ -19,6 +19,7 @@ from .email import contact_notify_email, send_email
 from .models import (
     Analysis,
     ContactMessage,
+    DataReport,
     DeclaredCandidate,
     Governor,
     GovernorHistory,
@@ -81,6 +82,8 @@ from .schemas import (
     PoliticianIn,
     PredictionSetIn,
     ProfileUpdate,
+    ReportIssueIn,
+    ReportIssueOut,
     ScenarioIn,
     ScenarioPoliticianIn,
     ScenarioTrendIn,
@@ -426,6 +429,38 @@ def admin_contact_messages(_: User = Depends(require_admin), db: Session = Depen
         {
             "id": r.id, "name": r.name, "email": r.email, "subject": r.subject,
             "message": r.message, "created_at": r.created_at,
+        }
+        for r in rows
+    ]
+
+
+# --- public: report a data issue ---
+@app.post("/api/report-issue", response_model=ReportIssueOut, status_code=201)
+def report_issue(payload: ReportIssueIn, db: Session = Depends(get_db)):
+    rec = DataReport(
+        level=payload.level, pu_code=payload.pu_code, ward_code=payload.ward_code,
+        lga_id=payload.lga_id, state_geo=payload.state_geo, year=payload.year,
+        election_type=payload.election_type, name=payload.name, email=payload.email,
+        message=payload.message,
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return ReportIssueOut(id=rec.id)
+
+
+@app.get("/api/admin/data-reports")
+def admin_data_reports(status: str | None = None, _: User = Depends(require_admin), db: Session = Depends(get_db)):
+    q = select(DataReport).order_by(DataReport.created_at.desc())
+    if status:
+        q = q.where(DataReport.status == status)
+    rows = db.scalars(q).all()
+    return [
+        {
+            "id": r.id, "level": r.level, "pu_code": r.pu_code, "ward_code": r.ward_code,
+            "lga_id": r.lga_id, "state_geo": r.state_geo, "year": r.year,
+            "election_type": r.election_type, "name": r.name, "email": r.email,
+            "message": r.message, "status": r.status, "created_at": r.created_at,
         }
         for r in rows
     ]
