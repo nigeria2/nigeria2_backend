@@ -12,6 +12,7 @@ Revises: 0056
 Create Date: 2026-07-24
 
 """
+import json
 from typing import Sequence, Union
 
 from alembic import op
@@ -73,14 +74,25 @@ def upgrade() -> None:
     # pointed at entirely different people). Refuse to repoint politician_id unless the
     # target row's name matches what we expect, rather than silently mis-attributing data
     # on a database whose seed history doesn't match production's.
+    #
+    # A plain name == expected check isn't enough: dedupe_politicians() runs on every app
+    # startup and can rewrite a politician's canonical `name` to a fuller form while moving
+    # the old one into `aka` (observed live: id 315's name became "David Nweze Umahi", with
+    # "David Umahi" — this migration's expected value — demoted to aka). So a row counts as
+    # matching if the expected name is EITHER the canonical name OR listed in aka.
     for fix in _IDENTITY_FIXES:
-        correct_name = conn.execute(
-            text("SELECT name FROM politicians WHERE id = :correct_politician_id"), fix
-        ).scalar()
-        if correct_name != fix["name"]:
+        row = conn.execute(
+            text("SELECT name, aka FROM politicians WHERE id = :correct_politician_id"), fix
+        ).one_or_none()
+        correct_name = row[0] if row else None
+        try:
+            aka_list = json.loads(row[1]) if row and row[1] else []
+        except (TypeError, ValueError):
+            aka_list = []
+        if correct_name != fix["name"] and fix["name"] not in aka_list:
             raise RuntimeError(
-                f"politician id {fix['correct_politician_id']} is {correct_name!r}, "
-                f"expected {fix['name']!r} ({fix['state']} {fix['district']}) — "
+                f"politician id {fix['correct_politician_id']} is {correct_name!r} "
+                f"(aka {aka_list!r}), expected {fix['name']!r} ({fix['state']} {fix['district']}) — "
                 "this database's politician ids don't match the production snapshot "
                 "this migration was written against; refusing to repoint senators.politician_id"
             )
