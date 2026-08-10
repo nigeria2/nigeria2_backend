@@ -1,9 +1,13 @@
-"""Outbound email — currently a stub.
+"""Outbound email.
 
-No SMTP credentials exist yet (waiting on Mark's mail server details). Until
-SMTP_HOST is set, send_email() logs what it would have sent and returns without
-attempting a connection. The call site (app/main.py's contact() endpoint) never
-needs to change once real credentials land — just set the env vars below.
+Until SMTP_HOST is set, send_email() logs what it would have sent and returns
+without attempting a connection. The call site (app/main.py's contact() endpoint)
+never needs to change — just set the env vars below.
+
+print(..., flush=True): this runs inside a FastAPI BackgroundTasks call, so its
+output is often the only thing printed for a long stretch — under Docker, stdout
+is block- not line-buffered when not a TTY, so a low-volume message like this can
+sit unflushed in Coolify's logs indefinitely without an explicit flush.
 """
 import os
 import smtplib
@@ -20,7 +24,7 @@ def send_email(to: str, subject: str, body: str) -> bool:
     triggered it."""
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
     if not smtp_host or not to:
-        print(f"[email] SMTP not configured — would send to {to!r}: {subject!r}")
+        print(f"[email] SMTP not configured — would send to {to!r}: {subject!r}", flush=True)
         return False
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
     smtp_user = os.environ.get("SMTP_USER", "").strip()
@@ -37,7 +41,8 @@ def send_email(to: str, subject: str, body: str) -> bool:
             if smtp_user:
                 server.login(smtp_user, smtp_password)
             server.send_message(msg)
+        print(f"[email] sent to {to!r}: {subject!r}", flush=True)
         return True
     except Exception as exc:
-        print(f"[email] send to {to!r} failed: {exc}")
+        print(f"[email] send to {to!r} failed: {exc}", flush=True)
         return False
