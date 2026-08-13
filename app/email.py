@@ -12,6 +12,7 @@ sit unflushed in Coolify's logs indefinitely without an explicit flush.
 import os
 import smtplib
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
 def contact_notify_email() -> str:
     """Staff inbox that gets notified of new contact-form submissions."""
@@ -34,6 +35,14 @@ def send_email(to: str, subject: str, body: str) -> bool:
     msg["Subject"] = subject
     msg["From"] = smtp_from
     msg["To"] = to
+    # RFC 5322 requires both of these; EmailMessage doesn't add either on its own. Their
+    # absence is exactly what got every message hard-rejected by Gmail post-DATA (550 5.7.1
+    # "Messages missing a valid Message-ID header are not accepted") — accepted by our own
+    # relay (work.timbu.cloud) without complaint, since that hop doesn't enforce RFC 5322,
+    # then bounced on the next hop where Gmail does. Message-ID's domain is set explicitly
+    # to nigeria2.com rather than defaulting to the container's own (meaningless) hostname.
+    msg["Message-ID"] = make_msgid(domain="nigeria2.com")
+    msg["Date"] = formatdate(localtime=True)
     msg.set_content(body)
     try:
         with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
