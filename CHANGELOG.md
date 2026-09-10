@@ -11,6 +11,12 @@ user-facing sentence — what changed and why it matters — grouped under
 > add an entry to the top of this file, under a section for today's date. See
 > [CLAUDE.md](CLAUDE.md) for the enforced wording.
 
+## 2026-09-10
+
+### Added
+- **Dedicated state ward and polling unit directories** at `/states/[state]/wards` and `/states/[state]/polling-units`, directly answering essential queries including ward counts, polling unit totals, and 2023 election winners across every LGA in the state.
+- **Instant-answer summary callout boxes and Schema.org FAQPage structured data** for search engines and voters looking up ward counts, polling unit totals, and past election results by state, LGA, and ward.
+
 ## 2026-07-26
 
 ### Changed
