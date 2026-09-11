@@ -1395,7 +1395,7 @@ def list_senators(db: Session = Depends(get_db)):
     # Put Senate President first, then sort by 2023 votes pulled descending
     items.sort(
         key=lambda s: (
-            0 if (s.get("leadership") == "Senate President" or "senate president" in (s.get("leadership") or "").lower() or "akpabio" in s.get("name", "").lower()) else 1,
+            0 if ((s.get("leadership") or "").strip().lower() == "senate president" or "akpabio" in (s.get("name") or "").lower()) else 1,
             -(s.get("votes_2023") or 0),
             s.get("name") or "",
         )
