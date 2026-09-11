@@ -17,6 +17,10 @@ user-facing sentence — what changed and why it matters — grouped under
 - **2019 Senate election results on `/senators`**: Added a dedicated 2019 Votes column displaying certified INEC election results for all 109 senatorial districts alongside the sitting 10th National Assembly roster, featuring tags for returning incumbents and historical predecessor results for seats that turned over.
 - **2019 Senate election dataset & seed**: Compiled official INEC senatorial collation data into `senate_2019.json` and added `seed_senate_2019()` to ingest the full 2019 senatorial election results into candidate party history.
 
+### Data
+- **Complete 2023 Senate verified results dataset (`senate_2023_verified.jsonl`)**: Researched, verified, and compiled certified INEC Form EC8E declarations, returning officer announcements, and election tribunal judgments for all 109 senatorial districts across all 36 states and the FCT, populating certified vote tallies for winners and runners-up.
+- **Updated 2023 Senate election data & seed**: Enriched `senate_2023.json` and updated `seed_senate_2023()` to sync verified candidate votes and positions into `PartyHistory` and `LegislativeResult`.
+
 ### Changed
 - Expanded **orientation notes in `read_me_before_coding.md`** with hard-learned developer and deployment gotchas covering the multi-repo Git setup, Coolify vs. S3/CloudFront pipelines, build order dependencies, Windows IPv6 DNS flags, and prerender crawl behaviors.
 

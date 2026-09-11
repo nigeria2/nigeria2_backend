@@ -1246,18 +1246,39 @@ def _governor_dict(g: Governor) -> dict:
     }
 
 
-def _senate_win_votes(db: Session) -> dict[int, dict]:
-    """politician_id -> {votes, constituency} for their winning 2023 Senate run.
-    Used to show how many votes each sitting senator polled (where Wikipedia had it)."""
-    out: dict[int, dict] = {}
+def _senate_win_votes(db: Session) -> tuple[dict[int, dict], dict[tuple[str, str], dict]]:
+    """Returns (by_politician_id, by_district_key) for 2023 Senate winning votes.
+    Reads from PartyHistory with resilient fallback to senate_2023.json."""
+    by_pid: dict[int, dict] = {}
+    by_dist: dict[tuple[str, str], dict] = {}
     for h in db.scalars(
         select(PartyHistory).where(
             PartyHistory.election_type == "senate", PartyHistory.year == "2023", PartyHistory.position == 1
         )
     ).all():
-        if h.politician_id and h.votes:
-            out[h.politician_id] = {"votes": h.votes, "constituency": h.constituency or None}
-    return out
+        if h.votes:
+            d = {"votes": h.votes, "constituency": h.constituency or None}
+            if h.politician_id:
+                by_pid[h.politician_id] = d
+            if h.state and h.constituency:
+                by_dist[_norm_district_key(h.state, h.constituency)] = d
+
+    senate_json = pathlib.Path(__file__).resolve().parent / "data" / "elections" / "senate_2023.json"
+    if senate_json.exists():
+        import json
+        try:
+            for elec in json.loads(senate_json.read_text(encoding="utf-8")):
+                st = elec.get("state", "")
+                dist = elec.get("district", "")
+                key = _norm_district_key(st, dist)
+                if key not in by_dist or not by_dist[key].get("votes"):
+                    cands = elec.get("candidates", [])
+                    if cands and cands[0].get("votes"):
+                        by_dist[key] = {"votes": cands[0]["votes"], "constituency": dist}
+        except Exception:
+            pass
+
+    return by_pid, by_dist
 
 
 def _norm_district_key(state: str, district: str) -> tuple[str, str]:
@@ -1349,9 +1370,16 @@ def _senator_dict(s: Senator, win: dict | None = None, win_19: dict | None = Non
 @app.get("/api/senators")
 def list_senators(db: Session = Depends(get_db)):
     rows = db.scalars(select(Senator).order_by(Senator.state, Senator.district)).all()
-    wins = _senate_win_votes(db)
+    wins_pid, wins_dist = _senate_win_votes(db)
     wins_19 = _senate_2019_wins(db)
-    return [_senator_dict(s, wins.get(s.politician_id), wins_19.get(_norm_district_key(s.state, s.district))) for s in rows]
+    return [
+        _senator_dict(
+            s,
+            wins_pid.get(s.politician_id) or wins_dist.get(_norm_district_key(s.state, s.district)),
+            wins_19.get(_norm_district_key(s.state, s.district))
+        )
+        for s in rows
+    ]
 
 
 @app.get("/api/governors")
