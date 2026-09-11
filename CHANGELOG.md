@@ -13,6 +13,10 @@ user-facing sentence — what changed and why it matters — grouped under
 
 ## 2026-09-11
 
+### Added
+- **2019 Senate election results on `/senators`**: Added a dedicated 2019 Votes column displaying certified INEC election results for all 109 senatorial districts alongside the sitting 10th National Assembly roster, featuring tags for returning incumbents and historical predecessor results for seats that turned over.
+- **2019 Senate election dataset & seed**: Compiled official INEC senatorial collation data into `senate_2019.json` and added `seed_senate_2019()` to ingest the full 2019 senatorial election results into candidate party history.
+
 ### Changed
 - Expanded **orientation notes in `read_me_before_coding.md`** with hard-learned developer and deployment gotchas covering the multi-repo Git setup, Coolify vs. S3/CloudFront pipelines, build order dependencies, Windows IPv6 DNS flags, and prerender crawl behaviors.
 

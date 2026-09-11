@@ -37,6 +37,7 @@ from .models import (
     Prediction,
     PredictionScenario,
     ProblemUnit,
+    LegislativeResult,
     ScenarioPolitician,
     ScenarioTrend,
     Senator,
@@ -100,6 +101,7 @@ from .seed import (
     seed_presidential_primaries,
     seed_presidential_states,
     seed_presidential_states_2019,
+    seed_senate_2019,
     seed_senate_2023,
     seed_lga_results,
     seed_ward_predictions,
@@ -204,6 +206,9 @@ async def lifespan(app: FastAPI):
                 s23 = seed_senate_2023(db)
                 if s23:
                     print(f"[startup] seeded {s23} 2023 senate candidate results")
+                s19 = seed_senate_2019(db)
+                if s19:
+                    print(f"[startup] seeded {s19} 2019 senate candidate results")
                 p23 = seed_presidential_2023(db)
                 if p23:
                     print(f"[startup] seeded {p23} 2023 presidential candidates")
@@ -1256,13 +1261,89 @@ def _senate_win_votes(db: Session) -> dict[int, dict]:
     return out
 
 
-def _senator_dict(s: Senator, win: dict | None = None) -> dict:
+def _norm_district_key(state: str, district: str) -> tuple[str, str]:
+    st = (state or "").strip().lower()
+    dt = (district or "").strip().lower().replace("-", " ")
+    if dt == "fct" or st == "fct":
+        return ("fct", "fct")
+    if dt.startswith(st):
+        return (st, dt)
+    return (st, f"{st} {dt}")
+
+
+def _senate_names_match(a: str, b: str) -> bool:
+    if not a or not b:
+        return False
+    ta = set(re.sub(r"[^a-z0-9 ]", "", a.lower()).split())
+    tb = set(re.sub(r"[^a-z0-9 ]", "", b.lower()).split())
+    return len(ta & tb) >= 2 or (len(ta) == 1 and ta == tb)
+
+
+def _senate_2019_wins(db: Session) -> dict[tuple[str, str], dict]:
+    """(state, district_key) -> 2019 winning election dict:
+    {votes, candidate, party, politician_id} from legislative_results."""
+    out: dict[tuple[str, str], dict] = {}
+    rows = db.scalars(
+        select(LegislativeResult).where(
+            LegislativeResult.election_type == "senate",
+            LegislativeResult.year == "2019",
+            LegislativeResult.elected == True,
+        )
+    ).all()
+    if not rows:
+        csv_p = pathlib.Path(__file__).resolve().parent / "data" / "legislative_2019.csv"
+        if csv_p.exists():
+            import csv
+            with open(csv_p, newline="", encoding="utf-8") as f:
+                for r in csv.DictReader(f):
+                    if r.get("election_type") == "senate" and str(r.get("elected")) in ("1", "True"):
+                        key = _norm_district_key(r.get("state", ""), r.get("constituency", ""))
+                        cand = str(r.get("candidate", "")).strip()
+                        if cand == cand.upper():
+                            cand = cand.title()
+                        try:
+                            v = int(float(r.get("votes", 0) or 0))
+                        except Exception:
+                            v = 0
+                        out[key] = {
+                            "votes": v,
+                            "candidate": cand,
+                            "party": str(r.get("party", "")).strip(),
+                            "politician_id": None,
+                        }
+            return out
+
+    for r in rows:
+        key = _norm_district_key(r.state, r.constituency)
+        cand = r.candidate.strip()
+        if cand == cand.upper():
+            cand = cand.title()
+        out[key] = {
+            "votes": r.votes,
+            "candidate": cand,
+            "party": r.party.strip(),
+            "politician_id": r.politician_id,
+        }
+    return out
+
+
+def _senator_dict(s: Senator, win: dict | None = None, win_19: dict | None = None) -> dict:
+    is_incumbent = False
+    if win_19:
+        if (s.politician_id and win_19.get("politician_id") and s.politician_id == win_19.get("politician_id")) or \
+           _senate_names_match(s.name, win_19.get("candidate", "")):
+            is_incumbent = True
+
     return {
         "id": s.id, "name": s.name, "state": s.state, "district": s.district, "party": s.party,
         "gender": s.gender or None, "age": s.age, "terms": s.terms,
         "leadership": s.leadership or None, "politician_id": s.politician_id,
         "votes_2023": (win or {}).get("votes"),
         "constituency": (win or {}).get("constituency"),
+        "votes_2019": (win_19 or {}).get("votes"),
+        "winner_2019": (win_19 or {}).get("candidate"),
+        "party_2019": (win_19 or {}).get("party"),
+        "is_incumbent_from_2019": is_incumbent,
     }
 
 
@@ -1270,7 +1351,8 @@ def _senator_dict(s: Senator, win: dict | None = None) -> dict:
 def list_senators(db: Session = Depends(get_db)):
     rows = db.scalars(select(Senator).order_by(Senator.state, Senator.district)).all()
     wins = _senate_win_votes(db)
-    return [_senator_dict(s, wins.get(s.politician_id)) for s in rows]
+    wins_19 = _senate_2019_wins(db)
+    return [_senator_dict(s, wins.get(s.politician_id), wins_19.get(_norm_district_key(s.state, s.district))) for s in rows]
 
 
 @app.get("/api/governors")
