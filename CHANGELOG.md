@@ -11,6 +11,11 @@ user-facing sentence — what changed and why it matters — grouped under
 > add an entry to the top of this file, under a section for today's date. See
 > [CLAUDE.md](CLAUDE.md) for the enforced wording.
 
+## 2026-09-11
+
+### Changed
+- Expanded **orientation notes in `read_me_before_coding.md`** with hard-learned developer and deployment gotchas covering the multi-repo Git setup, Coolify vs. S3/CloudFront pipelines, build order dependencies, Windows IPv6 DNS flags, and prerender crawl behaviors.
+
 ## 2026-09-10
 
 ### Added
