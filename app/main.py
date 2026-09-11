@@ -122,6 +122,12 @@ from .seed import (
     seed_ward_results,
     seed_wards,
 )
+from .senators_data import SENATORS
+
+_SENATORS_DATA_MAP = {
+    (s["state"].strip().lower(), s["district"].strip().lower()): s
+    for s in SENATORS
+}
 
 STATE_NAMES = sorted(BASE.keys())
 _ELECTIONS_DIR = pathlib.Path(__file__).resolve().parent / "data" / "elections"
@@ -1354,10 +1360,16 @@ def _senator_dict(s: Senator, win: dict | None = None, win_19: dict | None = Non
            _senate_names_match(s.name, win_19.get("candidate", "")):
             is_incumbent = True
 
+    fallback = _SENATORS_DATA_MAP.get((s.state.strip().lower(), s.district.strip().lower())) or {}
+    gender = s.gender or fallback.get("gender") or None
+    age = s.age if s.age is not None else fallback.get("age")
+    terms = s.terms if s.terms is not None else fallback.get("terms")
+    leadership = s.leadership or fallback.get("leadership") or None
+
     return {
         "id": s.id, "name": s.name, "state": s.state, "district": s.district, "party": s.party,
-        "gender": s.gender or None, "age": s.age, "terms": s.terms,
-        "leadership": s.leadership or None, "politician_id": s.politician_id,
+        "gender": gender, "age": age, "terms": terms,
+        "leadership": leadership, "politician_id": s.politician_id,
         "votes_2023": (win or {}).get("votes"),
         "constituency": (win or {}).get("constituency"),
         "votes_2019": (win_19 or {}).get("votes"),
@@ -1369,10 +1381,10 @@ def _senator_dict(s: Senator, win: dict | None = None, win_19: dict | None = Non
 
 @app.get("/api/senators")
 def list_senators(db: Session = Depends(get_db)):
-    rows = db.scalars(select(Senator).order_by(Senator.state, Senator.district)).all()
+    rows = db.scalars(select(Senator)).all()
     wins_pid, wins_dist = _senate_win_votes(db)
     wins_19 = _senate_2019_wins(db)
-    return [
+    items = [
         _senator_dict(
             s,
             wins_pid.get(s.politician_id) or wins_dist.get(_norm_district_key(s.state, s.district)),
@@ -1380,6 +1392,15 @@ def list_senators(db: Session = Depends(get_db)):
         )
         for s in rows
     ]
+    # Put Senate President first, then sort by 2023 votes pulled descending
+    items.sort(
+        key=lambda s: (
+            0 if (s.get("leadership") == "Senate President" or "senate president" in (s.get("leadership") or "").lower() or "akpabio" in s.get("name", "").lower()) else 1,
+            -(s.get("votes_2023") or 0),
+            s.get("name") or "",
+        )
+    )
+    return items
 
 
 @app.get("/api/governors")

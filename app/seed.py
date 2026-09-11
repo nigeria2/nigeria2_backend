@@ -753,8 +753,35 @@ def seed_senators(db: Session) -> int:
     """Seed the 10th National Assembly senators (2023-2027). Each senator is also
     surfaced as a politician (find-or-create by name + state) so they appear on
     state pages and the politicians board."""
-    if db.scalar(select(func.count()).select_from(Senator)):
-        return 0
+    existing_senators = {
+        (s.state.strip().lower(), s.district.strip().lower()): s
+        for s in db.scalars(select(Senator)).all()
+    }
+    if existing_senators:
+        updated = 0
+        for s in SENATORS:
+            key = (s["state"].strip().lower(), s["district"].strip().lower())
+            sen = existing_senators.get(key)
+            if sen:
+                if s.get("gender") and sen.gender != s["gender"]:
+                    sen.gender = s["gender"]
+                    updated += 1
+                if s.get("age") is not None and sen.age != s["age"]:
+                    sen.age = s["age"]
+                    updated += 1
+                if s.get("terms") is not None and sen.terms != s["terms"]:
+                    sen.terms = s["terms"]
+                    updated += 1
+                if s.get("leadership") is not None and sen.leadership != s.get("leadership", ""):
+                    sen.leadership = s.get("leadership", "")
+                    updated += 1
+                if s.get("party") and sen.party != s["party"]:
+                    sen.party = s["party"]
+                    updated += 1
+        if updated:
+            db.commit()
+        return updated
+
     existing: dict[tuple[str, str], Politician] = {}
     for p in db.scalars(select(Politician)).all():
         existing[(p.name.strip().lower(), p.state)] = p
