@@ -37,7 +37,6 @@ from .models import (
     Prediction,
     PredictionScenario,
     ProblemUnit,
-    LegislativeResult,
     ScenarioPolitician,
     ScenarioTrend,
     Senator,
