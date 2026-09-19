@@ -467,6 +467,7 @@ class HouseMember(Base):
     constituency: Mapped[str] = mapped_column(String(160))  # federal constituency
     name: Mapped[str] = mapped_column(String(200))
     party: Mapped[str] = mapped_column(String(20), default="")
+    votes: Mapped[int | None] = mapped_column(Integer, default=0, nullable=True)
     politician_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # link if already a politician
 
 

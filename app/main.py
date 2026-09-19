@@ -1544,7 +1544,7 @@ def party_summary(acronym: str, db: Session = Depends(get_db)):
 
 def _house_dict(m: HouseMember) -> dict:
     return {"id": m.id, "state": m.state, "constituency": m.constituency, "name": m.name,
-            "party": m.party, "politician_id": m.politician_id}
+            "party": m.party, "votes": m.votes, "politician_id": m.politician_id}
 
 
 @app.get("/api/reps")
