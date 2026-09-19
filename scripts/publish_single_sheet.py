@@ -37,6 +37,14 @@ OFFICE_TO_ET = {
 
 # Pre-cached mapping of (state, lga_name_lower) -> constituency_name
 _CONSTITUENCY_CACHE: dict[tuple[str, str], str] = {}
+_MAP_PATH = pathlib.Path(__file__).resolve().parent.parent / "app" / "data" / "constituencies_lga_map.json"
+_LGA_MAP: dict[str, dict[str, str]] = {}
+if _MAP_PATH.is_file():
+    try:
+        with open(_MAP_PATH, "r", encoding="utf-8") as f:
+            _LGA_MAP = json.load(f)
+    except Exception:
+        pass
 
 
 def _clean_slug(s: str) -> str:
@@ -47,6 +55,11 @@ def resolve_constituency(db, state_name: str, lga_name: str) -> str | None:
     """Find the Federal Constituency for a given state and LGA."""
     key = (state_name.strip().lower(), lga_name.strip().lower())
     if key in _CONSTITUENCY_CACHE:
+        return _CONSTITUENCY_CACHE[key]
+
+    s_key, l_key = key
+    if s_key in _LGA_MAP and l_key in _LGA_MAP[s_key]:
+        _CONSTITUENCY_CACHE[key] = _LGA_MAP[s_key][l_key]
         return _CONSTITUENCY_CACHE[key]
 
     lga_slug = _clean_slug(lga_name)
@@ -63,11 +76,6 @@ def resolve_constituency(db, state_name: str, lga_name: str) -> str | None:
             if lga_slug in p_slug or p_slug in lga_slug:
                 best_match = m.constituency
                 break
-            # Handle prefixes/suffixes (e.g. Calabar Municipality -> Calabar Municipal)
-            if len(lga_slug) > 5 and len(p_slug) > 5:
-                if lga_slug[:6] == p_slug[:6]:
-                    best_match = m.constituency
-                    break
         if best_match:
             break
 
@@ -188,11 +196,14 @@ def publish_single_sheet_data(
         # 5. Make result live in pu_results if valid or unsure
         pu_res = None
         if status in ("valid", "unsure") and parties:
-            valid_parties = [(p, v) for p, v in parties if v is not None and v >= 0]
+            # Filter out corrupt/serial number misreads (>1,500 votes for a single party in a PU)
+            valid_parties = [(p, v) for p, v in parties if v is not None and 0 <= v <= 1500]
             valid_parties.sort(key=lambda x: -x[1])
             winner = valid_parties[0][0] if valid_parties else ""
             runner = valid_parties[1][0] if len(valid_parties) > 1 else ""
             tot = sum(v for _, v in valid_parties) if valid_parties else (vv or 0)
+            if tot > 2500:
+                tot = 0
 
             pu_res = db.scalar(
                 select(PuResult).where(
@@ -240,10 +251,19 @@ def publish_single_sheet_data(
 
                 parts = re.split(r"[/–-]", constituency)
                 lga_rows = db.scalars(select(Lga).where(Lga.state_geo == state_geo)).all()
-                constituent_lga_ids = [
-                    l.id for l in lga_rows
-                    if any(_clean_slug(part) in _clean_slug(l.name) or _clean_slug(l.name) in _clean_slug(part) for part in parts)
-                ]
+                s_key = state_name.strip().lower()
+                constituent_lga_ids = []
+                if s_key in _LGA_MAP:
+                    mapped_names = {lga for lga, c in _LGA_MAP[s_key].items() if c == constituency}
+                    constituent_lga_ids = [
+                        l.id for l in lga_rows
+                        if l.name.strip().lower() in mapped_names or _clean_slug(l.name) in mapped_names
+                    ]
+                if not constituent_lga_ids:
+                    constituent_lga_ids = [
+                        l.id for l in lga_rows
+                        if any(_clean_slug(part) in _clean_slug(l.name) or _clean_slug(l.name) in _clean_slug(part) for part in parts)
+                    ]
                 if not constituent_lga_ids and lga_id:
                     constituent_lga_ids = [lga_id]
 
