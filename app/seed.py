@@ -624,31 +624,107 @@ def seed_presidential_primaries(db: Session) -> int:
 
 
 def seed_house_members(db: Session) -> int:
-    """Seed the (partial) 2023-2027 House of Representatives roster. Each member is
-    linked to an existing politician when their name already appears (by name or aka,
-    within the state) — but no new politician is created, to keep the heavyweight
-    boards focused on figures we actually have vote data for."""
+    """Seed the 2023-2027 House of Representatives roster. Links each member
+    to an existing politician profile (by exact tokens or constituency overlap) or creates
+    a new profile if not present, and records their 2023 victory in party_history so
+    every representative has an individual profile page."""
     path = _ELECTIONS_DIR / "house_2023.json"
     if not path.exists():
         return 0
-    if db.scalar(select(func.count()).select_from(HouseMember)):
-        return 0
-    # name/aka -> politician id, per state
-    idx: dict[tuple[str, str], int] = {}
-    for p in db.scalars(select(Politician)).all():
-        idx[(p.state, p.name.strip().lower())] = p.id
-        for a in json.loads(p.aka or "[]"):
-            idx.setdefault((p.state, str(a).strip().lower()), p.id)
+    from .geo import state_geo_id
+
+    # If already seeded, check if any unlinked members need backfilling
+    existing_hms = db.scalars(select(HouseMember)).all()
+    if existing_hms:
+        unlinked = [m for m in existing_hms if m.politician_id is None]
+        if not unlinked:
+            return 0
+
+    # Build token indices for existing politicians
+    all_pols = db.scalars(select(Politician)).all()
+    all_history = db.scalars(select(PartyHistory)).all()
+    history_by_pol: dict[int, list[PartyHistory]] = {}
+    for h in all_history:
+        if h.politician_id:
+            history_by_pol.setdefault(h.politician_id, []).append(h)
+
+    titles = {'hon', 'honorable', 'honourable', 'rt', 'dr', 'engr', 'chief', 'alhaji', 'arc', 'barr', 'barrister', 'prince', 'hajiya', 'hajia', 'sen', 'senator'}
+    def _toks(s: str) -> set[str]:
+        return {w for w in re.sub(r'[^\w\s]', ' ', (s or '').lower()).split() if w not in titles and len(w) > 1}
+    def _c_toks(s: str) -> set[str]:
+        return {w for w in re.sub(r'[^\w\s]', ' ', (s or '').lower()).split() if len(w) > 2 and w not in {'north', 'south', 'east', 'west', 'central', 'federal', 'constituency'}}
+
+    state_pols: dict[str, list[tuple[Politician, set[str]]]] = {}
+    for p in all_pols:
+        st = (p.state or "").strip().lower()
+        state_pols.setdefault(st, []).append((p, _toks(p.name)))
+        try:
+            for a in json.loads(p.aka or "[]"):
+                state_pols.setdefault(st, []).append((p, _toks(str(a))))
+        except Exception:
+            pass
+
+    def _match_or_create(state: str, const: str, name: str, party: str, votes: int | None = 0) -> int:
+        st = (state or "").strip().lower()
+        m_toks = _toks(name)
+        m_c = _c_toks(const)
+        cands = state_pols.get(st, [])
+
+        exact = [p for p, toks in cands if toks == m_toks]
+        exact_u = list({p.id: p for p in exact}.values())
+        chosen = None
+        if len(exact_u) == 1:
+            chosen = exact_u[0]
+        else:
+            for p, toks in cands:
+                if len(m_toks) >= 2 and len(toks) >= 2 and (m_toks.issubset(toks) or toks.issubset(m_toks)):
+                    p_hist = history_by_pol.get(p.id, [])
+                    h_c = set()
+                    for h in p_hist:
+                        if h.constituency:
+                            h_c.update(_c_toks(h.constituency))
+                    if m_c.intersection(h_c) or len(m_toks.intersection(_toks(p.name))) >= 3:
+                        chosen = p
+                        break
+
+        if chosen is None:
+            gid = state_geo_id(state)
+            chosen = Politician(name=name.strip(), state=state, state_geo=gid, party=party or "", title=f"Member, House of Representatives ({const})")
+            db.add(chosen)
+            db.flush()
+            state_pols.setdefault(st, []).append((chosen, m_toks))
+
+        # Ensure 2023 victory in party_history
+        has_run = db.scalar(select(PartyHistory.id).where(PartyHistory.politician_id == chosen.id, PartyHistory.year == "2023", PartyHistory.election_type == "house").limit(1))
+        if not has_run:
+            gid = state_geo_id(state)
+            db.add(PartyHistory(
+                politician_id=chosen.id, politician_name=chosen.name, party=party or chosen.party,
+                state=state, state_geo=gid, year="2023", election_type="house", constituency=const,
+                votes=votes or 0, position=1,
+            ))
+        return chosen.id
+
     n = 0
-    for m in json.loads(path.read_text(encoding="utf-8")):
-        pid = idx.get((m["state"], m["name"].strip().lower()))
-        db.add(HouseMember(
-            state=m["state"], constituency=m["constituency"], name=m["name"].strip(),
-            party=m.get("party", ""), politician_id=pid,
-        ))
-        n += 1
+    if not existing_hms:
+        for m in json.loads(path.read_text(encoding="utf-8")):
+            pid = _match_or_create(m["state"], m["constituency"], m["name"], m.get("party", ""), m.get("votes", 0))
+            db.add(HouseMember(
+                state=m["state"], state_geo=state_geo_id(m["state"]), constituency=m["constituency"],
+                name=m["name"].strip(), party=m.get("party", ""), votes=m.get("votes", 0), politician_id=pid,
+            ))
+            n += 1
+    else:
+        for m in existing_hms:
+            if m.politician_id is None:
+                m.politician_id = _match_or_create(m.state, m.constituency, m.name, m.party, m.votes)
+                if not m.state_geo:
+                    m.state_geo = state_geo_id(m.state)
+                n += 1
+
     db.commit()
     return n
+
 
 
 def seed_senate_2023(db: Session) -> int:
