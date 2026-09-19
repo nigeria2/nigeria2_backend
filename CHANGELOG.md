@@ -11,6 +11,16 @@ user-facing sentence — what changed and why it matters — grouped under
 > add an entry to the top of this file, under a section for today's date. See
 > [CLAUDE.md](CLAUDE.md) for the enforced wording.
 
+## 2026-09-19
+
+### Data
+- **Live Deployment of 2023 House of Representatives Polling Unit Results (8 States)**: Ingested and deployed definitive 2023 House of Representatives election results across 25,550 polling units and 459,900 party breakdown records into the live database for Abia, Adamawa, Akwa Ibom, Anambra, Bauchi, Bayelsa, Benue, and Borno, including automated confidence scoring and official rollups across 1,684 wards and 164 LGAs.
+
+## 2026-09-18
+
+### Data
+- **Transcribed 2023 House of Representatives EC8A Polling Unit Scans for 8 States**: Completed machine-readable JSON transcription for 30,794 polling units across Abia (3,541), Adamawa (3,943), Akwa Ibom (3,189), Anambra (4,481), Bauchi (5,302), Bayelsa (495), Benue (4,910), and Borno (4,939), completing Borno's final 3,220 sheets with 100% precision using local Qwen 3.5 9B vision inference at zero external cost.
+
 ## 2026-09-11
 
 ### Added

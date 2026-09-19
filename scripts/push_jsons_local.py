@@ -69,7 +69,12 @@ SOURCE = f"LLM ({MODEL})"
 # NB: the election year is read from the folder path (<state>/<office>/<year>/...), NOT
 # hard-coded — off-cycle governorships have their own years (Anambra 2021/2025, Edo 2020/2024).
 
-OFFICE_TO_ET = {"presidential": "presidential", "governorship": "governor", "senatorial": "senate"}
+OFFICE_TO_ET = {
+    "presidential": "presidential",
+    "governorship": "governor",
+    "senatorial": "senate",
+    "house-of-reps": "house",
+}
 # statuses we treat as loadable evidence (blurry/truncated are too unreliable)
 DEFAULT_STATUSES = {"valid", "unsure"}
 
@@ -521,7 +526,7 @@ def count_files(state_dir, offices, statuses):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--states", default="", help="comma list of state folders; default all")
-    ap.add_argument("--offices", default="presidential,governorship,senatorial")
+    ap.add_argument("--offices", default="presidential,governorship,senatorial,house-of-reps")
     ap.add_argument("--include-unsure", default="true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-tui", action="store_true",
