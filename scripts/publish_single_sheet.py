@@ -59,22 +59,27 @@ def resolve_constituency(db, state_name: str, lga_name: str) -> str | None:
         return _CONSTITUENCY_CACHE[key]
 
     s_key, l_key = key
-    if s_key in _LGA_MAP and l_key in _LGA_MAP[s_key]:
-        _CONSTITUENCY_CACHE[key] = _LGA_MAP[s_key][l_key]
-        return _CONSTITUENCY_CACHE[key]
-
     lga_slug = _clean_slug(lga_name)
+    if s_key in _LGA_MAP:
+        for m_lga, const in _LGA_MAP[s_key].items():
+            if _clean_slug(m_lga) == lga_slug:
+                _CONSTITUENCY_CACHE[key] = const
+                return const
+
     members = db.scalars(
         select(HouseMember).where(HouseMember.state.ilike(f"%{state_name}%"))
     ).all()
 
     best_match = None
+    directions = {"north", "south", "east", "west", "central"}
     for m in members:
         # Check if LGA name or parts of it appear in the constituency name
         parts = re.split(r"[/–-]", m.constituency)
         for p in parts:
             p_slug = _clean_slug(p)
-            if lga_slug in p_slug or p_slug in lga_slug:
+            if not p_slug or p_slug in directions:
+                continue
+            if lga_slug in p_slug or (len(p_slug) > 4 and p_slug in lga_slug):
                 best_match = m.constituency
                 break
         if best_match:
