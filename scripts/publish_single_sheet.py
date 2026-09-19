@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 load_dotenv(pathlib.Path(__file__).resolve().parent.parent / ".env")
 
-from sqlalchemy import select, delete, text
+from sqlalchemy import select, delete, text, func
 from app.db import SessionLocal
 from app import confidence as C
 from app import geo
@@ -26,6 +26,7 @@ from app.models import (
     HouseMember, LegislativeResult, Lga,
     WardResultV, WardResultParty,
     LgaResultV, LgaResultParty,
+    Politician, PartyHistory,
 )
 
 OFFICE_TO_ET = {
@@ -287,6 +288,47 @@ def publish_single_sheet_data(
                     assigned_politician = m.name
                     member_new_votes = m.votes
 
+                    # Auto-link or create politician profile if not already linked
+                    if not m.politician_id:
+                        pol = db.scalar(select(Politician).where(
+                            func.lower(Politician.name) == m.name.strip().lower(),
+                            Politician.state_geo == state_geo,
+                        ))
+                        if not pol:
+                            pol = Politician(
+                                name=m.name.strip(),
+                                state=state_name,
+                                state_geo=state_geo,
+                                party=m.party or "",
+                                title=f"Member, House of Representatives ({m.constituency})",
+                            )
+                            db.add(pol)
+                            db.flush()
+                        m.politician_id = pol.id
+
+                    # Ensure 2023 victory is in PartyHistory and votes are updated
+                    if m.politician_id:
+                        ph = db.scalar(select(PartyHistory).where(
+                            PartyHistory.politician_id == m.politician_id,
+                            PartyHistory.year == year,
+                            PartyHistory.election_type == "house",
+                        ))
+                        if not ph:
+                            db.add(PartyHistory(
+                                politician_id=m.politician_id,
+                                politician_name=m.name,
+                                party=m.party,
+                                state=state_name,
+                                state_geo=state_geo,
+                                year=year,
+                                election_type="house",
+                                constituency=m.constituency,
+                                votes=m.votes,
+                                position=1,
+                            ))
+                        else:
+                            ph.votes = m.votes
+
                     leg = db.scalar(
                         select(LegislativeResult).where(
                             LegislativeResult.election_type == "house",
@@ -305,6 +347,8 @@ def publish_single_sheet_data(
                         db.add(leg)
                     else:
                         leg.votes = m.votes
+                        if not leg.politician_id and m.politician_id:
+                            leg.politician_id = m.politician_id
 
         db.commit()
 
