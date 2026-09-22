@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-09-22
+
+### Added
+- Transcribed 2023 House of Representatives polling unit sheets for Gombe State (2,854 polling units) and synced live candidate tallies.
+- Transcribed 2023 House of Representatives polling unit sheets for Fct State (1,243 polling units) and synced live candidate tallies.
+
+## 2026-09-21
+
+### Added
+- Transcribed 2023 House of Representatives polling unit sheets for Enugu State (3,857 polling units) and synced live candidate tallies.
+- Transcribed 2023 House of Representatives polling unit sheets for Ekiti State (2,444 polling units) and synced live candidate tallies.
+
+## 2026-09-20
+
+### Added
+- Transcribed 2023 House of Representatives polling unit sheets for Edo State (3,580 polling units) and synced live candidate tallies.
+- Transcribed 2023 House of Representatives polling unit sheets for Ebonyi State (2,834 polling units) and synced live candidate tallies.
+
 All notable changes to Nigeria 2.0 (the site, the API, and the underlying data
 pipeline) are recorded here. Newest first.
 

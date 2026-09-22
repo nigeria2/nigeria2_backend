@@ -224,6 +224,7 @@
   },
   "ebonyi": {
     "abakalik": "Abakaliki/Izzi",
+    "abakaliki": "Abakaliki/Izzi",
     "afikpo north": "Afikpo North/Afikpo South",
     "afikpo south": "Afikpo North/Afikpo South",
     "ebonyi": "Ebonyi/Ohaukwu",
@@ -300,9 +301,13 @@
     "funakaye": "Gombe/Kwami/Funakaye",
     "gombe": "Gombe/Kwami/Funakaye",
     "kaltungo": "Kaltungo/Shongom",
+    "shongom": "Kaltungo/Shongom",
     "kwami": "Gombe/Kwami/Funakaye",
     "nafada": "Dukku/Nafada",
-    "yalmatu/deba": "Yamaltu/Deba"
+    "yalmatu/deba": "Yamaltu/Deba",
+    "yalmaltu/deba": "Yamaltu/Deba",
+    "yamaltu/deba": "Yamaltu/Deba",
+    "yamaltu-deba": "Yamaltu/Deba"
   },
   "imo": {
     "aboh-mbaise": "Aboh Mbaise/Ngor Okpala",
@@ -485,5 +490,17 @@
     "tarmuwa": "Damaturu/Gujba/Gulani/Tarmuwa",
     "yunusari": "Bursari/Geidam/Yunusari",
     "yusufari": "Machina/Nguru/Karasuwa/Yusufari"
+  },
+  "fct": {
+    "abaji": "Abuja South",
+    "gwagwalada": "Abuja South",
+    "kuje": "Abuja South",
+    "kwali": "Abuja South",
+    "bwari": "AMAC/Bwari",
+    "abuja municipal": "AMAC/Bwari",
+    "abuja municipal area council": "AMAC/Bwari",
+    "municipal area council": "AMAC/Bwari",
+    "municipal": "AMAC/Bwari",
+    "amac": "AMAC/Bwari"
   }
 }

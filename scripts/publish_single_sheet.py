@@ -49,6 +49,7 @@ if _MAP_PATH.is_file():
 
 
 def _clean_slug(s: str) -> str:
+    s = re.sub(r"^\d+[_ -]*", "", s)
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
