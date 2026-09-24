@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-09-23
+
+### Added
+- Transcribed 2023 House of Representatives polling unit sheets for Imo State (4,312 polling units) and synced live candidate tallies.
+
 ## 2026-09-22
 
 ### Added
